@@ -97,6 +97,27 @@ public:
     return true;
   }
 
+  VTKM_CONT
+  bool CanThread() const override { return true; }
+
+  VTKM_CONT
+  std::unique_ptr<Filter> Clone() const override
+  {
+    auto clone = std::unique_ptr<ClipWithField>(new ClipWithField);
+    clone->CopyStateFrom(this);
+    return clone;
+  }
+
+protected:
+  VTKM_CONT
+  void CopyStateFrom(const ClipWithField* clip)
+  {
+    this->FilterDataSetWithField<ClipWithField>::CopyStateFrom(clip);
+
+    this->ClipValue = clip->ClipValue;
+    this->Invert = clip->Invert;
+  }
+
 private:
   vtkm::Float64 ClipValue = 0;
   vtkm::worklet::Clip Worklet;
