@@ -23,10 +23,34 @@
 
 namespace
 {
-void ValidateResults(const std::vector<vtkm::cont::PartitionedDataSet>& results)
+void ValidateResults(const vtkm::cont::PartitionedDataSet& truth,
+                     const vtkm::cont::PartitionedDataSet& result,
+                     const std::string& varName)
 {
-  VTKM_TEST_ASSERT(results.size() == 2);
-  VTKM_TEST_ASSERT(results[0].GetNumberOfPartitions() == results[1].GetNumberOfPartitions());
+  VTKM_TEST_ASSERT(truth.GetNumberOfPartitions() == result.GetNumberOfPartitions());
+  vtkm::Id numDS = truth.GetNumberOfPartitions();
+  for (vtkm::Id i = 0; i < numDS; i++)
+  {
+    auto truthDS = truth.GetPartition(i);
+    auto resultDS = result.GetPartition(i);
+    VTKM_TEST_ASSERT(truthDS.GetNumberOfPoints() == resultDS.GetNumberOfPoints(),
+                     "Wrong number of points");
+    VTKM_TEST_ASSERT(truthDS.GetNumberOfCells() == resultDS.GetNumberOfCells(),
+                     "Wrong number of cells");
+    VTKM_TEST_ASSERT(resultDS.HasField(varName), "Missing field");
+
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> truthField, resultField;
+    truthDS.GetField(varName).GetData().AsArrayHandle(truthField);
+    resultDS.GetField(varName).GetData().AsArrayHandle(resultField);
+    VTKM_TEST_ASSERT(truthField.GetNumberOfValues() == resField.GetNumberOfValues(),
+                     "Wrong number of field values");
+
+    vtkm::Id numPts = truthField.GetNumberOfValues();
+    const auto truthPortal = truthField.ReadPortal();
+    const auto resultPortal = resultField.ReadPortal();
+    for (vtkm::Id j = 0; j < numPts; j++)
+      VTKM_TEST_ASSERT(truthPortal.Get(j) == resultPortal.Get(j), "Wrong value in field");
+  }
 }
 
 void TestMultiBlockFilter()
@@ -53,9 +77,8 @@ void TestMultiBlockFilter()
     auto result = clip.Execute(pds);
     VTKM_TEST_ASSERT(result.GetNumberOfPartitions() == pds.GetNumberOfPartitions());
     results.push_back(result);
-    result.PrintSummary(std::cout);
   }
-  ValidateResults(results);
+  ValidateResults(results[0], results[1], "nodevar");
 
   results.clear();
 
