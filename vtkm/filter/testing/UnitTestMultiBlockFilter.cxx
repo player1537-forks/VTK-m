@@ -23,18 +23,30 @@
 
 namespace
 {
+template <typename T>
+vtkm::FloatDefault ValueDifference(const T& a, const T& b)
+{
+  return vtkm::Abs(a - b);
+}
+template <typename T>
+vtkm::FloatDefault ValueDifference(const vtkm::Vec<T, 3>& a, const vtkm::Vec<T, 3>& b)
+{
+  return vtkm::Abs(a[0] - b[0]) + vtkm::Abs(a[1] - b[1]) + vtkm::Abs(a[2] - b[2]);
+}
 
 template <typename ArrayType>
 void ValidateField(const ArrayType& truthField, const ArrayType& resultField)
 {
   VTKM_TEST_ASSERT(truthField.GetNumberOfValues() == resultField.GetNumberOfValues(),
                    "Wrong number of field values");
+  const vtkm::FloatDefault tol = static_cast<vtkm::FloatDefault>(1e-5);
 
   vtkm::Id numPts = truthField.GetNumberOfValues();
   const auto truthPortal = truthField.ReadPortal();
   const auto resultPortal = resultField.ReadPortal();
   for (vtkm::Id j = 0; j < numPts; j++)
-    VTKM_TEST_ASSERT(truthPortal.Get(j) == resultPortal.Get(j), "Wrong value in field");
+    VTKM_TEST_ASSERT(ValueDifference(truthPortal.Get(j), resultPortal.Get(j)) < tol,
+                     "Wrong value in field");
 }
 
 void ValidateResults(const vtkm::cont::PartitionedDataSet& truth,
