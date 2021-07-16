@@ -56,14 +56,14 @@ void ValidateResults(const vtkm::cont::PartitionedDataSet& truth,
 
     if (isScalar)
     {
-      vtkm::cont::ArrayHandle<vtkm::FloatDefault> truthField, resultField;
+      vtkm::cont::ArrayHandle<vtkm::Float32> truthField, resultField;
       truthDS.GetField(varName).GetData().AsArrayHandle(truthField);
       resultDS.GetField(varName).GetData().AsArrayHandle(resultField);
       ValidateField(truthField, resultField);
     }
     else
     {
-      vtkm::cont::ArrayHandle<vtkm::Vec3f> truthField, resultField;
+      vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Float32, 3>> truthField, resultField;
       truthDS.GetField(varName).GetData().AsArrayHandle(truthField);
       resultDS.GetField(varName).GetData().AsArrayHandle(resultField);
       ValidateField(truthField, resultField);
