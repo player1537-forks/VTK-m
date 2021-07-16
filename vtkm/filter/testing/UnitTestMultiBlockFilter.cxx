@@ -42,7 +42,7 @@ void ValidateResults(const vtkm::cont::PartitionedDataSet& truth,
     vtkm::cont::ArrayHandle<vtkm::FloatDefault> truthField, resultField;
     truthDS.GetField(varName).GetData().AsArrayHandle(truthField);
     resultDS.GetField(varName).GetData().AsArrayHandle(resultField);
-    VTKM_TEST_ASSERT(truthField.GetNumberOfValues() == resField.GetNumberOfValues(),
+    VTKM_TEST_ASSERT(truthField.GetNumberOfValues() == resultField.GetNumberOfValues(),
                      "Wrong number of field values");
 
     vtkm::Id numPts = truthField.GetNumberOfValues();
