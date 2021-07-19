@@ -343,8 +343,8 @@ inline VTKM_CONT vtkm::Id Filter<Derived>::DetermineNumberOfThreads(
   vtkm::Id numDS = input.GetNumberOfPartitions();
 
   //Aribitrary constants.
-  const vtkm::Id threadsPerGPU = 8;
-  const vtkm::Id threadsPerCPU = 4;
+  const vtkm::Id threadsPerGPU = 1; //8;
+  const vtkm::Id threadsPerCPU = 1; //4;
 
   vtkm::Id availThreads = 1;
 
