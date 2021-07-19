@@ -89,7 +89,7 @@ void TestMultiBlockFilter()
 {
   vtkm::cont::PartitionedDataSet pds;
 
-  for (int i = 0; i < 50; i++)
+  for (int i = 0; i < 10; i++)
   {
     vtkm::Id3 dims(9 + i, 9 + i, 9 + i);
     vtkm::source::Tangle tangle(dims);
