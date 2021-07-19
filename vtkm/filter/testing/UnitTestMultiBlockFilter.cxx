@@ -82,6 +82,7 @@ void ValidateResults(const vtkm::cont::PartitionedDataSet& truth,
     }
   }
 }
+}
 
 void TestMultiBlockFilter()
 {
@@ -156,8 +157,8 @@ void TestMultiBlockFilter()
   }
   ValidateResults(results[0], results[1], "gradient", false);
 }
-
-}; //namespace
+}
+; //namespace
 
 int UnitTestMultiBlockFilter(int argc, char* argv[])
 {
