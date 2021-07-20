@@ -39,7 +39,7 @@ void ValidateField(const ArrayType& truthField, const ArrayType& resultField)
 {
   VTKM_TEST_ASSERT(truthField.GetNumberOfValues() == resultField.GetNumberOfValues(),
                    "Wrong number of field values");
-  const vtkm::FloatDefault tol = static_cast<vtkm::FloatDefault>(1e-5);
+  const vtkm::FloatDefault tol = static_cast<vtkm::FloatDefault>(1e-3);
 
   vtkm::Id numPts = truthField.GetNumberOfValues();
   const auto truthPortal = truthField.ReadPortal();
