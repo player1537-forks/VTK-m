@@ -37,6 +37,11 @@ vtkm::FloatDefault ValueDifference(const vtkm::Vec<T, 3>& a, const vtkm::Vec<T, 
 template <typename ArrayType>
 void ValidateField(const ArrayType& truthField, const ArrayType& resultField)
 {
+  if (truthField.GetNumberOfValues() != resultField.GetNumberOfValues())
+  {
+    std::cout << "Wrong #values: " << truthField.GetNumberOfValues()
+              << " and it was: " << resultField.GetNumberOfValues() << std::endl;
+  }
   VTKM_TEST_ASSERT(truthField.GetNumberOfValues() == resultField.GetNumberOfValues(),
                    "Wrong number of field values");
   const vtkm::FloatDefault tol = static_cast<vtkm::FloatDefault>(1e-3);
@@ -91,7 +96,7 @@ void TestMultiBlockFilter()
 
   for (int i = 0; i < 10; i++)
   {
-    vtkm::Id3 dims(9 + i, 9 + i, 9 + i);
+    vtkm::Id3 dims(10 + i, 10 + i, 10 + i);
     vtkm::source::Tangle tangle(dims);
     pds.AppendPartition(tangle.Execute());
   }
