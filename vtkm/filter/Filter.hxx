@@ -352,7 +352,7 @@ inline VTKM_CONT vtkm::Id Filter<Derived>::DetermineNumberOfThreads(
   const bool runOnCuda = tracker.CanRunOn(vtkm::cont::DeviceAdapterTagCuda{});
 
   if (runOnCuda)
-    availThreads *= threadsPerGPU;
+    availThreads = threadsPerGPU;
   else
     availThreads = threadsPerCPU;
 
