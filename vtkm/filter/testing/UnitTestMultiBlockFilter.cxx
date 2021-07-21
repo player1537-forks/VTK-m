@@ -52,7 +52,7 @@ void ValidateField(const ArrayType& truthField, const ArrayType& resultField)
   for (vtkm::Id j = 0; j < numPts; j++)
   {
     auto diff = ValueDifference(truthPortal.Get(j), resultPortal.Get(j));
-    if (diff < tol)
+    if (diff > tol)
       std::cout << "Bad value at " << j << " diff= " << diff << " :: " << truthPortal.Get(j) << " "
                 << resultPortal.Get(j) << std::endl;
 

@@ -176,7 +176,7 @@ InputType CallPrepareForExecutionInternal(std::true_type,
 }
 
 template <typename Derived, typename DerivedPolicy>
-void RunFilter(vtkm::Id vtkmNotUsed(threadIdx),
+void RunFilter(vtkm::Id threadIdx,
                Derived* self,
                const vtkm::filter::PolicyBase<DerivedPolicy>& policy,
                vtkm::filter::DataSetQueue& input,
@@ -188,6 +188,7 @@ void RunFilter(vtkm::Id vtkmNotUsed(threadIdx),
   std::pair<vtkm::Id, vtkm::cont::DataSet> task;
   while (input.GetTask(task))
   {
+    std::cout << "Thread: " << threadIdx << " task= " << task.first << std::endl;
     auto outDS = CallPrepareForExecution(filterClone, task.second, policy);
     CallMapFieldOntoOutput(filterClone, task.second, outDS, policy);
     output.Push(std::make_pair(task.first, std::move(outDS)));
