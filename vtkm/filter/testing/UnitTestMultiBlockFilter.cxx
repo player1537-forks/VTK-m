@@ -72,6 +72,10 @@ void ValidateResults(const vtkm::cont::PartitionedDataSet& truth,
   {
     auto truthDS = truth.GetPartition(i);
     auto resultDS = result.GetPartition(i);
+    if (truthDS.GetNumberOfPoints() != resultDS.GetNumberOfPoints())
+      std::cout << i << ": Wrong num points: should be= " << truthDS.GetNumberOfPoints()
+                << " :: " << resultDS.GetNumberOfPoints() << std::endl;
+
     VTKM_TEST_ASSERT(truthDS.GetNumberOfPoints() == resultDS.GetNumberOfPoints(),
                      "Wrong number of points");
     VTKM_TEST_ASSERT(truthDS.GetNumberOfCells() == resultDS.GetNumberOfCells(),
@@ -122,6 +126,7 @@ void TestMultiBlockFilter()
     VTKM_TEST_ASSERT(result.GetNumberOfPartitions() == pds.GetNumberOfPartitions());
     results.push_back(result);
   }
+  std::cout << "Results.size()= " << results.size() << std::endl;
   ValidateResults(results[0], results[1], "nodevar");
 
   std::cout << "Contour" << std::endl;
@@ -138,6 +143,7 @@ void TestMultiBlockFilter()
     VTKM_TEST_ASSERT(result.GetNumberOfPartitions() == pds.GetNumberOfPartitions());
     results.push_back(result);
   }
+  std::cout << "Results.size()= " << results.size() << std::endl;
   ValidateResults(results[0], results[1], "nodevar");
 
   std::cout << "CleanGrid" << std::endl;
@@ -152,6 +158,7 @@ void TestMultiBlockFilter()
     VTKM_TEST_ASSERT(result.GetNumberOfPartitions() == pds.GetNumberOfPartitions());
     results.push_back(result);
   }
+  std::cout << "Results.size()= " << results.size() << std::endl;
   ValidateResults(results[0], results[1], "nodevar");
 
   /*
