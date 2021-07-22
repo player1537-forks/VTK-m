@@ -154,7 +154,7 @@ void TestMultiBlockFilter()
   }
   ValidateResults(results[0], results[1], "nodevar");
 
-
+  /*
   std::cout << "Gradient" << std::endl;
   results.clear();
   for (const auto doThreading : flags)
@@ -169,6 +169,7 @@ void TestMultiBlockFilter()
     results.push_back(result);
   }
   ValidateResults(results[0], results[1], "gradient", false);
+*/
 }
 
 int UnitTestMultiBlockFilter(int argc, char* argv[])
