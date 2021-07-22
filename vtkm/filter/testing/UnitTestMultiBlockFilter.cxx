@@ -146,7 +146,6 @@ void TestMultiBlockFilter()
   std::cout << "Results.size()= " << results.size() << std::endl;
   ValidateResults(results[0], results[1], "nodevar");
 
-  /*
   std::cout << "CleanGrid" << std::endl;
   results.clear();
   for (const auto doThreading : flags)
@@ -159,11 +158,9 @@ void TestMultiBlockFilter()
     VTKM_TEST_ASSERT(result.GetNumberOfPartitions() == pds.GetNumberOfPartitions());
     results.push_back(result);
   }
-  std::cout<<"Results.size()= "<<results.size()<<std::endl;
+  std::cout << "Results.size()= " << results.size() << std::endl;
   ValidateResults(results[0], results[1], "nodevar");
-  */
 
-  /*
   std::cout << "Gradient" << std::endl;
   results.clear();
   for (const auto doThreading : flags)
@@ -178,7 +175,6 @@ void TestMultiBlockFilter()
     results.push_back(result);
   }
   ValidateResults(results[0], results[1], "gradient", false);
-*/
 }
 
 int UnitTestMultiBlockFilter(int argc, char* argv[])

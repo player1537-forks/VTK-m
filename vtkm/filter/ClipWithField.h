@@ -101,9 +101,11 @@ public:
   bool CanThread() const override { return true; }
 
   VTKM_CONT
-  std::unique_ptr<Filter> Clone() const override
+  //  std::unique_ptr<Filter> Clone() const override
+  Filter* Clone() const override
   {
-    auto clone = std::unique_ptr<ClipWithField>(new ClipWithField);
+    //auto clone = std::unique_ptr<ClipWithField>(new ClipWithField);
+    auto clone = new ClipWithField();
     clone->CopyStateFrom(this);
     return clone;
   }
