@@ -194,6 +194,7 @@ void RunFilter(vtkm::Id threadIdx,
     CallMapFieldOntoOutput(filterClone, task.second, outDS, policy);
     output.Push(std::make_pair(task.first, std::move(outDS)));
   }
+  delete clone;
 }
 
 //--------------------------------------------------------------------------------
