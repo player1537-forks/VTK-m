@@ -22,7 +22,6 @@
 #include <vtkm/filter/TaskQueue.h>
 
 #include <future>
-#include <thread>
 
 namespace vtkm
 {
@@ -214,11 +213,11 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
     vtkm::filter::DataSetQueue inputQueue(input);
     vtkm::filter::DataSetQueue outputQueue;
 
-    //Need some logic to determine how many threads to use...
     vtkm::Id numThreads = self->DetermineNumberOfThreads(input);
 
-    std::vector<std::future<void>> futures; //(static_cast<std::size_t>(numThreads));
-    for (vtkm::Id i = 0; i < numThreads; i++)
+    //Run 'numThreads' filters.
+    std::vector<std::future<void>> futures(static_cast<std::size_t>(numThreads));
+    for (std::size_t i = 0; i < static_cast<std::size_t>(numThreads); i++)
     {
       auto f = std::async(std::launch::async,
                           RunFilter<Derived, DerivedPolicy>,
@@ -227,28 +226,13 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
                           policy,
                           std::ref(inputQueue),
                           std::ref(outputQueue));
-      futures.push_back(std::move(f));
+      futures[i] = std::move(f);
     }
+
     for (auto& f : futures)
       f.get();
 
-    /*
-    std::vector<std::thread> threads;
-    for (vtkm::Id i = 0; i < numThreads; i++)
-    {
-      std::thread t(RunFilter<Derived, DerivedPolicy>,
-                    i,
-                    self,
-                    policy,
-                    std::ref(inputQueue),
-                    std::ref(outputQueue));
-      threads.push_back(std::move(t));
-    }
-
-    for (auto& t : threads)
-      t.join();
-        */
-
+    //Get results from the outputQueue.
     output = outputQueue.Get();
   }
   else
