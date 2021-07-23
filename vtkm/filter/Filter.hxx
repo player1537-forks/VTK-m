@@ -182,7 +182,8 @@ void RunFilter(vtkm::Id threadIdx,
                vtkm::filter::DataSetQueue& input,
                vtkm::filter::DataSetQueue& output)
 {
-  Derived* filterClone = static_cast<Derived*>(self->Clone());
+  auto clone = self->Clone(); //static_cast<Derived*>(self->Clone());
+  Derived* filterClone = static_cast<Derived*>(clone.get());
 
   std::pair<vtkm::Id, vtkm::cont::DataSet> task;
   while (input.GetTask(task))
@@ -192,7 +193,7 @@ void RunFilter(vtkm::Id threadIdx,
     CallMapFieldOntoOutput(filterClone, task.second, outDS, policy);
     output.Push(std::make_pair(task.first, std::move(outDS)));
   }
-  delete filterClone;
+  //delete filterClone;
 }
 
 //--------------------------------------------------------------------------------

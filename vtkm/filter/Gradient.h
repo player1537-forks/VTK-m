@@ -97,9 +97,9 @@ public:
                                 const vtkm::filter::FieldMetadata& fieldMeta,
                                 vtkm::filter::PolicyBase<DerivedPolicy> policy);
   VTKM_CONT
-  Filter* Clone() const override
+  std::unique_ptr<Filter> Clone() const override
   {
-    auto clone = new Gradient();
+    auto clone = std::unique_ptr<Gradient>(new Gradient());
     clone->CopyStateFrom(this);
     return clone;
   }

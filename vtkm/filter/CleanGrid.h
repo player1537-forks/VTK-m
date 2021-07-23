@@ -43,9 +43,9 @@ public:
   CleanGrid();
 
   VTKM_CONT
-  Filter* Clone() const override
+  std::unique_ptr<Filter> Clone() const override
   {
-    auto clone = new CleanGrid();
+    auto clone = std::unique_ptr<CleanGrid>(new CleanGrid());
     clone->CopyStateFrom(this);
     return clone;
   }

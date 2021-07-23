@@ -204,7 +204,7 @@ public:
   }
 
   VTKM_CONT
-  virtual Filter* Clone() const
+  virtual std::unique_ptr<Filter> Clone() const
   {
     throw vtkm::cont::ErrorExecution("You must implement Clone in the derived class.");
   }
