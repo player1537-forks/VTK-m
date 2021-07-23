@@ -21,6 +21,7 @@
 
 #include <vtkm/filter/TaskQueue.h>
 
+#include <future>
 #include <thread>
 
 namespace vtkm
@@ -216,6 +217,22 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
     //Need some logic to determine how many threads to use...
     vtkm::Id numThreads = self->DetermineNumberOfThreads(input);
 
+    std::vector<std::future<void>> futures; //(static_cast<std::size_t>(numThreads));
+    for (vtkm::Id i = 0; i < numThreads; i++)
+    {
+      auto f = std::async(std::launch::async,
+                          RunFilter<Derived, DerivedPolicy>,
+                          i,
+                          self,
+                          policy,
+                          std::ref(inputQueue),
+                          std::ref(outputQueue));
+      futures.push_back(std::move(f));
+    }
+    for (auto& f : futures)
+      f.get();
+
+    /*
     std::vector<std::thread> threads;
     for (vtkm::Id i = 0; i < numThreads; i++)
     {
@@ -230,6 +247,7 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
 
     for (auto& t : threads)
       t.join();
+        */
 
     output = outputQueue.Get();
   }
