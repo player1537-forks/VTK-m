@@ -37,11 +37,6 @@ vtkm::FloatDefault ValueDifference(const vtkm::Vec<T, 3>& a, const vtkm::Vec<T, 
 template <typename ArrayType>
 void ValidateField(const ArrayType& truthField, const ArrayType& resultField)
 {
-  if (truthField.GetNumberOfValues() != resultField.GetNumberOfValues())
-  {
-    std::cout << "Wrong #values: " << truthField.GetNumberOfValues()
-              << " and it was: " << resultField.GetNumberOfValues() << std::endl;
-  }
   VTKM_TEST_ASSERT(truthField.GetNumberOfValues() == resultField.GetNumberOfValues(),
                    "Wrong number of field values");
   const vtkm::FloatDefault tol = static_cast<vtkm::FloatDefault>(1e-3);
@@ -50,15 +45,8 @@ void ValidateField(const ArrayType& truthField, const ArrayType& resultField)
   const auto truthPortal = truthField.ReadPortal();
   const auto resultPortal = resultField.ReadPortal();
   for (vtkm::Id j = 0; j < numPts; j++)
-  {
-    auto diff = ValueDifference(truthPortal.Get(j), resultPortal.Get(j));
-    if (diff > tol)
-      std::cout << "Bad value at " << j << " diff= " << diff << " :: " << truthPortal.Get(j) << " "
-                << resultPortal.Get(j) << std::endl;
-
     VTKM_TEST_ASSERT(ValueDifference(truthPortal.Get(j), resultPortal.Get(j)) < tol,
                      "Wrong value in field");
-  }
 }
 
 void ValidateResults(const vtkm::cont::PartitionedDataSet& truth,
@@ -72,9 +60,6 @@ void ValidateResults(const vtkm::cont::PartitionedDataSet& truth,
   {
     auto truthDS = truth.GetPartition(i);
     auto resultDS = result.GetPartition(i);
-    if (truthDS.GetNumberOfPoints() != resultDS.GetNumberOfPoints())
-      std::cout << i << ": Wrong num points: should be= " << truthDS.GetNumberOfPoints()
-                << " :: " << resultDS.GetNumberOfPoints() << std::endl;
 
     VTKM_TEST_ASSERT(truthDS.GetNumberOfPoints() == resultDS.GetNumberOfPoints(),
                      "Wrong number of points");
@@ -126,7 +111,6 @@ void TestMultiBlockFilter()
     VTKM_TEST_ASSERT(result.GetNumberOfPartitions() == pds.GetNumberOfPartitions());
     results.push_back(result);
   }
-  std::cout << "Results.size()= " << results.size() << std::endl;
   ValidateResults(results[0], results[1], "nodevar");
 
   std::cout << "Contour" << std::endl;
@@ -143,7 +127,6 @@ void TestMultiBlockFilter()
     VTKM_TEST_ASSERT(result.GetNumberOfPartitions() == pds.GetNumberOfPartitions());
     results.push_back(result);
   }
-  std::cout << "Results.size()= " << results.size() << std::endl;
   ValidateResults(results[0], results[1], "nodevar");
 
   std::cout << "CleanGrid" << std::endl;
@@ -158,7 +141,6 @@ void TestMultiBlockFilter()
     VTKM_TEST_ASSERT(result.GetNumberOfPartitions() == pds.GetNumberOfPartitions());
     results.push_back(result);
   }
-  std::cout << "Results.size()= " << results.size() << std::endl;
   ValidateResults(results[0], results[1], "nodevar");
 
   std::cout << "Gradient" << std::endl;

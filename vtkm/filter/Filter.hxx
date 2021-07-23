@@ -176,24 +176,21 @@ InputType CallPrepareForExecutionInternal(std::true_type,
 }
 
 template <typename Derived, typename DerivedPolicy>
-void RunFilter(vtkm::Id threadIdx,
-               Derived* self,
+void RunFilter(Derived* self,
                const vtkm::filter::PolicyBase<DerivedPolicy>& policy,
                vtkm::filter::DataSetQueue& input,
                vtkm::filter::DataSetQueue& output)
 {
-  auto clone = self->Clone(); //static_cast<Derived*>(self->Clone());
-  Derived* filterClone = static_cast<Derived*>(clone.get());
+  auto filterClone = static_cast<Derived*>(self->Clone());
 
   std::pair<vtkm::Id, vtkm::cont::DataSet> task;
   while (input.GetTask(task))
   {
-    std::cout << "Thread: " << threadIdx << " task= " << task.first << std::endl;
     auto outDS = CallPrepareForExecution(filterClone, task.second, policy);
     CallMapFieldOntoOutput(filterClone, task.second, outDS, policy);
     output.Push(std::make_pair(task.first, std::move(outDS)));
   }
-  //delete filterClone;
+  delete filterClone;
 }
 
 //--------------------------------------------------------------------------------
@@ -222,7 +219,6 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
     {
       auto f = std::async(std::launch::async,
                           RunFilter<Derived, DerivedPolicy>,
-                          i,
                           self,
                           policy,
                           std::ref(inputQueue),

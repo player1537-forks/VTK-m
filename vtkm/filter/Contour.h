@@ -35,9 +35,9 @@ public:
   using SupportedTypes = vtkm::List<vtkm::UInt8, vtkm::Int8, vtkm::Float32, vtkm::Float64>;
 
   VTKM_CONT
-  std::unique_ptr<Filter> Clone() const override
+  Filter* Clone() const override
   {
-    auto clone = std::unique_ptr<Contour>(new Contour());
+    Contour* clone = new Contour();
     clone->CopyStateFrom(this);
     return clone;
   }
