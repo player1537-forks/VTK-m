@@ -190,7 +190,7 @@ void RunFilter(Derived* self,
     CallMapFieldOntoOutput(filterClone, task.second, outDS, policy);
     output.Push(std::make_pair(task.first, std::move(outDS)));
   }
-  delete filterClone;
+  //delete filterClone;
 }
 
 //--------------------------------------------------------------------------------
