@@ -212,7 +212,23 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
     vtkm::filter::DataSetQueue outputQueue;
 
     vtkm::Id numThreads = self->DetermineNumberOfThreads(input);
+    std::vector<std::thread> threads;
+    for (vtkm::Id i = 0; i < numThreads; i++)
 
+    {
+      std::thread t(RunFilter<Derived, DerivedPolicy>,
+                    self,
+                    policy,
+                    std::ref(inputQueue),
+                    std::ref(outputQueue));
+      threads.push_back(std::move(t));
+    }
+
+    for (auto& t : threads)
+      t.join();
+    output = outputQueue.Get();
+
+#if 0
     //Run 'numThreads' filters.
     std::vector<std::future<void>> futures(static_cast<std::size_t>(numThreads));
     for (std::size_t i = 0; i < static_cast<std::size_t>(numThreads); i++)
@@ -231,6 +247,7 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
 
     //Get results from the outputQueue.
     output = outputQueue.Get();
+#endif
   }
   else
   {
