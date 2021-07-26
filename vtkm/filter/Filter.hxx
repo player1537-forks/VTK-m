@@ -181,13 +181,13 @@ void RunFilter(Derived* self,
                vtkm::filter::DataSetQueue& input,
                vtkm::filter::DataSetQueue& output)
 {
-  auto filterClone = static_cast<Derived*>(self->Clone());
+  //auto filterClone = static_cast<Derived*>(self->Clone());
 
   std::pair<vtkm::Id, vtkm::cont::DataSet> task;
   while (input.GetTask(task))
   {
-    auto outDS = CallPrepareForExecution(filterClone, task.second, policy);
-    CallMapFieldOntoOutput(filterClone, task.second, outDS, policy);
+    auto outDS = CallPrepareForExecution(self, task.second, policy);
+    CallMapFieldOntoOutput(self, task.second, outDS, policy);
     output.Push(std::make_pair(task.first, std::move(outDS)));
   }
   //delete filterClone;
@@ -213,15 +213,17 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
 
     vtkm::Id numThreads = self->DetermineNumberOfThreads(input);
     std::vector<std::thread> threads;
+    std::vector<Derived*> filters;
     for (vtkm::Id i = 0; i < numThreads; i++)
-
     {
+      auto filterClone = static_cast<Derived*>(self->Clone());
       std::thread t(RunFilter<Derived, DerivedPolicy>,
-                    self,
+                    filterClone,
                     policy,
                     std::ref(inputQueue),
                     std::ref(outputQueue));
       threads.push_back(std::move(t));
+      filters.push_back(filterClone);
     }
 
     for (auto& t : threads)
