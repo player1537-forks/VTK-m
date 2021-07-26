@@ -20,6 +20,8 @@ set(common_headers
   FilterDataSet.h
   FilterDataSetWithField.h
   FilterField.h
+  FilterParticleAdvection.h
+  FilterTemporalParticleAdvection.h
   Filter.h
   FilterTraits.h
   MapFieldMergeAverage.h
@@ -40,6 +42,8 @@ set(common_header_template_sources
   FilterDataSet.hxx
   FilterDataSetWithField.hxx
   FilterField.hxx
+  FilterParticleAdvection.hxx
+  FilterTemporalParticleAdvection.hxx
   Filter.hxx
   PointAverage.hxx
   Threshold.hxx
@@ -83,6 +87,7 @@ set(extra_headers
   MeshQuality.h
   NDEntropy.h
   NDHistogram.h
+  PathParticle.h
   ParticleDensityBase.h
   ParticleDensityCloudInCell.h
   ParticleDensityNearestGridPoint.h
@@ -137,6 +142,7 @@ set(extra_header_template_sources
   MeshQuality.hxx
   NDEntropy.hxx
   NDHistogram.hxx
+  PathParticle.hxx
   ParticleDensityCloudInCell.hxx
   ParticleDensityNearestGridPoint.hxx
   ParticleAdvection.hxx
