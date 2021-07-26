@@ -21,8 +21,6 @@ set(common_headers
   FilterDataSetWithField.h
   FilterField.h
   Filter.h
-  FilterParticleAdvection.h
-  FilterTemporalParticleAdvection.h
   FilterTraits.h
   MapFieldMergeAverage.h
   MapFieldPermutation.h
@@ -43,8 +41,6 @@ set(common_header_template_sources
   FilterDataSetWithField.hxx
   FilterField.hxx
   Filter.hxx
-  FilterParticleAdvection.hxx
-  FilterTemporalParticleAdvection.hxx
   PointAverage.hxx
   Threshold.hxx
   ThresholdPoints.hxx
@@ -92,7 +88,6 @@ set(extra_headers
   ParticleDensityNearestGridPoint.h
   ParticleAdvection.h
   Pathline.h
-  PathParticle.h
   PointAverage.h
   PointElevation.h
   PointTransform.h
@@ -146,7 +141,6 @@ set(extra_header_template_sources
   ParticleDensityNearestGridPoint.hxx
   ParticleAdvection.hxx
   Pathline.hxx
-  PathParticle.hxx
   PointElevation.hxx
   PointTransform.hxx
   Probe.hxx
@@ -288,5 +282,5 @@ add_subdirectory(particleadvection)
 
 #-----------------------------------------------------------------------------
 if (VTKm_ENABLE_TESTING)
-  add_subdirectory(testing)
+#  add_subdirectory(testing)
 endif ()

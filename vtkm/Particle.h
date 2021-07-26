@@ -143,6 +143,8 @@ public:
   vtkm::Id NumSteps = 0;
   vtkm::ParticleStatus Status;
   vtkm::FloatDefault Time = 0;
+
+  vtkm::Id NumPunctures = 0;  //Needs to go into a derived class.
 };
 
 class Electron
