@@ -67,6 +67,9 @@ void ValidateResults(const vtkm::cont::PartitionedDataSet& truth,
     auto truthDS = truth.GetPartition(i);
     auto resultDS = result.GetPartition(i);
 
+    std::cout << "Validate: " << truthDS.GetNumberOfPoints()
+              << " :: " << resultDS.GetNumberOfPoints() << std::endl;
+
     VTKM_TEST_ASSERT(truthDS.GetNumberOfPoints() == resultDS.GetNumberOfPoints(),
                      "Wrong number of points");
     VTKM_TEST_ASSERT(truthDS.GetNumberOfCells() == resultDS.GetNumberOfCells(),
