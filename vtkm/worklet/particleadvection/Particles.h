@@ -283,7 +283,7 @@ public:
     , History()
     , Length(0)
     , MaxPunctures(0)
-    , Plane<>()
+    , Plane()
     , PunctureCount()
     , StepCount()
     , ValidPoint()
