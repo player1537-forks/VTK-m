@@ -90,14 +90,13 @@ public:
 
     vtkm::Vec3f currPos(particle.Pos);
     vtkm::Vec3f currVelocity(0, 0, 0);
-    vtkm::VecVariable<vtkm::Vec3f, 2> currValue;
+    vtkm::VecVariable<vtkm::Vec3f, 2> currValue, tmp;
     auto evalStatus = this->Evaluator.Evaluate(currPos, particle.Time, currValue);
     if (evalStatus.CheckFail())
       return IntegratorStatus(evalStatus);
 
     const vtkm::FloatDefault eps = vtkm::Epsilon<vtkm::FloatDefault>() * 10;
     vtkm::FloatDefault div = 1;
-    bool foundMidPoint = false;
     while ((stepRange[1] - stepRange[0]) > eps)
     {
       //Try a step midway between stepRange[0] and stepRange[1]
@@ -111,14 +110,12 @@ public:
       {
         //See if this point is in/out.
         auto newPos = particle.Pos + currStep * currVelocity;
-
-        if (this->Evaluator.IsWithinTemporalBoundary(particle.Time + currStep) &&
-            this->Evaluator.IsWithinSpatialBoundary(newPos))
+        evalStatus = this->Evaluator.Evaluate(newPos, particle.Time + currStep, tmp);
+        if (evalStatus.CheckOk())
         {
           //Point still in. Update currPos and set range to {currStep, stepRange[1]}
           currPos = newPos;
           stepRange[0] = currStep;
-          foundMidPoint = true;
         }
         else
         {
@@ -134,14 +131,6 @@ public:
       }
     }
 
-    //If we couldn't find a mid point, then we need to fail.
-    if (!foundMidPoint)
-    {
-      IntegratorStatus status;
-      status.SetFail();
-      return status;
-    }
-
     evalStatus = this->Evaluator.Evaluate(currPos, particle.Time + stepRange[0], currValue);
     // The eval at Time + stepRange[0] better be *inside*
     VTKM_ASSERT(evalStatus.CheckOk() && !evalStatus.CheckSpatialBounds());
@@ -149,12 +138,13 @@ public:
       return IntegratorStatus(evalStatus);
 
     // Update the position and time.
-    outpos = currPos + stepRange[1] * currVelocity; //particle.Velocity(currValue, stepRange[1]);
+    outpos = currPos + stepRange[1] * particle.Velocity(currValue, stepRange[0]);
     time += stepRange[1];
 
     /*
     // Get the evaluation status for the point that is *just* outside of the data.
     evalStatus = this->Evaluator.Evaluate(outpos, time, currValue);
+
     // The eval should fail, and the point should be outside either spatially or temporally.
     VTKM_ASSERT(evalStatus.CheckFail() &&
                 (evalStatus.CheckSpatialBounds() || evalStatus.CheckTemporalBounds()));
