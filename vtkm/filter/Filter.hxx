@@ -191,6 +191,8 @@ void RunFilter(Derived* self,
     output.Push(std::make_pair(task.first, std::move(outDS)));
   }
   //delete filterClone;
+
+  vtkm::cont::Algorithm::Synchronize();
 }
 
 //--------------------------------------------------------------------------------
