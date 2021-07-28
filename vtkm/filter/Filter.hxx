@@ -231,6 +231,9 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
     for (auto& t : threads)
       t.join();
     output = outputQueue.Get();
+    for (vtkm::Id i = 0; i < numThreads; i++)
+      delete filters[i];
+    filters.clear();
 
 #if 0
     //Run 'numThreads' filters.
