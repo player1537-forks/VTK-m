@@ -118,13 +118,11 @@ public:
     vtkm::cont::ArrayHandleConstant<vtkm::Id> maxSteps(MaxSteps, numSeeds);
     vtkm::cont::ArrayHandleIndex idxArray(numSeeds);
 
-    /*
 #ifdef VTKM_CUDA
     // This worklet needs some extra space on CUDA.
     vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
     (void)stack;
 #endif // VTKM_CUDA
-    */
 
     ParticleArrayType particlesObj(particles, MaxSteps);
 
@@ -195,13 +193,11 @@ public:
     vtkm::worklet::DispatcherMapField<detail::GetSteps> getStepDispatcher{ (detail::GetSteps{}) };
     getStepDispatcher.Invoke(particles, initialStepsTaken);
 
-    /*
 #ifdef VTKM_CUDA
     // This worklet needs some extra space on CUDA.
     vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
     (void)stack;
 #endif // VTKM_CUDA
-    */
 
     //Run streamline worklet
     StreamlineArrayType streamlines(particles, MaxSteps);
