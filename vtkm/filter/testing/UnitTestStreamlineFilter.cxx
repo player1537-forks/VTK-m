@@ -629,9 +629,8 @@ void TestStreamlineFilters()
     TestStreamlineFile(fishFile, fishPts, fishStep, 100, fishEndPts, useSL);
 
   //ARMWind corner case of particle near boundary.
-  //std::string amrWindFile = vtkm::cont::testing::Testing::DataPath("rectilinear/amr_wind_flowfield.vtk");
   std::string amrWindFile =
-    "/media/dpn/disk2TB/proj/vtkm/master/vtk-m-MASTER/data/data/rectilinear/amr_wind_flowfield.vtk";
+    vtkm::cont::testing::Testing::DataPath("rectilinear/amr_wind_flowfield.vtk");
   vtkm::FloatDefault amrWindStep = 0.001;
   std::vector<vtkm::Vec3f> amrWindPts, amrWindEndPts;
   amrWindPts.push_back(
