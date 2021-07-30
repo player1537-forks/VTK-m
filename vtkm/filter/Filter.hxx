@@ -393,7 +393,7 @@ inline VTKM_CONT vtkm::Id Filter<Derived>::DetermineNumberOfThreads(
 #ifdef VTKM_KOKKOS_CUDA
     availThreads = threadsPerGPU;
 #else
-    availThreads = 1;
+    availThreads = threadsPerCPU;
 #endif
   }
 
