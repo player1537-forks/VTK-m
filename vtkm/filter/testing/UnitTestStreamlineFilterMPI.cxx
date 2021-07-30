@@ -409,12 +409,18 @@ void TestStreamlineFiltersMPI()
     for (auto useGhost : flags)
       for (auto fType : filterTypes)
         for (auto useThreaded : flags)
+        {
+          std::cout<<"PDS: "<<useGhost<<" "<<fType<<" "<<useThreaded<<std::endl;
           TestPartitionedDataSet(n, useGhost, fType, useThreaded);
+        }
   }
 
   for (auto fType : filterTypes)
     for (auto useThreaded : flags)
+    {
+      std::cout<<"AMR: "<<fType<<" "<<useThreaded<<std::endl;
       TestAMRStreamline(fType, useThreaded);
+    }
 }
 }
 
