@@ -17,7 +17,9 @@
 #include <vtkm/cont/ErrorFilterExecution.h>
 #include <vtkm/cont/Field.h>
 #include <vtkm/cont/Logging.h>
+#include <vtkm/cont/RuntimeDeviceInformation.h>
 #include <vtkm/cont/RuntimeDeviceTracker.h>
+#include <vtkm/cont/internal/RuntimeDeviceConfiguration.h>
 
 #include <vtkm/filter/TaskQueue.h>
 
@@ -181,18 +183,18 @@ void RunFilter(Derived* self,
                vtkm::filter::DataSetQueue& input,
                vtkm::filter::DataSetQueue& output)
 {
-  //auto filterClone = static_cast<Derived*>(self->Clone());
+  auto filterClone = static_cast<Derived*>(self->Clone());
 
   std::pair<vtkm::Id, vtkm::cont::DataSet> task;
   while (input.GetTask(task))
   {
-    auto outDS = CallPrepareForExecution(self, task.second, policy);
-    CallMapFieldOntoOutput(self, task.second, outDS, policy);
+    auto outDS = CallPrepareForExecution(filterClone, task.second, policy);
+    CallMapFieldOntoOutput(filterClone, task.second, outDS, policy);
     output.Push(std::make_pair(task.first, std::move(outDS)));
   }
-  //delete filterClone;
 
   vtkm::cont::Algorithm::Synchronize();
+  delete filterClone;
 }
 
 //--------------------------------------------------------------------------------
@@ -214,28 +216,27 @@ vtkm::cont::PartitionedDataSet CallPrepareForExecutionInternal(
     vtkm::filter::DataSetQueue outputQueue;
 
     vtkm::Id numThreads = self->DetermineNumberOfThreads(input);
+    std::cout << "nThreads= " << numThreads << std::endl;
+
+#if 0
     std::vector<std::thread> threads;
-    std::vector<Derived*> filters;
     for (vtkm::Id i = 0; i < numThreads; i++)
     {
-      auto filterClone = static_cast<Derived*>(self->Clone());
+      //auto clone = self->Clone();
+      //auto filterClone = static_cast<Derived*>(clone.get());
       std::thread t(RunFilter<Derived, DerivedPolicy>,
-                    filterClone,
+                    self,
                     policy,
                     std::ref(inputQueue),
                     std::ref(outputQueue));
       threads.push_back(std::move(t));
-      filters.push_back(filterClone);
     }
 
     for (auto& t : threads)
       t.join();
     output = outputQueue.Get();
-    for (vtkm::Id i = 0; i < numThreads; i++)
-      delete filters[i];
-    filters.clear();
-
-#if 0
+#endif
+#if 1
     //Run 'numThreads' filters.
     std::vector<std::future<void>> futures(static_cast<std::size_t>(numThreads));
     for (std::size_t i = 0; i < static_cast<std::size_t>(numThreads); i++)
@@ -373,12 +374,66 @@ inline VTKM_CONT vtkm::Id Filter<Derived>::DetermineNumberOfThreads(
   vtkm::Id availThreads = 1;
 
   auto& tracker = vtkm::cont::GetRuntimeDeviceTracker();
+  const bool runOnSerial = tracker.CanRunOn(vtkm::cont::DeviceAdapterTagSerial{});
   const bool runOnCuda = tracker.CanRunOn(vtkm::cont::DeviceAdapterTagCuda{});
+  const bool runOnKokkos = tracker.CanRunOn(vtkm::cont::DeviceAdapterTagKokkos{});
+  const bool runOnOpenMP = tracker.CanRunOn(vtkm::cont::DeviceAdapterTagOpenMP{});
 
+  std::cout << "****************Run: " << runOnSerial << " " << runOnCuda << " " << runOnKokkos
+            << " " << runOnOpenMP << std::endl;
+
+  if (runOnSerial)
+    availThreads = threadsPerCPU;
+  else if (runOnCuda)
+    availThreads = threadsPerGPU;
+  else if (runOnOpenMP)
+    availThreads = threadsPerCPU;
+  else if (runOnKokkos)
+  {
+#ifdef VTKM_KOKKOS_CUDA
+    availThreads = threadsPerGPU;
+#else
+    availThreads = 1;
+#endif
+  }
+
+#if 0
+  vtkm::cont::internal::RuntimeDeviceConfigurationOptions runtimeDeviceOptions("");
+  vtkm::cont::RuntimeDeviceInformation runtime;
+  int argc = 0;
+  char** argv = nullptr;
+
+  if (runOnKokkos)
+  {
+    RuntimeDeviceConfiguration<vtkm::cont::DeviceAdapterTagKokkos> config;
+    config = runtime.GetRuntimeConfiguration(vtkm::cont::DeviceAdapterTagKokkos{}, runtimeDeviceOptions, argc, argv);
+  }
+
+
+  if (runOnKokkos)
+  {
+
+    //auto config = runtime.GetRuntimeConfiguration(vtkm::cont::DeviceAdapterTagKokkos{});
+    RuntimeDeviceConfiguration<vtkm::cont::DeviceAdapterTagKokkos> config;
+    vtkm::Id nThreads;
+    config.GetThreads(nThreads);
+    std::cout<<"***** Kokkos: #Threads= "<<nThreads<<std::endl;
+  }
+  if (runOnOpenMP)
+  {
+    RuntimeDeviceConfiguration<vtkm::cont::DeviceAdapterTagOpenMP> config;
+//    auto config = runtime.GetRuntimeConfiguration(vtkm::cont::DeviceAdapterTagOpenMP{});
+    vtkm::Id nThreads;
+    config.GetThreads(nThreads);
+    std::cout<<"***** Kokkos: #Threads= "<<nThreads<<std::endl;
+  }
+#endif
+  /*
   if (runOnCuda)
     availThreads = threadsPerGPU;
   else
     availThreads = threadsPerCPU;
+*/
 
   vtkm::Id numThreads = std::min<vtkm::Id>(numDS, availThreads);
   return numThreads;
