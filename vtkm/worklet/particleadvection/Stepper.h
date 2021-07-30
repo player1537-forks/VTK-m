@@ -138,17 +138,12 @@ public:
       return IntegratorStatus(evalStatus);
 
     // Update the position and time.
-    outpos = currPos + stepRange[1] * particle.Velocity(currValue, stepRange[0]);
+    outpos = currPos + stepRange[1] * particle.Velocity(currValue, stepRange[1]);
     time += stepRange[1];
 
-    /*
-    // Get the evaluation status for the point that is *just* outside of the data.
-    evalStatus = this->Evaluator.Evaluate(outpos, time, currValue);
 
-    // The eval should fail, and the point should be outside either spatially or temporally.
-    VTKM_ASSERT(evalStatus.CheckFail() &&
-                (evalStatus.CheckSpatialBounds() || evalStatus.CheckTemporalBounds()));
-    */
+    // Get the evaluation status for the point that is moved by the euler step.
+    evalStatus = this->Evaluator.Evaluate(outpos, time, currValue);
 
     IntegratorStatus status(evalStatus);
     status.SetOk(); //status is ok.
