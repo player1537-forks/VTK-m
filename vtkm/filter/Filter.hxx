@@ -397,44 +397,6 @@ inline VTKM_CONT vtkm::Id Filter<Derived>::DetermineNumberOfThreads(
 #endif
   }
 
-#if 0
-  vtkm::cont::internal::RuntimeDeviceConfigurationOptions runtimeDeviceOptions("");
-  vtkm::cont::RuntimeDeviceInformation runtime;
-  int argc = 0;
-  char** argv = nullptr;
-
-  if (runOnKokkos)
-  {
-    RuntimeDeviceConfiguration<vtkm::cont::DeviceAdapterTagKokkos> config;
-    config = runtime.GetRuntimeConfiguration(vtkm::cont::DeviceAdapterTagKokkos{}, runtimeDeviceOptions, argc, argv);
-  }
-
-
-  if (runOnKokkos)
-  {
-
-    //auto config = runtime.GetRuntimeConfiguration(vtkm::cont::DeviceAdapterTagKokkos{});
-    RuntimeDeviceConfiguration<vtkm::cont::DeviceAdapterTagKokkos> config;
-    vtkm::Id nThreads;
-    config.GetThreads(nThreads);
-    std::cout<<"***** Kokkos: #Threads= "<<nThreads<<std::endl;
-  }
-  if (runOnOpenMP)
-  {
-    RuntimeDeviceConfiguration<vtkm::cont::DeviceAdapterTagOpenMP> config;
-//    auto config = runtime.GetRuntimeConfiguration(vtkm::cont::DeviceAdapterTagOpenMP{});
-    vtkm::Id nThreads;
-    config.GetThreads(nThreads);
-    std::cout<<"***** Kokkos: #Threads= "<<nThreads<<std::endl;
-  }
-#endif
-  /*
-  if (runOnCuda)
-    availThreads = threadsPerGPU;
-  else
-    availThreads = threadsPerCPU;
-*/
-
   vtkm::Id numThreads = std::min<vtkm::Id>(numDS, availThreads);
   return numThreads;
 }
