@@ -383,7 +383,7 @@ inline VTKM_CONT vtkm::Id Filter<Derived>::DetermineNumberOfThreads(
             << " " << runOnOpenMP << std::endl;
 
   if (runOnSerial)
-    availThreads = threadsPerCPU;
+    availThreads = 1;
   else if (runOnCuda)
     availThreads = threadsPerGPU;
   else if (runOnOpenMP)
