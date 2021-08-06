@@ -14,26 +14,26 @@ set(headers
 
 set(unit_tests
   UnitTestAverageByKey.cxx
-  UnitTestBoundingIntervalHierarchy.cxx
+  # UnitTestBoundingIntervalHierarchy.cxx
   UnitTestCellAverage.cxx
   UnitTestCellDeepCopy.cxx
   UnitTestCellGradient.cxx
   UnitTestCellSetConnectivity.cxx
   UnitTestCellSetDualGraph.cxx
   UnitTestCellMeasure.cxx
-  UnitTestClipping.cxx
-  UnitTestContour.cxx
+  # UnitTestClipping.cxx #Uses implicit function virtuals
+  # UnitTestContour.cxx  #Uses implicit function virtuals
   UnitTestContourTreeUniform.cxx
   UnitTestContourTreeUniformAugmented.cxx
   UnitTestContourTreeUniformDistributed.cxx
   UnitTestCoordinateSystemTransform.cxx
-  UnitTestCosmoTools.cxx
+  # UnitTestCosmoTools.cxx #Uses
   UnitTestCrossProduct.cxx
   UnitTestDescriptiveStatistics.cxx
   UnitTestDotProduct.cxx
   UnitTestExternalFaces.cxx
-  UnitTestExtractGeometry.cxx
-  UnitTestExtractPoints.cxx
+  # UnitTestExtractGeometry.cxx  #Uses implicit function virtuals
+  # UnitTestExtractPoints.cxx    #Uses implicit function virtuals
   UnitTestExtractStructured.cxx
   UnitTestFieldHistogram.cxx
   UnitTestFieldStatistics.cxx
@@ -51,12 +51,12 @@ set(unit_tests
   UnitTestNDimsHistogram.cxx
   UnitTestNDimsHistMarginalization.cxx
   UnitTestOrientNormals.cxx
-  UnitTestParticleAdvection.cxx
+  # UnitTestParticleAdvection.cxx
   UnitTestPointElevation.cxx
   UnitTestPointerJumping.cxx
   UnitTestPointGradient.cxx
   UnitTestPointTransform.cxx
-  UnitTestProbe.cxx
+  # UnitTestProbe.cxx
   UnitTestRemoveUnusedPoints.cxx
   UnitTestScalarsToColors.cxx
   UnitTestScatterAndMask.cxx
@@ -68,7 +68,7 @@ set(unit_tests
   UnitTestStreamLineUniformGrid.cxx
   UnitTestStreamSurface.cxx
   UnitTestSurfaceNormals.cxx
-  UnitTestTemporalAdvection.cxx
+  # UnitTestTemporalAdvection.cxx
   UnitTestTetrahedralize.cxx
   UnitTestThreshold.cxx
   UnitTestThresholdPoints.cxx

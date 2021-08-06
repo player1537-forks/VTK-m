@@ -165,11 +165,12 @@ set(device_sources
   AssignerPartitionedDataSet.cxx
   BoundsCompute.cxx
   BoundsGlobalCompute.cxx
-  CellLocatorBoundingIntervalHierarchy.cxx
-  CellLocatorGeneral.cxx
-  CellLocatorRectilinearGrid.cxx
-  CellLocatorTwoLevel.cxx
-  CellLocatorUniformGrid.cxx
+  # CellLocator.cxx
+  # CellLocatorBoundingIntervalHierarchy.cxx
+  # CellLocatorGeneral.cxx
+  # CellLocatorRectilinearGrid.cxx
+  # CellLocatorTwoLevel.cxx
+  # CellLocatorUniformGrid.cxx
   CellSet.cxx
   CellSetExplicit.cxx
   CellSetExtrude.cxx
@@ -185,7 +186,8 @@ set(device_sources
   FieldRangeCompute.cxx
   FieldRangeGlobalCompute.cxx
   PartitionedDataSet.cxx
-  PointLocatorSparseGrid.cxx
+  # PointLocator.cxx
+  # PointLocatorSparseGrid.cxx
   RuntimeDeviceInformation.cxx
   Timer.cxx
   UnknownArrayHandle.cxx

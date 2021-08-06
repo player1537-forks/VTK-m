@@ -57,7 +57,9 @@ void vtkm::cont::kokkos::internal::Initialize(int& argc, char* argv[])
   if (!Kokkos::is_initialized())
   {
     Kokkos::initialize(argc, argv);
-    std::atexit(Kokkos::finalize);
+    // BUG: Kokkos allocation ErrorMessageViewInstance
+    // is being deallocated after Kokkos::finalize was called
+    //std::atexit(Kokkos::finalize);
   }
 
   // de-mangle
