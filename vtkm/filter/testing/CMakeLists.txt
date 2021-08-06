@@ -18,19 +18,19 @@ set(unit_tests
   UnitTestCellSetConnectivityFilter.cxx
   UnitTestCleanGrid.cxx
   UnitTestClipWithFieldFilter.cxx
-  UnitTestClipWithImplicitFunctionFilter.cxx
+  # UnitTestClipWithImplicitFunctionFilter.cxx
   UnitTestContourFilter.cxx
   UnitTestContourFilterNormals.cxx
   UnitTestContourTreeUniformFilter.cxx
   UnitTestContourTreeUniformAugmentedFilter.cxx
   UnitTestContourTreeUniformDistributedFilter.cxx
-  UnitTestCoordinateSystemTransform.cxx
+  # UnitTestCoordinateSystemTransform.cxx
   UnitTestCrossProductFilter.cxx
   UnitTestDotProductFilter.cxx
   UnitTestEntropyFilter.cxx
   UnitTestExternalFacesFilter.cxx
-  UnitTestExtractGeometryFilter.cxx
-  UnitTestExtractPointsFilter.cxx
+  # UnitTestExtractGeometryFilter.cxx
+  # UnitTestExtractPointsFilter.cxx
   UnitTestExtractStructuredFilter.cxx
   UnitTestFieldMetadata.cxx
   UnitTestFieldSelection.cxx
@@ -43,8 +43,8 @@ set(unit_tests
   UnitTestImageConnectivityFilter.cxx
   UnitTestImageDifferenceFilter.cxx
   UnitTestImageMedianFilter.cxx
-  UnitTestLagrangianFilter.cxx
-  UnitTestLagrangianStructuresFilter.cxx
+  # UnitTestLagrangianFilter.cxx
+  # UnitTestLagrangianStructuresFilter.cxx
   UnitTestMapFieldMergeAverage.cxx
   UnitTestMapFieldPermutation.cxx
   UnitTestMaskFilter.cxx
@@ -54,17 +54,17 @@ set(unit_tests
   UnitTestMultiBlockFilter.cxx
   UnitTestNDEntropyFilter.cxx
   UnitTestNDHistogramFilter.cxx
-  UnitTestParticleDensity.cxx
+  # UnitTestParticleDensity.cxx
   UnitTestPartitionedDataSetFilters.cxx
   UnitTestPartitionedDataSetHistogramFilter.cxx
   UnitTestPointAverageFilter.cxx
   UnitTestPointAverageCellSetExtrude.cxx
   UnitTestPointElevationFilter.cxx
   UnitTestPointTransform.cxx
-  UnitTestProbe.cxx
+  # UnitTestProbe.cxx
   UnitTestSplitSharpEdgesFilter.cxx
-  UnitTestStreamlineFilter.cxx
-  UnitTestStreamSurfaceFilter.cxx
+  # UnitTestStreamlineFilter.cxx
+  # UnitTestStreamSurfaceFilter.cxx
   UnitTestSurfaceNormalsFilter.cxx
   UnitTestTetrahedralizeFilter.cxx
   UnitTestThresholdFilter.cxx
@@ -92,7 +92,7 @@ if (VTKm_ENABLE_RENDERING)
     RegressionTestPointTransform.cxx
     RegressionTestSliceFilter.cxx
     RegressionTestSplitSharpEdges.cxx
-    RegressionTestStreamline.cxx
+    # RegressionTestStreamline.cxx
     RegressionTestSurfaceNormals.cxx
   )
 endif()

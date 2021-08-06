@@ -10,15 +10,15 @@
 
 set(unit_tests
   UnitTestKokkosArrayHandle.cxx
-  UnitTestKokkosArrayHandleFancy.cxx
+  # UnitTestKokkosArrayHandleFancy.cxx
   UnitTestKokkosArrayHandleMultiplexer.cxx
   UnitTestKokkosBitField.cxx
-  UnitTestKokkosCellLocatorRectilinearGrid.cxx
-  UnitTestKokkosCellLocatorTwoLevel.cxx
-  UnitTestKokkosCellLocatorUniformGrid.cxx
+  # UnitTestKokkosCellLocatorRectilinearGrid.cxx
+  # UnitTestKokkosCellLocatorTwoLevel.cxx
+  # UnitTestKokkosCellLocatorUniformGrid.cxx
   UnitTestKokkosComputeRange.cxx
   UnitTestKokkosColorTable.cxx
-  UnitTestKokkosDataSetExplicit.cxx
+  # UnitTestKokkosDataSetExplicit.cxx
   UnitTestKokkosDataSetSingleType.cxx
   UnitTestKokkosDeviceAdapter.cxx
   UnitTestKokkosImplicitFunction.cxx
