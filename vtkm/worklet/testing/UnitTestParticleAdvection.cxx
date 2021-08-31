@@ -29,6 +29,7 @@
 #include <vtkm/io/VTKDataSetWriter.h>
 
 #include <random>
+#include <chrono>
 
 namespace
 {
@@ -977,6 +978,7 @@ void TestPoincareFile()
   fname = "/media/dpn/disk2TB/proj/vtkm/poincare/vtk-m/data/data/rectilinear/fusion.vtk";
   fname = "/home/dpn/proj/vtkm/poincare/fusion.vtk";
   fname = "/media/dpn/disk2TB/proj/vtkm/poincare/xgc_300.vtk";
+  //fname = "/media/dpn/disk2TB/proj/vtkm/poincare/xgc_bfield.vtk";
 
   vtkm::io::VTKDataSetReader reader(fname);
 
@@ -987,7 +989,7 @@ void TestPoincareFile()
 
   const vtkm::FloatDefault stepSize = 0.005;
   const vtkm::Id maxSteps = 100000000;
-  const vtkm::Id maxPunctures = 75;
+  vtkm::Id maxPunctures = 75;
 
   FieldType velocities(BField);
   GridEvalType eval(ds, velocities);
@@ -996,6 +998,9 @@ void TestPoincareFile()
   vtkm::FloatDefault x0 = 1.65, x1 = 2.25;
   x0 = 1.7; x1 = 2.0;
   vtkm::Id N = 20;
+
+  N = 5;
+  maxPunctures = 10;
   vtkm::FloatDefault dx = (x1-x0) / (float)(N-1);
   vtkm::FloatDefault x = x0;
 
@@ -1015,7 +1020,12 @@ void TestPoincareFile()
   vtkm::worklet::Poincare p;
   auto seeds = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
   vtkm::Plane<> plane({0,0,0}, {0,1,0});
+  auto t1 = std::chrono::high_resolution_clock::now();
   auto res = p.Run(rk4, seeds, plane, maxSteps, maxPunctures, true);
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+  std::cout<<"Timer= "<<dt.count()<<std::endl;
+
 
   vtkm::cont::DataSet outDS;
   outDS.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", res.Positions));
@@ -1024,6 +1034,17 @@ void TestPoincareFile()
   writer.WriteDataSet(outDS);
 
   outDS.PrintSummary(std::cout);
+
+  std::ofstream outPts;
+  outPts.open("points.txt");
+  int nPts = res.Positions.GetNumberOfValues();
+  auto portal = res.Positions.ReadPortal();
+  for (int i = 0; i < nPts; i++)
+  {
+    auto pt = portal.Get(i);
+    outPts<<pt[0]<<", "<<pt[1]<<", "<<pt[2]<<std::endl;
+  }
+  outPts.close();
 }
 
 void TestParticleAdvection()
@@ -1038,8 +1059,8 @@ void TestParticleAdvection()
   TestParticleWorkletsWithDataSetTypes();
   */
 
-  //TestPoincareFile();
-  TestPoincare();
+  TestPoincareFile();
+  //TestPoincare();
   return;
 
 
