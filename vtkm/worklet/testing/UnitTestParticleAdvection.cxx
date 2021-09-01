@@ -1047,7 +1047,7 @@ void TestPoincareFile()
   outPts.close();
 }
 
-void TestParticleAdvection()
+void TestParticleAdvection(int argc, char **argv)
 {
   /*
   TestIntegrators();
