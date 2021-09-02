@@ -300,6 +300,6 @@ add_subdirectory(internal)
 add_subdirectory(particleadvection)
 
 #-----------------------------------------------------------------------------
-if (VTKm_ENABLE_TESTING)
-  add_subdirectory(testing)
-endif ()
+#if (VTKm_ENABLE_TESTING)
+#  add_subdirectory(testing)
+#endif ()
