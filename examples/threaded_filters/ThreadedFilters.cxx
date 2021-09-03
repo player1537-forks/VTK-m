@@ -250,11 +250,12 @@ Run(const vtkm::cont::PartitionedDataSet& input, const Options& o)
 
   if (o.ThreadMode == "serial")
   {
+    vtkm::filter::Contour iso;
+    o.SetFilter(iso);
+
     auto t1 = std::chrono::high_resolution_clock::now();
     for (vtkm::Id i = 0; i < numBlocks; i++)
     {
-      vtkm::filter::Contour iso;
-      o.SetFilter(iso);
       auto out = iso.Execute(input.GetPartition(i));
       output.AppendPartition(out);
     }
