@@ -604,8 +604,10 @@ void VTKDataSetReaderBase::ReadGlobalFields(std::vector<vtkm::Float32>* visitBou
     }
     else
     {
+      /*
       VTKM_LOG_S(vtkm::cont::LogLevel::Info,
                  "Support for global field " << arrayName << " not implemented. Skipping.");
+      */
       this->DoSkipArrayVariant(dataType, numTuples, numComponents);
     }
   }
