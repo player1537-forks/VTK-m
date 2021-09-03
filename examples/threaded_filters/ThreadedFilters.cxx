@@ -250,6 +250,7 @@ Run(const vtkm::cont::PartitionedDataSet& input, const Options& o)
 
   if (o.ThreadMode == "serial")
   {
+    auto t1 = std::chrono::high_resolution_clock::now();
     for (vtkm::Id i = 0; i < numBlocks; i++)
     {
       vtkm::filter::Contour iso;
@@ -257,6 +258,9 @@ Run(const vtkm::cont::PartitionedDataSet& input, const Options& o)
       auto out = iso.Execute(input.GetPartition(i));
       output.AppendPartition(out);
     }
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+    std::cout<<"    Timer1= "<<dt.count()<<std::endl;
   }
   else if (o.ThreadMode == "openmp")
   {
@@ -264,6 +268,8 @@ Run(const vtkm::cont::PartitionedDataSet& input, const Options& o)
     std::cout<<"Num omp threads: "<<omp_get_num_threads()<<" "<<omp_get_max_threads()<<std::endl;
     int numThreads = omp_get_max_threads();
     std::vector<int> domCounts(numThreads, 0);
+
+    auto t1 = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for schedule(static, 1)
     for (vtkm::Id i = 0; i < numBlocks; i++)
     {
@@ -278,6 +284,9 @@ Run(const vtkm::cont::PartitionedDataSet& input, const Options& o)
         output.AppendPartition(out);
       }
     }
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+    std::cout<<"    Timer1= "<<dt.count()<<std::endl;
 
     std::cout<<"Doms per thread: ";
     for (const auto& c : domCounts) std::cout<<c<<" ";
@@ -292,12 +301,17 @@ Run(const vtkm::cont::PartitionedDataSet& input, const Options& o)
       vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
 
     std::vector<int> domCounts(o.NumTasks, 0);
+    auto t1 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < o.NumTasks; i++)
     {
       threads.push_back(std::thread(RunTask, &in, &out, o, &domCounts[i]));
     }
     for (auto& t : threads)
       t.join();
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+    std::cout<<"    Timer1= "<<dt.count()<<std::endl;
 
     output = out.Get();
 
