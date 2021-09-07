@@ -25,6 +25,12 @@ set(unit_tests
   UnitTestSerialPointLocatorSparseGrid.cxx
   )
 
+if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
+  set(unit_tests ${unit_tests}
+    UnitTestSerialVirtualObjectHandle.cxx
+    )
+endif()
+
 # these cannot be compiled with HIPCC
 if(HIP IN_LIST Kokkos_DEVICES)
   list(REMOVE_ITEM unit_tests
@@ -35,15 +41,9 @@ if(HIP IN_LIST Kokkos_DEVICES)
        UnitTestSerialDataSetExplicit.cxx
        UnitTestSerialImplicitFunction.cxx
        UnitTestSerialPointLocatorSparseGrid.cxx
-       UnitTestSerialVirtualObjectHandle.cxx
        )
 endif()
 
-if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
-  set(unit_tests ${unit_tests}
-    UnitTestSerialVirtualObjectHandle.cxx
-    )
-endif()
 
 vtkm_unit_tests(SOURCES ${unit_tests}
                 LABEL "SERIAL"
