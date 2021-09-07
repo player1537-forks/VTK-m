@@ -26,6 +26,12 @@ set(unit_tests
   UnitTestKokkosRuntimeDeviceConfiguration.cxx
   )
 
+if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
+  set(unit_tests ${unit_tests}
+    UnitTestKokkosVirtualObjectHandle.cxx
+    )
+endif()
+
 if(HIP IN_LIST Kokkos_DEVICES)
   list(REMOVE_ITEM unit_tests
        UnitTestKokkosArrayHandleFancy.cxx
@@ -36,14 +42,7 @@ if(HIP IN_LIST Kokkos_DEVICES)
        UnitTestKokkosDeviceAdapter.cxx
        UnitTestKokkosImplicitFunction.cxx
        UnitTestKokkosPointLocatorSparseGrid.cxx
-       UnitTestKokkosVirtualObjectHandle.cxx
        )
-endif()
-
-if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
-  set(unit_tests ${unit_tests}
-    UnitTestKokkosVirtualObjectHandle.cxx
-    )
 endif()
 
 vtkm_unit_tests(SOURCES ${unit_tests} LABEL "KOKKOS" LIBRARIES vtkm_worklet)
