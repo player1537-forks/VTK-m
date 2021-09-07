@@ -14,26 +14,26 @@ set(headers
 
 set(unit_tests
   UnitTestAverageByKey.cxx
-  # UnitTestBoundingIntervalHierarchy.cxx
+  UnitTestBoundingIntervalHierarchy.cxx
   UnitTestCellAverage.cxx
   UnitTestCellDeepCopy.cxx
   UnitTestCellGradient.cxx
   UnitTestCellSetConnectivity.cxx
   UnitTestCellSetDualGraph.cxx
   UnitTestCellMeasure.cxx
-  # UnitTestClipping.cxx #Uses implicit function virtuals
-  # UnitTestContour.cxx  #Uses implicit function virtuals
+  UnitTestClipping.cxx
+  UnitTestContour.cxx
   UnitTestContourTreeUniform.cxx
   UnitTestContourTreeUniformAugmented.cxx
   UnitTestContourTreeUniformDistributed.cxx
   UnitTestCoordinateSystemTransform.cxx
-  # UnitTestCosmoTools.cxx #Uses
+  UnitTestCosmoTools.cxx
   UnitTestCrossProduct.cxx
   UnitTestDescriptiveStatistics.cxx
   UnitTestDotProduct.cxx
   UnitTestExternalFaces.cxx
-  # UnitTestExtractGeometry.cxx  #Uses implicit function virtuals
-  # UnitTestExtractPoints.cxx    #Uses implicit function virtuals
+  UnitTestExtractGeometry.cxx
+  UnitTestExtractPoints.cxx
   UnitTestExtractStructured.cxx
   UnitTestFieldHistogram.cxx
   UnitTestFieldStatistics.cxx
@@ -51,12 +51,12 @@ set(unit_tests
   UnitTestNDimsHistogram.cxx
   UnitTestNDimsHistMarginalization.cxx
   UnitTestOrientNormals.cxx
-  # UnitTestParticleAdvection.cxx
+  UnitTestParticleAdvection.cxx
   UnitTestPointElevation.cxx
   UnitTestPointerJumping.cxx
   UnitTestPointGradient.cxx
   UnitTestPointTransform.cxx
-  # UnitTestProbe.cxx
+  UnitTestProbe.cxx
   UnitTestRemoveUnusedPoints.cxx
   UnitTestScalarsToColors.cxx
   UnitTestScatterAndMask.cxx
@@ -68,7 +68,7 @@ set(unit_tests
   UnitTestStreamLineUniformGrid.cxx
   UnitTestStreamSurface.cxx
   UnitTestSurfaceNormals.cxx
-  # UnitTestTemporalAdvection.cxx
+  UnitTestTemporalAdvection.cxx
   UnitTestTetrahedralize.cxx
   UnitTestThreshold.cxx
   UnitTestThresholdPoints.cxx
@@ -92,6 +92,20 @@ set(unit_tests
   UnitTestZFPCompressor.cxx
  )
 
+#Uses implicit function virtuals
+if(HIP IN_LIST Kokkos_DEVICES)
+  list(REMOVE_ITEM unit_tests
+       UnitTestBoundingIntervalHierarchy.cxx
+       UnitTestClipping.cxx
+       UnitTestContour.cxx
+       UnitTestCosmoTools.cxx
+       UnitTestExtractGeometry.cxx
+       UnitTestExtractPoints.cxx
+       UnitTestParticleAdvection.cxx
+       UnitTestProbe.cxx
+       UnitTestTemporalAdvection.cxx
+       )
+endif()
 
 vtkm_unit_tests(
   SOURCES ${unit_tests}

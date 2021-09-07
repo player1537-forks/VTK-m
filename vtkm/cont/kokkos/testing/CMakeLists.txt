@@ -10,21 +10,34 @@
 
 set(unit_tests
   UnitTestKokkosArrayHandle.cxx
-  # UnitTestKokkosArrayHandleFancy.cxx
+  UnitTestKokkosArrayHandleFancy.cxx
   UnitTestKokkosArrayHandleMultiplexer.cxx
   UnitTestKokkosBitField.cxx
-  # UnitTestKokkosCellLocatorRectilinearGrid.cxx
-  # UnitTestKokkosCellLocatorTwoLevel.cxx
-  # UnitTestKokkosCellLocatorUniformGrid.cxx
+  UnitTestKokkosCellLocatorRectilinearGrid.cxx
+  UnitTestKokkosCellLocatorTwoLevel.cxx
+  UnitTestKokkosCellLocatorUniformGrid.cxx
   UnitTestKokkosComputeRange.cxx
   UnitTestKokkosColorTable.cxx
-  # UnitTestKokkosDataSetExplicit.cxx
+  UnitTestKokkosDataSetExplicit.cxx
   UnitTestKokkosDataSetSingleType.cxx
   UnitTestKokkosDeviceAdapter.cxx
   UnitTestKokkosImplicitFunction.cxx
   UnitTestKokkosPointLocatorSparseGrid.cxx
   UnitTestKokkosRuntimeDeviceConfiguration.cxx
   )
+
+if(HIP IN_LIST Kokkos_DEVICES)
+  list(REMOVE_ITEM unit_tests
+       UnitTestKokkosArrayHandleFancy.cxx
+       UnitTestKokkosCellLocatorRectilinearGrid.cxx
+       UnitTestKokkosCellLocatorTwoLevel.cxx
+       UnitTestKokkosCellLocatorUniformGrid.cxx
+       UnitTestKokkosDataSetExplicit.cxx
+       UnitTestKokkosDeviceAdapter.cxx
+       UnitTestKokkosImplicitFunction.cxx
+       UnitTestKokkosPointLocatorSparseGrid.cxx
+       )
+endif()
 
 if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
   set(unit_tests ${unit_tests}
