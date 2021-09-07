@@ -26,6 +26,20 @@ set(unit_tests
   UnitTestKokkosRuntimeDeviceConfiguration.cxx
   )
 
+if(HIP IN_LIST Kokkos_DEVICES)
+  list(REMOVE_ITEM unit_tests
+       UnitTestKokkosArrayHandleFancy.cxx
+       UnitTestKokkosCellLocatorRectilinearGrid.cxx
+       UnitTestKokkosCellLocatorTwoLevel.cxx
+       UnitTestKokkosCellLocatorUniformGrid.cxx
+       UnitTestKokkosDataSetExplicit.cxx
+       UnitTestKokkosDeviceAdapter.cxx
+       UnitTestKokkosImplicitFunction.cxx
+       UnitTestKokkosPointLocatorSparseGrid.cxx
+       UnitTestKokkosVirtualObjectHandle.cxx
+       )
+endif()
+
 if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
   set(unit_tests ${unit_tests}
     UnitTestKokkosVirtualObjectHandle.cxx
