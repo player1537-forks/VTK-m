@@ -54,7 +54,7 @@ set(common_header_template_sources
 set(common_sources_device
   CellAverage.cxx
   CleanGrid.cxx
-  # ExtractGeometry.cxx
+  ExtractGeometry.cxx
   ExtractStructured.cxx
   MapFieldMergeAverage.cxx
   MapFieldPermutation.cxx
@@ -174,7 +174,7 @@ set(extra_sources_device
   ClipWithFieldScalar.cxx
   ClipWithFieldSignedInteger.cxx
   ClipWithFieldUnsignedInteger.cxx
-  # ClipWithImplicitFunction.cxx
+  ClipWithImplicitFunction.cxx
   ExternalFaces.cxx
   VectorMagnitude.cxx
   particleadvection/Messenger.cxx
