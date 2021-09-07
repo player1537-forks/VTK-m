@@ -23,7 +23,6 @@ set(unit_tests
   UnitTestSerialDeviceAdapter.cxx
   UnitTestSerialImplicitFunction.cxx
   UnitTestSerialPointLocatorSparseGrid.cxx
-  UnitTestSerialVirtualObjectHandle.cxx
   )
 
 # these cannot be compiled with HIPCC
