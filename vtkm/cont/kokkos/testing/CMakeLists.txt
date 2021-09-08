@@ -32,19 +32,6 @@ if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
     )
 endif()
 
-if(HIP IN_LIST Kokkos_DEVICES)
-  list(REMOVE_ITEM unit_tests
-       UnitTestKokkosArrayHandleFancy.cxx
-       UnitTestKokkosCellLocatorRectilinearGrid.cxx
-       UnitTestKokkosCellLocatorTwoLevel.cxx
-       UnitTestKokkosCellLocatorUniformGrid.cxx
-       UnitTestKokkosDataSetExplicit.cxx
-       UnitTestKokkosDeviceAdapter.cxx
-       UnitTestKokkosImplicitFunction.cxx
-       UnitTestKokkosPointLocatorSparseGrid.cxx
-       )
-endif()
-
 vtkm_unit_tests(SOURCES ${unit_tests} LABEL "KOKKOS" LIBRARIES vtkm_worklet)
 
 if (TARGET vtkm::kokkos_cuda)

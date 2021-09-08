@@ -166,10 +166,6 @@ set(device_sources
   AssignerPartitionedDataSet.cxx
   BoundsCompute.cxx
   BoundsGlobalCompute.cxx
-<<<<<<< HEAD
-=======
-  CellLocator.cxx
->>>>>>> 58f2812b0... add CMAKE if conditions for HIP
   CellLocatorBoundingIntervalHierarchy.cxx
   CellLocatorGeneral.cxx
   CellLocatorRectilinearGrid.cxx
@@ -195,19 +191,6 @@ set(device_sources
   Timer.cxx
   UnknownArrayHandle.cxx
   )
-
-if(HIP IN_LIST Kokkos_DEVICES)
-  list(REMOVE_ITEM device_sources
-       CellLocator.cxx
-       CellLocatorBoundingIntervalHierarchy.cxx
-       CellLocatorGeneral.cxx
-       CellLocatorRectilinearGrid.cxx
-       CellLocatorTwoLevel.cxx
-       CellLocatorUniformGrid.cxx
-       PointLocator.cxx
-       PointLocatorSparseGrid.cxx
-       )
-endif()
 
 if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
   set(headers ${headers}
