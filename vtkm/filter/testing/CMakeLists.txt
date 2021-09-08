@@ -110,11 +110,6 @@ if (VTKm_ENABLE_RENDERING)
     RegressionTestStreamline.cxx
     RegressionTestSurfaceNormals.cxx
   )
-  if(HIP IN_LIST Kokkos_DEVICES)
-    list(REMOVE_ITEM unit_tests
-         RegressionTestStreamline.cxx
-        )
-  endif()
 endif()
 
 if ((TARGET vtkm::cuda) OR (TARGET vtkm::kokkos_cuda))

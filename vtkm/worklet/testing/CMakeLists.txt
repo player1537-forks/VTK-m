@@ -92,21 +92,6 @@ set(unit_tests
   UnitTestZFPCompressor.cxx
  )
 
-#Uses implicit function virtuals
-if(HIP IN_LIST Kokkos_DEVICES)
-  list(REMOVE_ITEM unit_tests
-       UnitTestBoundingIntervalHierarchy.cxx
-       UnitTestClipping.cxx
-       UnitTestContour.cxx
-       UnitTestCosmoTools.cxx
-       UnitTestExtractGeometry.cxx
-       UnitTestExtractPoints.cxx
-       UnitTestParticleAdvection.cxx
-       UnitTestProbe.cxx
-       UnitTestTemporalAdvection.cxx
-       )
-endif()
-
 vtkm_unit_tests(
   SOURCES ${unit_tests}
   LIBRARIES vtkm_source vtkm_worklet vtkm_filter vtkm_io

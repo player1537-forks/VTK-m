@@ -96,18 +96,6 @@ set(unit_tests
   UnitTestVariantArrayHandle.cxx
   )
 
-#error: unsupported indirect call to function <unknown>
-if(HIP IN_LIST Kokkos_DEVICES)
-  list(REMOVE_ITEM unit_tests
-       UnitTestArrayHandleCompositeVector.cxx
-       UnitTestArrayHandleSwizzle.cxx
-       UnitTestCellLocatorChooser.cxx
-       UnitTestCellLocatorGeneral.cxx
-       UnitTestParticleArrayCopy.cxx
-       )
-endif()
-
-
 set(library_sources
   TestEqualArrayHandles.cxx
   )
