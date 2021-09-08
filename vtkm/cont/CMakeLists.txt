@@ -165,7 +165,6 @@ set(device_sources
   AssignerPartitionedDataSet.cxx
   BoundsCompute.cxx
   BoundsGlobalCompute.cxx
-  CellLocator.cxx
   CellLocatorBoundingIntervalHierarchy.cxx
   CellLocatorGeneral.cxx
   CellLocatorRectilinearGrid.cxx
@@ -186,25 +185,11 @@ set(device_sources
   FieldRangeCompute.cxx
   FieldRangeGlobalCompute.cxx
   PartitionedDataSet.cxx
-  PointLocator.cxx
   PointLocatorSparseGrid.cxx
   RuntimeDeviceInformation.cxx
   Timer.cxx
   UnknownArrayHandle.cxx
   )
-
-if(HIP IN_LIST Kokkos_DEVICES)
-  list(REMOVE_ITEM device_sources
-       CellLocator.cxx
-       CellLocatorBoundingIntervalHierarchy.cxx
-       CellLocatorGeneral.cxx
-       CellLocatorRectilinearGrid.cxx
-       CellLocatorTwoLevel.cxx
-       CellLocatorUniformGrid.cxx
-       PointLocator.cxx
-       PointLocatorSparseGrid.cxx
-       )
-endif()
 
 if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
   set(headers ${headers}

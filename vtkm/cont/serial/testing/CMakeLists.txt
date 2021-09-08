@@ -31,20 +31,6 @@ if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
     )
 endif()
 
-# these cannot be compiled with HIPCC
-if(HIP IN_LIST Kokkos_DEVICES)
-  list(REMOVE_ITEM unit_tests
-       UnitTestSerialArrayHandleFancy.cxx
-       UnitTestSerialCellLocatorRectilinearGrid.cxx
-       UnitTestSerialCellLocatorTwoLevel.cxx
-       UnitTestSerialCellLocatorUniformGrid.cxx
-       UnitTestSerialDataSetExplicit.cxx
-       UnitTestSerialImplicitFunction.cxx
-       UnitTestSerialPointLocatorSparseGrid.cxx
-       )
-endif()
-
-
 vtkm_unit_tests(SOURCES ${unit_tests}
                 LABEL "SERIAL"
                 DEFINES VTKM_NO_ERROR_ON_MIXED_CUDA_CXX_TAG
