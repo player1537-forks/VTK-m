@@ -77,21 +77,6 @@ set(unit_tests
   UnitTestZFP.cxx
 )
 
-if(HIP IN_LIST Kokkos_DEVICES)
-  list(REMOVE_ITEM unit_tests
-       UnitTestClipWithImplicitFunctionFilter.cxx
-       UnitTestCoordinateSystemTransform.cxx
-       UnitTestExtractGeometryFilter.cxx
-       UnitTestExtractPointsFilter.cxx
-       UnitTestLagrangianFilter.cxx
-       UnitTestLagrangianStructuresFilter.cxx
-       UnitTestParticleDensity.cxx
-       UnitTestProbe.cxx
-       UnitTestStreamlineFilter.cxx
-       UnitTestStreamSurfaceFilter.cxx
-       )
-endif()
-
 set(libraries
   vtkm_filter
   vtkm_io
