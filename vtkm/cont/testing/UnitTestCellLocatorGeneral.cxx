@@ -19,6 +19,7 @@
 #include <vtkm/worklet/ScatterPermutation.h>
 #include <vtkm/worklet/WorkletMapField.h>
 #include <vtkm/worklet/WorkletMapTopology.h>
+#include <vtkm/cont/ArrayHandleXGCCoordinates.h>
 
 #include <ctime>
 #include <random>
@@ -79,6 +80,32 @@ vtkm::cont::DataSet MakeTestDataSetCurvilinear()
   curvi.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", sheared));
 
   return curvi;
+}
+
+vtkm::cont::DataSet MakeTestDataSetXGC()
+{
+  vtkm::Id numPlanes = 4;
+
+  std::vector<vtkm::FloatDefault> rz = {1,0, 1,1, 2,0, 2,1};
+
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> pts;
+  pts.Allocate(rz.size());
+  auto portal = pts.WritePortal();
+  for (vtkm::Id i = 0; i < static_cast<vtkm::Id>(rz.size()); i++)
+    portal.Set(i, rz[i]);
+
+  auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, true);
+
+  std::vector<vtkm::Int32> nextNode = {0,1,2,3}; //,3,4,5,6};
+  std::vector<vtkm::Int32> conn = {0,1,2,2,1,3};
+
+  auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, true);
+
+  vtkm::cont::DataSet ds;
+  ds.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", coords));
+  ds.SetCellSet(cellSet);
+
+  return ds;
 }
 
 //-----------------------------------------------------------------------------
@@ -203,11 +230,33 @@ void TestCellLocatorGeneral()
 {
   vtkm::cont::CellLocatorGeneral locator;
 
+  /*
   TestWithDataSet(locator, MakeTestDataSetUniform());
 
   TestWithDataSet(locator, MakeTestDataSetRectilinear());
 
   TestWithDataSet(locator, MakeTestDataSetCurvilinear());
+  */
+
+  //TestWithDataSet(locator, MakeTestDataSetXGC());
+  auto dataset = MakeTestDataSetXGC();
+  locator.SetCellSet(dataset.GetCellSet());
+  locator.SetCoordinates(dataset.GetCoordinateSystem());
+  locator.Update();
+
+  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
+  vtkm::cont::ArrayHandle<PointType> pcoords;
+  vtkm::cont::ArrayHandle<PointType> points;
+  std::vector<PointType> pts = {{1.2, 0, .1},
+                                {1.75, 0, .9},
+                                {0,1.75, .9},
+                                {-1.75, 0, .9},
+                                {0,-1.75, .9}};
+  points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
+
+  vtkm::worklet::DispatcherMapField<FindCellWorklet> dispatcher;
+  dispatcher.Invoke(points, locator, cellIds, pcoords);
+
 }
 
 } // anonymous namespace

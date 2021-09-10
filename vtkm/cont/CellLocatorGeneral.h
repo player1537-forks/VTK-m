@@ -13,6 +13,7 @@
 #include <vtkm/cont/CellLocatorRectilinearGrid.h>
 #include <vtkm/cont/CellLocatorTwoLevel.h>
 #include <vtkm/cont/CellLocatorUniformGrid.h>
+#include <vtkm/cont/CellLocatorXGCGrid.h>
 
 #include <vtkm/exec/CellLocatorMultiplexer.h>
 
@@ -46,12 +47,14 @@ class VTKM_CONT_EXPORT CellLocatorGeneral
 public:
   using ContLocatorList = vtkm::List<vtkm::cont::CellLocatorUniformGrid,
                                      vtkm::cont::CellLocatorRectilinearGrid,
-                                     vtkm::cont::CellLocatorTwoLevel>;
+                                     vtkm::cont::CellLocatorTwoLevel,
+                                     vtkm::cont::CellLocatorXGCGrid>;
 
   using ExecLocatorList =
     vtkm::List<vtkm::cont::internal::ExecutionObjectType<vtkm::cont::CellLocatorUniformGrid>,
                vtkm::cont::internal::ExecutionObjectType<vtkm::cont::CellLocatorRectilinearGrid>,
-               vtkm::cont::internal::ExecutionObjectType<vtkm::cont::CellLocatorTwoLevel>>;
+               vtkm::cont::internal::ExecutionObjectType<vtkm::cont::CellLocatorTwoLevel>,
+               vtkm::cont::internal::ExecutionObjectType<vtkm::cont::CellLocatorXGCGrid>>;
 
   using ExecObjType = vtkm::ListApply<ExecLocatorList, vtkm::exec::CellLocatorMultiplexer>;
 

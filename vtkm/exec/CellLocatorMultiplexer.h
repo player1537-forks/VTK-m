@@ -40,6 +40,7 @@ struct FindCellFunctor
 template <typename... LocatorTypes>
 class VTKM_ALWAYS_EXPORT CellLocatorMultiplexer
 {
+public:
   vtkm::exec::internal::Variant<LocatorTypes...> Locators;
 
 public:

@@ -21,6 +21,7 @@ set(headers
   CellLocatorRectilinearGrid.h
   CellLocatorTwoLevel.h
   CellLocatorUniformGrid.h
+  CellLocatorXGCGrid.h
   CellMeasure.h
   ColorTable.h
   ConnectivityExplicit.h

@@ -10,11 +10,15 @@
 #ifndef vtk_m_cont_CellLocatorChooser_h
 #define vtk_m_cont_CellLocatorChooser_h
 
+#include <vtkm/cont/ArrayHandleXGCCoordinates.h>
 #include <vtkm/cont/CastAndCall.h>
 #include <vtkm/cont/CellLocatorRectilinearGrid.h>
 #include <vtkm/cont/CellLocatorTwoLevel.h>
 #include <vtkm/cont/CellLocatorUniformGrid.h>
+#include <vtkm/cont/CellLocatorXGCGrid.h>
 #include <vtkm/cont/CellSetStructured.h>
+#include <vtkm/cont/CellSetExtrude.h>
+#include <vtkm/cont/ArrayHandleXGCCoordinates.h>
 #include <vtkm/cont/DataSet.h>
 
 namespace vtkm
@@ -43,6 +47,9 @@ using RectilinearArray =
   vtkm::cont::ArrayHandleCartesianProduct<vtkm::cont::ArrayHandle<vtkm::FloatDefault>,
                                           vtkm::cont::ArrayHandle<vtkm::FloatDefault>,
                                           vtkm::cont::ArrayHandle<vtkm::FloatDefault>>;
+
+using XGCCoordinates = vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault>;
+using ExtrudedCellSet = vtkm::cont::CellSetExtrude;
 
 template <>
 struct CellLocatorChooserImpl<vtkm::cont::CellSetStructured<3>, RectilinearArray>
@@ -87,8 +94,17 @@ struct CastAndCallCellLocatorChooserFunctor
                   Functor&& functor,
                   Args&&... args) const
   {
+    auto coordArray = coordinateSystem.GetData();
+    if (coordArray.IsType<detail::XGCCoordinates>()) // && cellSet.IsType<detail::ExtrudedCellSet>())
+    {
+      this->CallFunctorWithLocator<vtkm::cont::CellLocatorXGCGrid>(
+        cellSet, coordinateSystem, std::forward<Functor>(functor), std::forward<Args>(args)...);
+    }
+    else
+    {
     this->CallFunctorWithLocator<vtkm::cont::CellLocatorTwoLevel>(
       cellSet, coordinateSystem, std::forward<Functor>(functor), std::forward<Args>(args)...);
+    }
   }
 
   template <typename Functor, typename... Args>
