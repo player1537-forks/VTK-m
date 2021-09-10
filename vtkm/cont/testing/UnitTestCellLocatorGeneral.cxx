@@ -7,6 +7,9 @@
 //  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
+#include <vtkm/Math.h>
+#include <vtkm/Matrix.h>
+#include <vtkm/Transform3D.h>
 #include <vtkm/cont/CellLocatorGeneral.h>
 
 #include <vtkm/cont/ArrayHandle.h>
@@ -84,9 +87,10 @@ vtkm::cont::DataSet MakeTestDataSetCurvilinear()
 
 vtkm::cont::DataSet MakeTestDataSetXGC()
 {
-  vtkm::Id numPlanes = 5;
+  vtkm::Id numPlanes = 32;
 
-  std::vector<vtkm::FloatDefault> rz = {1,0, 1,1, 2,0};//, 2,1};
+  std::vector<vtkm::FloatDefault> rz = {1,0, 1,1, 2,0, 2,1};
+  //std::vector<vtkm::FloatDefault> rz = {2,0, 1,1, 2,1};
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> pts;
   pts.Allocate(rz.size());
@@ -107,8 +111,8 @@ vtkm::cont::DataSet MakeTestDataSetXGC()
 
   }
 
-  std::vector<vtkm::Int32> nextNode = {0,1,2}; //,3}; //,3,4,5,6};
-  std::vector<vtkm::Int32> conn = {0,1,2}; //,2,1,3};
+  std::vector<vtkm::Int32> nextNode = {0,1,2,3}; //,3,4,5,6};
+  std::vector<vtkm::Int32> conn = {0,1,2,2,1,3};
 
   auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, isCyl);
 
@@ -238,6 +242,21 @@ void TestWithDataSet(vtkm::cont::CellLocatorGeneral& locator, const vtkm::cont::
   }
 }
 
+PointType RotatePt(const PointType& pt, vtkm::FloatDefault deg)
+{
+  PointType pt2;
+  auto mat = vtkm::Transform3DRotate(deg, {0,0,1});
+
+  pt2 = vtkm::Transform3DVector(mat, pt);
+
+  vtkm::FloatDefault r = vtkm::Sqrt(pt[0]*pt[0] + pt[2]*pt[2]);
+//  vtkm::FloatDefault theta = vtkm::
+
+//  pt2[0] =
+
+  return pt2;
+}
+
 void TestCellLocatorGeneral()
 {
   vtkm::cont::CellLocatorGeneral locator;
@@ -262,11 +281,40 @@ void TestCellLocatorGeneral()
   std::vector<PointType> pts = {
     /*
     {1.2, 0, .1},
+    {1.8, 0, .9},
+    {1.5, 0, .1},
+    {1.5, 0, .9},
+    {1.5, 0, .3},
+    {1.5, 0, .7},
+    {1.5, 0, .501},
+    */
+    {1, 0, .5}
+//    {1.5, 0, .49},
+    /*
+    {1.2, 0, .1},
     {1.75, 0, .9},
     {0,1.75, .9},
     {-1.75, 0, .9},
+    {0,-1.01, .8}
     */
-    {0,-1.01, .8}};
+  };
+  int n = pts.size();
+  /*
+  for (int i = 0; i < n; i++)
+    pts.push_back(RotatePt(pts[i], 45+1));
+  for (int i = 0; i < n; i++)
+    pts.push_back(RotatePt(pts[i], 90+1));
+  for (int i = 0; i < n; i++)
+    pts.push_back(RotatePt(pts[i], 135+1));
+  for (int i = 0; i < n; i++)
+    pts.push_back(RotatePt(pts[i], 180+1));
+  for (int i = 0; i < n; i++)
+    pts.push_back(RotatePt(pts[i], 225+1));
+  for (int i = 0; i < n; i++)
+    pts.push_back(RotatePt(pts[i], 270+1));
+  */
+  for (int i = 0; i < n; i++)
+    pts.push_back(RotatePt(pts[i], 315+1));
 
   std::ofstream ptF; ptF.open("PT.txt");
   for (int i = 0; i < pts.size(); i++)
