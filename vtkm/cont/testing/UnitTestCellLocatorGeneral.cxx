@@ -279,7 +279,7 @@ void TestCellLocatorGeneral()
   vtkm::cont::ArrayHandle<PointType> pcoords;
   vtkm::cont::ArrayHandle<PointType> points;
   std::vector<PointType> pts = {
-    /*
+
     {1.2, 0, .1},
     {1.8, 0, .9},
     {1.5, 0, .1},
@@ -287,19 +287,19 @@ void TestCellLocatorGeneral()
     {1.5, 0, .3},
     {1.5, 0, .7},
     {1.5, 0, .501},
-    */
-    {1, 0, .5}
-//    {1.5, 0, .49},
-    /*
+
+    {1.5, 0, .5},
+    {1.5, 0, .49},
+
     {1.2, 0, .1},
     {1.75, 0, .9},
     {0,1.75, .9},
     {-1.75, 0, .9},
     {0,-1.01, .8}
-    */
+
   };
   int n = pts.size();
-  /*
+
   for (int i = 0; i < n; i++)
     pts.push_back(RotatePt(pts[i], 45+1));
   for (int i = 0; i < n; i++)
@@ -312,7 +312,7 @@ void TestCellLocatorGeneral()
     pts.push_back(RotatePt(pts[i], 225+1));
   for (int i = 0; i < n; i++)
     pts.push_back(RotatePt(pts[i], 270+1));
-  */
+
   for (int i = 0; i < n; i++)
     pts.push_back(RotatePt(pts[i], 315+1));
 

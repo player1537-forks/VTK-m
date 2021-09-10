@@ -93,18 +93,40 @@ public:
     auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
     for (int i = 0; i < 6; i++)
       std::cout << "Pt_" << i << " idx= " << indices[i] << " pt= "<<pts[i]<<std::endl;
-/*    {
-      cid--;
-    std::cout<<"CID= "<<cid<<std::endl;
-    auto indices = this->Connectivity.GetIndices(cid);
-    auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
+
+    //do the wedge tests in R,Theta,Z space.
+    cylPt[0] = r;
+    cylPt[1] = theta;
+    cylPt[2] = z;
+
+    vtkm::Vec<vtkm::Vec3f, 6> cylVerts, cylVertsDeg;
     for (int i = 0; i < 6; i++)
-      std::cout << "Pt_" << i << " " << indices[i] << " "<<pts[i]<<std::endl;
-      }*/
+    {
+      vtkm::Vec3f p = pts[i];
+      vtkm::FloatDefault r = vtkm::Sqrt(p[0]*p[0] + p[1]*p[1]);
+      vtkm::FloatDefault pTheta = vtkm::ATan2(p[1], p[0]);
+      if (pTheta < 0) pTheta += vtkm::TwoPi();
+      cylVerts[i][0] = r;
+      cylVerts[i][1] = pTheta;
+      cylVerts[i][2] = p[2];
+      cylVertsDeg[i] = cylVerts[i];
+      cylVertsDeg[i][1] = pTheta * 57.2958;
+    }
+
+    auto xx = cylPt;
+    xx[1] *=  57.2958;
+    std::cout<<"****** cylPt= "<<xx<<std::endl;
+    for (int i = 0; i < 6; i++)
+      std::cout << "CPt_" << i << " idx= " << indices[i] << " pt= "<<cylVertsDeg[i]<<std::endl;
+
+
+
+
 
     FloatVec3 pc;
     bool inside;
-    VTKM_RETURN_ON_ERROR(this->PointInsideCell(point, pts, pc, inside));
+    //VTKM_RETURN_ON_ERROR(this->PointInsideCell(point, pts, pc, inside));
+    VTKM_RETURN_ON_ERROR(this->PointInsideCell(cylPt, cylVerts, pc, inside));
     if (inside)
     {
       cellId = cid;
@@ -132,8 +154,8 @@ private:
   vtkm::Bounds ComputeCellBounds(const PointsVecType& points) const
   {
     using CoordsType = typename vtkm::VecTraits<PointsVecType>::ComponentType;
-
     CoordsType minp = points[0], maxp = points[0];
+
     for (vtkm::IdComponent i = 1; i < 6; i++)
     {
       minp = vtkm::Min(minp, points[i]);
@@ -169,6 +191,28 @@ private:
                                             bool& inside) const
   {
     vtkm::Bounds bounds = this->ComputeCellBounds(cellPoints);
+
+    inside = false;
+    vtkm::FloatDefault eps = 1e-6;
+    if (this->InBounds(point, bounds, eps))
+    {
+      VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
+        cellPoints, point, vtkm::CellShapeTagWedge{}, parametricCoordinates));
+      std::cout<<"   PARAMETRIC: "<<parametricCoordinates<<std::endl;
+      inside = vtkm::exec::CellInside(parametricCoordinates, vtkm::CellShapeTagWedge{});
+    }
+
+    // Return success error code even point is not inside this cell
+    return vtkm::ErrorCode::Success;
+  }
+
+  template <typename CoordsType>
+  VTKM_EXEC vtkm::ErrorCode PointInsideCellCyl(FloatVec3 point,
+                                               CoordsType cellPoints,
+                                               FloatVec3& parametricCoordinates,
+                                               bool& inside) const
+  {
+    vtkm::Bounds bounds;// = this->ComputeCellBounds(cellPoints);
 
     inside = false;
     vtkm::FloatDefault eps = 1e-6;
