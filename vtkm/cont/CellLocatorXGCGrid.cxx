@@ -43,8 +43,10 @@ void CellLocatorXGCGrid::Build()
   auto xgcCoordSys = coords.GetData().Cast<XGCType>();
   auto xgcPts = xgcCoordSys.GetArray();
   this->IsCylindrical = xgcCoordSys.GetUseCylindrical();
+  /*
   if (!this->IsCylindrical)
     throw vtkm::cont::ErrorBadType("XGC Coordinates are not cylindrical.");
+  */
 
   auto xgcCellSet = cellSet.Cast<vtkm::cont::CellSetExtrude>();
 

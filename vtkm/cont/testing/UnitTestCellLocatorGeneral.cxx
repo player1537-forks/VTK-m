@@ -84,9 +84,9 @@ vtkm::cont::DataSet MakeTestDataSetCurvilinear()
 
 vtkm::cont::DataSet MakeTestDataSetXGC()
 {
-  vtkm::Id numPlanes = 4;
+  vtkm::Id numPlanes = 5;
 
-  std::vector<vtkm::FloatDefault> rz = {1,0, 1,1, 2,0, 2,1};
+  std::vector<vtkm::FloatDefault> rz = {1,0, 1,1, 2,0};//, 2,1};
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> pts;
   pts.Allocate(rz.size());
@@ -94,16 +94,28 @@ vtkm::cont::DataSet MakeTestDataSetXGC()
   for (vtkm::Id i = 0; i < static_cast<vtkm::Id>(rz.size()); i++)
     portal.Set(i, rz[i]);
 
-  auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, true);
+  bool isCyl = false;
+  auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, isCyl);
 
-  std::vector<vtkm::Int32> nextNode = {0,1,2,3}; //,3,4,5,6};
-  std::vector<vtkm::Int32> conn = {0,1,2,2,1,3};
+  {
+  std::cout<<"XGC Coords"<<std::endl;
+  std::ofstream ptF; ptF.open("pts.txt");
+  auto portal2 = coords.ReadPortal();
+  for (int i = 0; i < coords.GetNumberOfValues(); i++)
+    ptF<<portal2.Get(i)[0]<<", "<<portal2.Get(i)[1]<<", "<<portal2.Get(i)[2]<<std::endl;
 
-  auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, true);
+
+  }
+
+  std::vector<vtkm::Int32> nextNode = {0,1,2}; //,3}; //,3,4,5,6};
+  std::vector<vtkm::Int32> conn = {0,1,2}; //,2,1,3};
+
+  auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, isCyl);
 
   vtkm::cont::DataSet ds;
   ds.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", coords));
   ds.SetCellSet(cellSet);
+  ds.PrintSummary(std::cout);
 
   return ds;
 }
@@ -247,15 +259,27 @@ void TestCellLocatorGeneral()
   vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
   vtkm::cont::ArrayHandle<PointType> pcoords;
   vtkm::cont::ArrayHandle<PointType> points;
-  std::vector<PointType> pts = {{1.2, 0, .1},
-                                {1.75, 0, .9},
-                                {0,1.75, .9},
-                                {-1.75, 0, .9},
-                                {0,-1.75, .9}};
+  std::vector<PointType> pts = {
+    /*
+    {1.2, 0, .1},
+    {1.75, 0, .9},
+    {0,1.75, .9},
+    {-1.75, 0, .9},
+    */
+    {0,-1.01, .8}};
+
+  std::ofstream ptF; ptF.open("PT.txt");
+  for (int i = 0; i < pts.size(); i++)
+    ptF<<pts[i][0]<<", "<<pts[i][1]<<", "<<pts[i][2]<<std::endl;
+
+
+
   points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
 
   vtkm::worklet::DispatcherMapField<FindCellWorklet> dispatcher;
   dispatcher.Invoke(points, locator, cellIds, pcoords);
+
+
 
 }
 
