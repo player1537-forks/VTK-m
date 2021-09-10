@@ -31,7 +31,9 @@ namespace vtkm
 namespace exec
 {
 
+using FloatVec3 = vtkm::Vec3f;
 using CellLocatorType = vtkm::cont::CellSetSingleType<>::ExecConnectivityType<vtkm::TopologyElementTagCell, vtkm::TopologyElementTagPoint>;
+
 
 /*
 using CoordsPortalType = vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault>::ReadPortalType;
@@ -79,33 +81,85 @@ CellLocatorXGCGrid(const vtkm::exec::ConnectivityExtrude& conn,
 
     std::cout<<"FindCell: "<<point<<" --> "<<cylPt<<std::endl;
     cylPt[2] = 0;
-    auto res = this->PlaneLocator.FindCell(cylPt, cellId, parametric);
+    vtkm::Id cid;
+    auto res = this->PlaneLocator.FindCell(cylPt, cid, parametric);
     if (res == vtkm::ErrorCode::Success)
     {
       vtkm::Id planeIdx = vtkm::Floor(theta / this->ThetaSpacing);
 
       if (planeIdx > 0)
-        cellId += (planeIdx*this->CellsPerPlane);
+        cid += (planeIdx*this->CellsPerPlane);
 
-      auto indices = this->Connectivity.GetIndices(cellId);
+      auto indices = this->Connectivity.GetIndices(cid);
       auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
       for (int i = 0; i < 6; i++)
         std::cout<<"Pt_"<<i<<" "<<indices[i]<<std::endl;
+
+      FloatVec3 pc;
+      bool inside;
+      VTKM_RETURN_ON_ERROR(
+        this->PointInsideCell(point, pts, pc, inside));;
+      if(inside)
+      {
+          cellId = cid;
+          parametric = pc;
+
+          std::cout<<" *** cellId= "<<cellId<<" p: "<<parametric<<std::endl;
+          std::cout<<"   planeIdx= "<<planeIdx<<" cellId= "<<cellId<<std::endl;
+          std::cout<<"   parametric= "<<parametric<<std::endl;
+          return vtkm::ErrorCode::Success;
+      }
 
       /*
       vtkm::Id cid = this->CellIds.Get(i);
       auto indices = this->CellSet.GetIndices(cid);
       */
 
-      std::cout<<" *** cellId= "<<cellId<<" p: "<<parametric<<std::endl;
-      std::cout<<"   planeIdx= "<<planeIdx<<" cellId= "<<cellId<<std::endl;
-      std::cout<<"   parametric= "<<parametric<<std::endl;
+
     }
 
     return res;
 }
 
 private:
+
+template <typename PointsVecType>
+vtkm::Bounds ComputeCellBounds(const PointsVecType& points) const
+{
+  using CoordsType = typename vtkm::VecTraits<PointsVecType>::ComponentType;
+
+  CoordsType minp = points[0], maxp = points[0];
+  for (vtkm::IdComponent i = 1; i < 6; i++)
+  {
+    minp = vtkm::Min(minp, points[i]);
+    maxp = vtkm::Max(maxp, points[i]);
+  }
+
+  return { FloatVec3(minp), FloatVec3(maxp) };
+}
+
+ template <typename CoordsType>
+ VTKM_EXEC vtkm::ErrorCode PointInsideCell(FloatVec3 point,
+                                           CoordsType cellPoints,
+                                           FloatVec3& parametricCoordinates,
+                                           bool& inside) const
+{
+  vtkm::Bounds bounds = this->ComputeCellBounds(cellPoints);
+
+  inside = false;
+  if (bounds.Contains(point))
+  {
+    VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
+                           cellPoints, point, vtkm::CellShapeTagWedge{}, parametricCoordinates));
+    inside = vtkm::exec::CellInside(parametricCoordinates,  vtkm::CellShapeTagWedge{});
+  }
+
+  // Return success error code even point is not inside this cell
+  return vtkm::ErrorCode::Success;
+}
+
+
+
   vtkm::exec::ConnectivityExtrude Connectivity;
   CoordsPortalType Coords;
   vtkm::exec::CellLocatorTwoLevel<CellLocatorType> PlaneLocator;
