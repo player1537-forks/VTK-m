@@ -47,13 +47,15 @@ public:
                      const CoordsPortalType& coords,
                      const vtkm::exec::CellLocatorTwoLevel<CellLocatorType>& planeLocator,
                      const vtkm::Id& numPlanes,
-                     const vtkm::Id& cellsPerPlane)
+                     const vtkm::Id& cellsPerPlane,
+                     const bool& useCylindrical)
     : CellsPerPlane(cellsPerPlane)
     , Coords(coords)
     , Connectivity(conn)
     , NumPlanes(numPlanes)
     , PlaneLocator(planeLocator)
     , ThetaSpacing(vtkm::TwoPi() / numPlanes)
+    , UseCylindrical(useCylindrical)
   {
   }
 
@@ -118,9 +120,6 @@ public:
     std::cout<<"****** cylPt= "<<xx<<std::endl;
     for (int i = 0; i < 6; i++)
       std::cout << "CPt_" << i << " idx= " << indices[i] << " pt= "<<cylVertsDeg[i]<<std::endl;
-
-
-
 
 
     FloatVec3 pc;
@@ -228,12 +227,28 @@ private:
     return vtkm::ErrorCode::Success;
   }
 
+  VTKM_EXEC
+  vtkm::ErrorCode FindCellCylindrical(const vtkm::Vec3f& point,
+                                      vtkm::Id& cellId,
+                                      vtkm::Vec3f& parametric) const
+  {
+  }
+
+  VTKM_EXEC
+  vtkm::ErrorCode FindCellCartesian(const vtkm::Vec3f& point,
+                                    vtkm::Id& cellId,
+                                    vtkm::Vec3f& parametric) const
+  {
+  }
+
+
+
 
 
   vtkm::exec::ConnectivityExtrude Connectivity;
   CoordsPortalType Coords;
   vtkm::exec::CellLocatorTwoLevel<CellLocatorType> PlaneLocator;
-  bool IsCylindrical;
+  bool UseCylindrical;
   vtkm::Id NumPlanes;
   vtkm::Id CellsPerPlane;
   vtkm::FloatDefault ThetaSpacing;

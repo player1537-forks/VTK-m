@@ -24,6 +24,8 @@
 #include <vtkm/worklet/WorkletMapTopology.h>
 #include <vtkm/cont/ArrayHandleXGCCoordinates.h>
 
+#include <vtkm/io/VTKDataSetWriter.h>
+
 #include <ctime>
 #include <random>
 
@@ -120,6 +122,10 @@ vtkm::cont::DataSet MakeTestDataSetXGC()
   ds.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", coords));
   ds.SetCellSet(cellSet);
   ds.PrintSummary(std::cout);
+
+
+  vtkm::io::VTKDataSetWriter writer("xgc.vtk");
+  writer.WriteDataSet(ds);
 
   return ds;
 }

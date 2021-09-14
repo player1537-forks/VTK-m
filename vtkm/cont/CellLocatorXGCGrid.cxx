@@ -102,7 +102,7 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
   //cellSetExec.meow();
 
   auto locator = locMux.Locators.Get<vtkm::exec::CellLocatorTwoLevel<CellLocatorType>>();
-  return vtkm::exec::CellLocatorXGCGrid(cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane);
+  return vtkm::exec::CellLocatorXGCGrid(cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane, this->IsCylindrical);
 
   /*
   return vtkm::exec::CellLocatorXGCGrid(//xgcCellSet,

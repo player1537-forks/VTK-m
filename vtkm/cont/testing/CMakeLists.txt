@@ -110,7 +110,7 @@ vtkm_library(
   DEVICE_SOURCES ${library_sources_device}
   HEADERS ${headers}
   )
-target_link_libraries(vtkm_cont_testing PUBLIC vtkm_cont)
+target_link_libraries(vtkm_cont_testing PUBLIC vtkm_cont vtkm_io)
 
 vtkm_unit_tests(SOURCES ${unit_tests} DEFINES VTKM_NO_ERROR_ON_MIXED_CUDA_CXX_TAG)
 
