@@ -97,8 +97,12 @@ int main(int argc, char** argv)
     adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "/node_data[0]/values", args);
     bool isXYZ = true, is2D = false;
     auto ds = ReadMesh(adiosStuff, fullGrid, extendToFull, isXYZ, is2D);
-    auto status = ReadVar("dpot", adiosStuff["data"], ds, false);
-    status = ReadVar("/node_data[0]/values", adiosStuff["bfield"], ds, is2D, isXYZ, "B");
+//    adiosStuff["data"]->engine.BeginStep();
+    ReadVar("dpot", adiosStuff["data"], ds, is2D, isXYZ);
+    ReadVar("apars", adiosStuff["data"], ds, is2D, isXYZ);
+
+//    adiosStuff["bfield"]->engine.BeginStep();
+    ReadVar("/node_data[0]/values", adiosStuff["bfield"], ds, is2D, isXYZ, "B");
     std::cout<<"IO created dataset"<<std::endl;
     ds.PrintSummary(std::cout);
 

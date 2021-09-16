@@ -10,6 +10,36 @@ int numPlanesInFile=-1;
 
 std::map<std::string, adiosS*> adiosStuff;
 
+
+static vtkm::Vec3f Cyl2CarVec(const vtkm::Vec3f& pCyl,
+                              const vtkm::Vec3f& vCyl,
+                              const vtkm::Vec3f& pCar0)
+{
+  const vtkm::FloatDefault eps = 1.e-5;
+  const vtkm::FloatDefault epsInv = 1.e+5;
+
+  auto r = pCyl[0];
+  auto t = pCyl[1];
+  auto z = pCyl[2];
+
+  vtkm::Vec3f pCar(r*vtkm::Cos(t),
+                   r*vtkm::Sin(t),
+                   z);
+  auto mag = vtkm::Sqrt(r*r + t*t + z*z);
+  vtkm::Vec3f tmp(vCyl[0]/mag, vCyl[1]/mag, vCyl[2]/mag);
+
+  for (int k = 0; k < 3; k++) tmp[k] = pCyl[k] + tmp[k]*eps;
+
+  vtkm::Vec3f vCar(tmp[0]*vtkm::Cos(tmp[1]),
+                   tmp[0]*vtkm::Sin(tmp[1]),
+                   tmp[2]);
+
+  for (int k = 0; k < 3; k++) vCar[k] = (vCar[k] - pCar[k]) * mag * epsInv;
+
+  return vCar;
+}
+
+
 static void CreateGeom(bool fullTorus,
                        const std::vector<double>& rz,
                        const std::vector<int>& conn,
@@ -306,8 +336,13 @@ ReadVar(const std::string &vname, adiosS *data, vtkm::cont::DataSet &ds, bool is
     adios2::StepStatus status;
 
     status = data->engine.BeginStep();
+    /*
     if (status != adios2::StepStatus::OK)
-        return status;
+    {
+      std::cout<<"Read failed for "<<vname<<std::endl;
+      return status;
+    }
+    */
 
     std::cout<<"Reading Step= "<<data->engine.CurrentStep()<<std::endl;
     std::vector<vtkm::FloatDefault> arr;
@@ -316,8 +351,15 @@ ReadVar(const std::string &vname, adiosS *data, vtkm::cont::DataSet &ds, bool is
     if (dataSetVarName.empty())
       dataSetVarName = vname;
 
+    std::cout<<"Reading: "<<vname<<std::endl;
+
     if (dataSetVarName == "B")
     {
+      //For cylindrical coords: X=r, Y=theta Z=z (X=r=B0, Y=theta=B2, Z=Z=B1)
+      //B is written out as: B0, B2, B1 (R,Theta,Z)
+      // R=B[0]
+      // Theta = B[2]
+      // Z=B[1]
       vtkm::Id idx = 0;
       vtkm::cont::ArrayHandle<vtkm::Vec3f> bvec;
 
@@ -348,56 +390,52 @@ ReadVar(const std::string &vname, adiosS *data, vtkm::cont::DataSet &ds, bool is
         auto zPortal = Z.ReadPortal();
         auto tPortal = Phi.ReadPortal();
 
-        const vtkm::FloatDefault eps = 1.e-5;
-        const vtkm::FloatDefault epsInv = 1.e+5;
-
         bvec.Allocate(totNumPlanes * numNodes);
         auto portal = bvec.WritePortal();
         for (int i = 0; i < totNumPlanes; i++)
         {
           for (int j = 0; j < numNodes; j++)
           {
-            auto pt = cPortal.Get(idx);
+            auto pCar = cPortal.Get(idx);
+            auto R = arr[i*3+0];
+            auto T = arr[i*3+2];
+            auto Z = arr[i*3+1];
 
-            auto R = arr[j*3+0];
-            auto T = arr[j*3+1];
-            auto Z = arr[j*3+2];
+            vtkm::Vec3f vCyl(R, T, Z);
 
             if (isXYZ)
             {
-              auto r = rPortal.Get(idx);
-              auto z = zPortal.Get(idx);
-              auto t = tPortal.Get(idx);
-
-              vtkm::Vec3f pCar(r*vtkm::Cos(t),
-                               r*vtkm::Sin(t),
-                               z);
+              auto ptR = rPortal.Get(idx);
+              auto ptZ = zPortal.Get(idx);
+              auto ptT = tPortal.Get(idx);
 
               //R,T,Z
-              vtkm::Vec3f pCyl(r,t,z);
-              vtkm::Vec3f vCyl(arr[j*3+0], arr[j*3+2], arr[j*3+1]);
-              auto mag = vtkm::Sqrt(r*r + t*t + z*z);
-              vtkm::Vec3f tmp(vCyl[0]/mag, vCyl[1]/mag, vCyl[2]/mag);
-
-              for (int k = 0; k < 3; k++) tmp[k] = pCyl[k] + tmp[k]*eps;
-
-              vtkm::Vec3f vCar(tmp[0]*vtkm::Cos(tmp[1]),
-                               tmp[0]*vtkm::Sin(tmp[1]),
-                               tmp[2]);
-
-              for (int k = 0; k < 3; k++) vCar[k] = (vCar[k] - pCar[k]) * mag * epsInv;
-
+              vtkm::Vec3f pCyl(ptR,ptT,ptZ);
+              //R,Z,T  <<<-------------
+              //vtkm::Vec3f vCyl(arr[j*3+0], arr[j*3+2], arr[j*3+1]); //this works....
+              auto vCar = Cyl2CarVec(pCyl, vCyl, pCar);
               portal.Set(idx, vCar);
             }
             else
             {
-              vtkm::Vec3f v(R,T,Z);
-              portal.Set(idx, v);
+              portal.Set(idx, vCyl);
             }
+
             idx++;
           }
         }
       }
+      std::vector<vtkm::FloatDefault> b0, b1, b2;
+      for (int j = 0; j < totNumPlanes; j++)
+        for (int i = 0; i < arr.size(); i+=3)
+        {
+          b0.push_back(arr[i+0]);
+          b1.push_back(arr[i+1]);
+          b2.push_back(arr[i+2]);
+        }
+      ds.AddField(vtkm::cont::make_FieldPoint("B0", vtkm::cont::make_ArrayHandle(b0, vtkm::CopyFlag::On)));
+      ds.AddField(vtkm::cont::make_FieldPoint("B1", vtkm::cont::make_ArrayHandle(b1, vtkm::CopyFlag::On)));
+      ds.AddField(vtkm::cont::make_FieldPoint("B2", vtkm::cont::make_ArrayHandle(b2, vtkm::CopyFlag::On)));
 
       ds.AddField(vtkm::cont::make_FieldPoint(dataSetVarName, bvec));
     }
