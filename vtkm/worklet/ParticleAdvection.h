@@ -73,12 +73,12 @@ public:
   ParticleAdvectionResult<ParticleType> Run(
     const IntegratorType& it,
     vtkm::cont::ArrayHandle<ParticleType, ParticleStorage>& particles,
-    vtkm::Id MaxSteps)
+    vtkm::Id maxSteps)
   {
     vtkm::worklet::particleadvection::ParticleAdvectionWorklet<IntegratorType, ParticleType>
       worklet;
 
-    worklet.Run(it, particles, MaxSteps);
+    worklet.Run(it, particles, maxSteps);
     return ParticleAdvectionResult<ParticleType>(particles);
   }
 
@@ -86,7 +86,7 @@ public:
   ParticleAdvectionResult<ParticleType> Run(
     const IntegratorType& it,
     const vtkm::cont::ArrayHandle<vtkm::Vec3f, PointStorage>& points,
-    vtkm::Id MaxSteps)
+    vtkm::Id maxSteps)
   {
     vtkm::worklet::particleadvection::ParticleAdvectionWorklet<IntegratorType, ParticleType>
       worklet;
@@ -107,7 +107,7 @@ public:
     vtkm::cont::ArrayCopy(id, ids);
     invoke(detail::CopyToParticle{}, points, ids, time, step, particles);
 
-    worklet.Run(it, particles, MaxSteps);
+    worklet.Run(it, particles, maxSteps);
     return ParticleAdvectionResult<ParticleType>(particles);
   }
 };
@@ -145,14 +145,39 @@ public:
   StreamlineResult<ParticleType> Run(
     const IntegratorType& it,
     vtkm::cont::ArrayHandle<ParticleType, ParticleStorage>& particles,
-    vtkm::Id MaxSteps)
+    vtkm::Id maxSteps)
   {
     vtkm::worklet::particleadvection::StreamlineWorklet<IntegratorType, ParticleType> worklet;
 
     vtkm::cont::ArrayHandle<vtkm::Vec3f> positions;
     vtkm::cont::CellSetExplicit<> polyLines;
 
-    worklet.Run(it, particles, MaxSteps, positions, polyLines);
+    worklet.Run(it, particles, maxSteps, positions, polyLines);
+
+    return StreamlineResult<ParticleType>(particles, positions, polyLines);
+  }
+};
+
+class Poincare
+{
+public:
+  Poincare() {}
+
+  template <typename IntegratorType, typename ParticleType, typename ParticleStorage>
+  StreamlineResult<ParticleType> Run(
+    const IntegratorType& it,
+    vtkm::cont::ArrayHandle<ParticleType, ParticleStorage>& particles,
+    const vtkm::Plane<>& plane,
+    vtkm::Id maxSteps,
+    vtkm::Id maxPunctures,
+    bool generatePolylines)
+  {
+    vtkm::worklet::particleadvection::PoincareWorklet<IntegratorType, ParticleType> worklet;
+
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> positions;
+    vtkm::cont::CellSetExplicit<> polyLines;
+
+    worklet.Run(it, particles, plane, maxSteps, maxPunctures, generatePolylines, positions, polyLines);
 
     return StreamlineResult<ParticleType>(particles, positions, polyLines);
   }

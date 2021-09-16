@@ -15,6 +15,8 @@
 #include <vtkm/cont/testing/Testing.h>
 #include <vtkm/filter/GhostCellClassify.h>
 #include <vtkm/io/VTKDataSetReader.h>
+#include <vtkm/worklet/WorkletMapTopology.h>
+#include <vtkm/worklet/WorkletMapField.h>
 #include <vtkm/worklet/ParticleAdvection.h>
 #include <vtkm/worklet/particleadvection/EulerIntegrator.h>
 #include <vtkm/worklet/particleadvection/Field.h>
@@ -24,7 +26,10 @@
 #include <vtkm/worklet/particleadvection/Stepper.h>
 #include <vtkm/worklet/testing/GenerateTestDataSets.h>
 
+#include <vtkm/io/VTKDataSetWriter.h>
+
 #include <random>
+#include <chrono>
 
 namespace
 {
@@ -879,8 +884,172 @@ void TestParticleAdvectionFile(const std::string& fname,
   }
 }
 
-void TestParticleAdvection()
+class PoincareField : public vtkm::worklet::WorkletMapField
 {
+public:
+  using ControlSignature = void(FieldIn coords,
+                                FieldOut vecField);
+  using ExecutionSignature = void(_1, _2);
+  using InputDomain = _1;
+
+  template <typename CoordsType, typename VecType>
+  VTKM_EXEC void operator()(const CoordsType& coord,
+                            VecType& vec) const
+  {
+    auto norm = vtkm::Normal(coord);
+    vec[0] = -norm[1];
+    vec[1] = norm[0];
+    vec[2] = 0;
+  }
+};
+
+void
+TestPoincare()
+{
+  using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
+  using FieldType = vtkm::worklet::particleadvection::VelocityField<FieldHandle>;
+  using GridEvalType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
+  using RK4Type = vtkm::worklet::particleadvection::RK4Integrator<GridEvalType>;
+  using Stepper = vtkm::worklet::particleadvection::Stepper<RK4Type, GridEvalType>;
+
+  vtkm::Bounds bounds(-1, 1, -1, 1, -1, 1);
+  vtkm::Id3 dims(30,30,30);
+  auto dataSets = vtkm::worklet::testing::CreateAllDataSets(bounds, dims, false);
+
+  std::vector<vtkm::Particle> pts = {vtkm::Particle({.25, 0, 0}, 0),
+                                     vtkm::Particle({.5, 0, 0}, 1),
+                                     vtkm::Particle({.75, 0, 0}, 2)};
+
+  auto seedArray = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
+
+  const vtkm::FloatDefault stepSize = 0.001;
+  const vtkm::Id maxSteps = 1000000;
+  const vtkm::Id maxPunctures = 50;
+  const vtkm::Plane<> plane({0,0,0}, {0,-1,0});
+
+  for (auto& ds : dataSets)
+  {
+    FieldHandle fieldArray;
+
+    vtkm::cont::Invoker invoke;
+    invoke(PoincareField{}, ds.GetCoordinateSystem(), fieldArray);
+    ds.AddPointField("vec", fieldArray);
+
+    FieldType velocities(fieldArray);
+    GridEvalType eval(ds, velocities);
+    Stepper rk4(eval, stepSize);
+
+    vtkm::worklet::Poincare p;
+    auto seeds = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
+    auto res = p.Run(rk4, seeds, plane, maxSteps, maxPunctures, true);
+
+    //Validate the result.
+    VTKM_TEST_ASSERT(res.PolyLines.GetNumberOfCells() == 3, "Wrong number of poincare surfaces.");
+    auto ptPortal = res.Positions.ReadPortal();
+    const vtkm::FloatDefault eps = 1e-2;
+    for (vtkm::Id i = 0; i < 3; i++)
+    {
+      VTKM_TEST_ASSERT(res.PolyLines.GetCellShape(i)  == vtkm::CELL_SHAPE_POLY_LINE, "Wrong cell type");
+      VTKM_TEST_ASSERT(res.PolyLines.GetNumberOfPointsInCell(i)  == maxPunctures, "Wrong number of points in polyline");
+      vtkm::Id ptIds[maxPunctures];
+      res.PolyLines.GetCellPointIds(i, ptIds);
+
+      //The test dataset is a perfectly circular, so each point should be close to the seed.
+      auto seedPt = pts[static_cast<std::size_t>(i)].Pos;
+      for (vtkm::Id j = 0; j < maxPunctures; j++)
+      {
+        auto pt = ptPortal.Get(ptIds[j]);
+        auto diff = vtkm::Magnitude(pt - seedPt);
+        VTKM_TEST_ASSERT(diff <= eps, "Point value is wrong");
+      }
+    }
+  }
+}
+
+void TestPoincareFile()
+{
+  using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec<double,3>>;
+  using FieldType = vtkm::worklet::particleadvection::VelocityField<FieldHandle>;
+  using GridEvalType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
+  using RK4Type = vtkm::worklet::particleadvection::RK4Integrator<GridEvalType>;
+  using Stepper = vtkm::worklet::particleadvection::Stepper<RK4Type, GridEvalType>;
+
+  std::string fname = "/media/dpn/disk2TB/proj/vtkm/poincare/xgc_bfield.vtk";
+  fname = "/media/dpn/disk2TB/proj/vtkm/poincare/vtk-m/data/data/rectilinear/fusion.vtk";
+  fname = "/home/dpn/proj/vtkm/poincare/fusion.vtk";
+  fname = "/media/dpn/disk2TB/proj/vtkm/poincare/xgc_300.vtk";
+  //fname = "/media/dpn/disk2TB/proj/vtkm/poincare/xgc_bfield.vtk";
+
+  vtkm::io::VTKDataSetReader reader(fname);
+
+  auto ds = reader.ReadDataSet();
+
+  FieldHandle BField;
+  ds.GetField("B").GetData().AsArrayHandle(BField);
+
+  const vtkm::FloatDefault stepSize = 0.005;
+  const vtkm::Id maxSteps = 100000000;
+  vtkm::Id maxPunctures = 75;
+
+  FieldType velocities(BField);
+  GridEvalType eval(ds, velocities);
+  Stepper rk4(eval, stepSize);
+
+  vtkm::FloatDefault x0 = 1.65, x1 = 2.25;
+  x0 = 1.7; x1 = 2.0;
+  vtkm::Id N = 20;
+
+  N = 5;
+  maxPunctures = 10;
+  vtkm::FloatDefault dx = (x1-x0) / (float)(N-1);
+  vtkm::FloatDefault x = x0;
+
+  std::vector<vtkm::Particle> pts;
+  for (vtkm::Id id = 0; id < N; id++, x+=dx)
+    pts.push_back({vtkm::Particle({x, 0, 0}, id)});
+
+  //std::vector<vtkm::Particle> pts = {vtkm::Particle({0, 1.5, 0}, 0)};
+  /*
+  std::vector<vtkm::Particle> pts = {vtkm::Particle({1.4, 0, 0}, 0),
+                                     vtkm::Particle({1.5, 0, 0}, 1),
+                                     vtkm::Particle({1.6, 0, 0}, 2),
+                                     vtkm::Particle({1.7, 0, 0}, 3)};
+  */
+  auto seedArray = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::Off);
+
+  vtkm::worklet::Poincare p;
+  auto seeds = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
+  vtkm::Plane<> plane({0,0,0}, {0,1,0});
+  auto t1 = std::chrono::high_resolution_clock::now();
+  auto res = p.Run(rk4, seeds, plane, maxSteps, maxPunctures, true);
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+  std::cout<<"Timer= "<<dt.count()<<std::endl;
+
+
+  vtkm::cont::DataSet outDS;
+  outDS.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", res.Positions));
+  outDS.SetCellSet(res.PolyLines);
+  vtkm::io::VTKDataSetWriter writer("poincPts.vtk");
+  writer.WriteDataSet(outDS);
+
+  outDS.PrintSummary(std::cout);
+
+  std::ofstream outPts;
+  outPts.open("points.txt");
+  int nPts = res.Positions.GetNumberOfValues();
+  auto portal = res.Positions.ReadPortal();
+  for (int i = 0; i < nPts; i++)
+  {
+    auto pt = portal.Get(i);
+    outPts<<pt[0]<<", "<<pt[1]<<", "<<pt[2]<<std::endl;
+  }
+  outPts.close();
+}
+
+void TestParticleAdvection(int argc, char **argv)
+{
+  /*
   TestIntegrators();
   TestEvaluators();
   TestGhostCellEvaluators();
@@ -888,6 +1057,12 @@ void TestParticleAdvection()
   TestParticleStatus();
   TestWorkletsBasic();
   TestParticleWorkletsWithDataSetTypes();
+  */
+
+  TestPoincareFile();
+  //TestPoincare();
+  return;
+
 
   //Fusion test.
   std::vector<vtkm::Vec3f> fusionPts, fusionEndPts;

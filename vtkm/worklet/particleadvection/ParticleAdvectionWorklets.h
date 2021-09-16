@@ -53,6 +53,7 @@ public:
                             const vtkm::Id& maxSteps) const
   {
     auto particle = integralCurve.GetParticle(idx);
+
     vtkm::FloatDefault time = particle.Time;
     bool tookAnySteps = false;
 
@@ -60,15 +61,16 @@ public:
     // 1. you could have success AND at temporal boundary.
     // 2. could you have success AND at spatial?
     // 3. all three?
+
     integralCurve.PreStepUpdate(idx);
     do
     {
-      particle = integralCurve.GetParticle(idx);
       vtkm::Vec3f outpos;
       auto status = integrator.Step(particle, time, outpos);
       if (status.CheckOk())
       {
-        integralCurve.StepUpdate(idx, particle, time, outpos);
+        integralCurve.StepUpdate(idx, time, outpos);
+        particle.Pos = outpos;
         tookAnySteps = true;
       }
 
@@ -79,7 +81,8 @@ public:
         status = integrator.SmallStep(particle, time, outpos);
         if (status.CheckOk())
         {
-          integralCurve.StepUpdate(idx, particle, time, outpos);
+          integralCurve.StepUpdate(idx, time, outpos);
+          particle.Pos = outpos;
           tookAnySteps = true;
         }
       }
@@ -90,7 +93,6 @@ public:
     integralCurve.UpdateTookSteps(idx, tookAnySteps);
   }
 };
-
 
 template <typename IntegratorType, typename ParticleType>
 class ParticleAdvectionWorklet
@@ -115,11 +117,6 @@ public:
     vtkm::cont::ArrayHandleConstant<vtkm::Id> maxSteps(MaxSteps, numSeeds);
     vtkm::cont::ArrayHandleIndex idxArray(numSeeds);
 
-    // TODO: The particle advection sometimes behaves incorrectly on CUDA if the stack size
-    // is not changed thusly. This is concerning as the compiler should be able to determine
-    // staticly the required stack depth. What is even more concerning is that the runtime
-    // does not report a stack overflow. Rather, the worklet just silently reports the wrong
-    // value. Until we determine the root cause, other problems may pop up.
 #ifdef VTKM_CUDA
     // This worklet needs some extra space on CUDA.
     vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
@@ -167,6 +164,35 @@ public:
     diff = 1 + p.NumSteps - initialNumSteps;
   }
 };
+
+class GetPunctures : public vtkm::worklet::WorkletMapField
+{
+public:
+  VTKM_CONT
+  GetPunctures() {}
+  using ControlSignature = void(FieldIn, FieldOut);
+  using ExecutionSignature = void(_1, _2);
+  VTKM_EXEC void operator()(const vtkm::Particle& p, vtkm::Id& numPunctures) const
+  {
+    numPunctures = p.NumPunctures;
+  }
+};
+
+class ComputeNumPunctures : public vtkm::worklet::WorkletMapField
+{
+public:
+  VTKM_CONT
+  ComputeNumPunctures() {}
+  using ControlSignature = void(FieldIn, FieldIn, FieldOut);
+  using ExecutionSignature = void(_1, _2, _3);
+
+  VTKM_EXEC void operator()(const vtkm::Id& numPunc,
+                            const vtkm::Id& initialNumPunc,
+                            vtkm::Id& diff) const
+  {
+    diff = numPunc - initialNumPunc;
+  }
+};
 } // namespace detail
 
 
@@ -177,7 +203,7 @@ public:
   template <typename PointStorage, typename PointStorage2>
   void Run(const IntegratorType& it,
            vtkm::cont::ArrayHandle<ParticleType, PointStorage>& particles,
-           vtkm::Id& MaxSteps,
+           const vtkm::Id& MaxSteps,
            vtkm::cont::ArrayHandle<vtkm::Vec3f, PointStorage2>& positions,
            vtkm::cont::CellSetExplicit<>& polyLines)
   {
@@ -195,13 +221,10 @@ public:
     vtkm::worklet::DispatcherMapField<detail::GetSteps> getStepDispatcher{ (detail::GetSteps{}) };
     getStepDispatcher.Invoke(particles, initialStepsTaken);
 
-    // This method uses the same workklet as ParticleAdvectionWorklet::Run (and more). Yet for
-    // some reason ParticleAdvectionWorklet::Run needs this adjustment while this method does
-    // not.
 #ifdef VTKM_CUDA
-    // // This worklet needs some extra space on CUDA.
-    // vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
-    // (void)stack;
+    // This worklet needs some extra space on CUDA.
+    vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
+    (void)stack;
 #endif // VTKM_CUDA
 
     //Run streamline worklet
@@ -234,6 +257,95 @@ public:
     polyLines.Fill(positions.GetNumberOfValues(), cellTypes, connectivity, offsets);
   }
 };
+
+
+//Poincare worklet
+template <typename IntegratorType, typename ParticleType>
+class PoincareWorklet
+{
+public:
+  template <typename PointStorage, typename PointStorage2>
+  void Run(const IntegratorType& it,
+           vtkm::cont::ArrayHandle<ParticleType, PointStorage>& particles,
+           const vtkm::Plane<>& plane,
+           const vtkm::Id& maxSteps,
+           const vtkm::Id& maxPunctures,
+           const bool& generatePolylines,
+           vtkm::cont::ArrayHandle<vtkm::Vec3f, PointStorage2>& positions,
+           vtkm::cont::CellSetExplicit<>& polyLines)
+  {
+
+    using ParticleWorkletDispatchType = typename vtkm::worklet::DispatcherMapField<
+      vtkm::worklet::particleadvection::ParticleAdvectWorklet>;
+    using PoincareArrayType =
+      vtkm::worklet::particleadvection::PoincareParticles<ParticleType>;
+
+    vtkm::cont::ArrayHandle<vtkm::Id> initialStepsTaken;
+
+    vtkm::Id numSeeds = static_cast<vtkm::Id>(particles.GetNumberOfValues());
+    vtkm::cont::ArrayHandleIndex idxArray(numSeeds);
+
+    vtkm::worklet::DispatcherMapField<detail::GetPunctures> getPunctureDispatcher{ (detail::GetPunctures{}) };
+    getPunctureDispatcher.Invoke(particles, initialStepsTaken);
+
+#ifdef VTKM_CUDA
+    // This worklet needs some extra space on CUDA.
+    vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
+    (void)stack;
+#endif // VTKM_CUDA
+
+    //Run poincare worklet
+    PoincareArrayType poincares(particles, plane, maxSteps, maxPunctures);
+    ParticleWorkletDispatchType particleWorkletDispatch;
+    vtkm::cont::ArrayHandleConstant<vtkm::Id> maxStepsArr(maxSteps, numSeeds);
+    particleWorkletDispatch.Invoke(idxArray, it, poincares, maxStepsArr);
+
+    //Get the positions
+    poincares.GetCompactedHistory(positions);
+
+    if (generatePolylines)
+    {
+      //Create the cells
+      vtkm::cont::ArrayHandle<vtkm::Id> numPoints;
+      vtkm::worklet::DispatcherMapField<detail::ComputeNumPunctures> computeNumPuncsDispatcher{ (
+          detail::ComputeNumPunctures{}) };
+      computeNumPuncsDispatcher.Invoke(poincares.GetPunctureCountArray(), initialStepsTaken, numPoints);
+
+      vtkm::cont::ArrayHandle<vtkm::Id> cellIndex;
+      vtkm::Id connectivityLen = vtkm::cont::Algorithm::ScanExclusive(numPoints, cellIndex);
+      vtkm::cont::ArrayHandleCounting<vtkm::Id> connCount(0, 1, connectivityLen);
+      vtkm::cont::ArrayHandle<vtkm::Id> connectivity;
+      vtkm::cont::ArrayCopy(connCount, connectivity);
+
+      vtkm::cont::ArrayHandle<vtkm::UInt8> cellTypes;
+      auto polyLineShape =
+        vtkm::cont::make_ArrayHandleConstant<vtkm::UInt8>(vtkm::CELL_SHAPE_POLY_LINE, numSeeds);
+      vtkm::cont::ArrayCopy(polyLineShape, cellTypes);
+
+      auto offsets = vtkm::cont::ConvertNumIndicesToOffsets(numPoints);
+      polyLines.Fill(positions.GetNumberOfValues(), cellTypes, connectivity, offsets);
+    }
+    else
+    {
+      //Create points for each puncture.
+      vtkm::Id nPts = static_cast<vtkm::Id>(positions.GetNumberOfValues());
+      vtkm::cont::ArrayHandle<vtkm::UInt8> cellTypes;
+      auto polyLineShape =
+        vtkm::cont::make_ArrayHandleConstant<vtkm::UInt8>(vtkm::CELL_SHAPE_VERTEX, nPts);
+      vtkm::cont::ArrayCopy(polyLineShape, cellTypes);
+
+      auto numPts = vtkm::cont::make_ArrayHandleConstant(1, nPts);
+      auto offsets = vtkm::cont::ConvertNumIndicesToOffsets(numPts);
+      vtkm::cont::ArrayHandleCounting<vtkm::Id> connCount(0, 1, nPts);
+      vtkm::cont::ArrayHandle<vtkm::Id> connectivity;
+      vtkm::cont::ArrayCopy(connCount, connectivity);
+      vtkm::cont::ArrayHandle<vtkm::Id> numPoints;
+
+      polyLines.Fill(positions.GetNumberOfValues(), cellTypes, connectivity, offsets);
+    }
+  }
+};
+
 }
 }
 } // namespace vtkm::worklet::particleadvection

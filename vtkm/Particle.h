@@ -114,6 +114,14 @@ public:
   }
 
   VTKM_EXEC_CONT
+  vtkm::Vec3f Next(const vtkm::VecVariable<vtkm::Vec3f, 2>& vectors,
+                   const vtkm::FloatDefault& length)
+  {
+    VTKM_ASSERT(vectors.GetNumberOfComponents() > 0);
+    return this->Pos + length * vectors[0];
+  }
+
+  VTKM_EXEC_CONT
   vtkm::Vec3f Velocity(const vtkm::VecVariable<vtkm::Vec3f, 2>& vectors,
                        const vtkm::FloatDefault& vtkmNotUsed(length))
   {
@@ -122,7 +130,6 @@ public:
     VTKM_ASSERT(vectors.GetNumberOfComponents() > 0);
     return vectors[0];
   }
-
   VTKM_EXEC_CONT
   vtkm::Vec3f GetEvaluationPosition(const vtkm::FloatDefault& deltaT) const
   {
@@ -142,24 +149,26 @@ public:
   vtkm::Id NumSteps = 0;
   vtkm::ParticleStatus Status;
   vtkm::FloatDefault Time = 0;
+
+  vtkm::Id NumPunctures = 0;  //Needs to go into a derived class.
 };
 
-class ChargedParticle
+class Electron
 {
 public:
   VTKM_EXEC_CONT
-  ChargedParticle() {}
+  Electron() {}
 
   VTKM_EXEC_CONT
-  ChargedParticle(const vtkm::Vec3f& position,
-                  const vtkm::Id& id,
-                  const vtkm::FloatDefault& mass,
-                  const vtkm::FloatDefault& charge,
-                  const vtkm::FloatDefault& weighting,
-                  const vtkm::Vec3f& momentum,
-                  const vtkm::Id& numSteps = 0,
-                  const vtkm::ParticleStatus& status = vtkm::ParticleStatus(),
-                  const vtkm::FloatDefault& time = 0)
+  Electron(const vtkm::Vec3f& position,
+           const vtkm::Id& id,
+           const vtkm::FloatDefault& mass,
+           const vtkm::FloatDefault& charge,
+           const vtkm::FloatDefault& weighting,
+           const vtkm::Vec3f& momentum,
+           const vtkm::Id& numSteps = 0,
+           const vtkm::ParticleStatus& status = vtkm::ParticleStatus(),
+           const vtkm::FloatDefault& time = 0)
     : Pos(position)
     , ID(id)
     , NumSteps(numSteps)
@@ -173,16 +182,18 @@ public:
   }
 
   VTKM_EXEC_CONT
-  vtkm::FloatDefault Gamma(vtkm::Vec3f momentum, bool reciprocal = false) const
+  vtkm::FloatDefault Beta(vtkm::Vec3f momentum) const
   {
-    constexpr vtkm::FloatDefault c2 = SPEED_OF_LIGHT * SPEED_OF_LIGHT;
-    const auto fMom2 = vtkm::MagnitudeSquared(momentum);
-    const auto m2 = this->Mass * this->Mass;
-    const auto m2_c2_reci = 1.0 / (m2 * c2);
-    if (reciprocal)
-      return static_cast<vtkm::FloatDefault>(vtkm::RSqrt(1.0 + fMom2 * m2_c2_reci));
-    else
-      return static_cast<vtkm::FloatDefault>(vtkm::Sqrt(1.0 + fMom2 * m2_c2_reci));
+    return static_cast<vtkm::FloatDefault>(vtkm::Magnitude(momentum / this->Mass) /
+                                           vtkm::Pow(SPEED_OF_LIGHT, 2));
+  }
+
+  VTKM_EXEC_CONT
+  vtkm::Vec3f Next(const vtkm::VecVariable<vtkm::Vec3f, 2>& vectors,
+                   const vtkm::FloatDefault& length)
+  {
+    // TODO: implement Lorentz force calculation
+    return this->Pos + length * this->Velocity(vectors, length);
   }
 
   VTKM_EXEC_CONT
@@ -194,38 +205,33 @@ public:
     // Suppress unused warning
     (void)this->Weighting;
 
+    vtkm::Vec3f velocity;
+    // Particle has a charge and a mass
+    // Velocity updated using Lorentz force
+    // Return velocity of the particle
     vtkm::Vec3f eField = vectors[0];
     vtkm::Vec3f bField = vectors[1];
-
     const vtkm::FloatDefault QoM = this->Charge / this->Mass;
-    const vtkm::Vec3f mom_minus = this->Momentum + (0.5 * this->Charge * eField * length);
+    const vtkm::FloatDefault half = 0.5;
+    const vtkm::Vec3f mom_ = this->Momentum + (half * this->Charge * eField * length);
 
-    // Get reciprocal of Gamma
-    vtkm::Vec3f gamma_reci = this->Gamma(mom_minus, true);
-    const vtkm::Vec3f t = 0.5 * QoM * length * bField * gamma_reci;
-    const vtkm::Vec3f s = 2.0f * t * (1.0 / (1.0 + vtkm::Magnitude(t)));
-    const vtkm::Vec3f mom_prime = mom_minus + vtkm::Cross(mom_minus, t);
-    const vtkm::Vec3f mom_plus = mom_minus + vtkm::Cross(mom_prime, s);
+    //TODO : Calculate Gamma
+    vtkm::Vec3f gamma_reci = vtkm::Sqrt(1 - this->Beta(mom_));
+    // gamma(mom_, mass) -> needs velocity calculation
+    const vtkm::Vec3f t = half * QoM * bField * gamma_reci * length;
+    const vtkm::Vec3f s = 2.0f * t * (1 / 1 + vtkm::Magnitude(t));
 
-    const vtkm::Vec3f mom_new = mom_plus + 0.5 * this->Charge * eField * length;
-    //TODO : Sould this be a const method?
-    // If yes, need a better way to update momentum
+    const vtkm::Vec3f mom_pr = mom_ + vtkm::Cross(mom_, t);
+    const vtkm::Vec3f mom_pl = mom_ + vtkm::Cross(mom_pr, s);
+
+    const vtkm::Vec3f mom_new = mom_pl + 0.5 * this->Charge * eField * length;
+
+    //TODO : this is a const method, figure a better way to update momentum
+
     this->Momentum = mom_new;
+    velocity = mom_new / this->Mass;
 
-    // momentum = velocity * mass * gamma;
-    // --> velocity = momentum / (mass * gamma)
-    // --> velocity = ( momentum / mass ) * gamma_reci
-    vtkm::Vec3f velocity = (mom_new / this->Mass) * this->Gamma(mom_new, true);
     return velocity;
-  }
-
-  VTKM_EXEC_CONT
-  vtkm::Vec3f GetEvaluationPosition(const vtkm::FloatDefault& deltaT) const
-  {
-    // Translation is in -ve Z direction,
-    // this needs to be a parameter.
-    auto translation = this->NumSteps * deltaT * SPEED_OF_LIGHT * vtkm::Vec3f{ 0., 0., -1.0 };
-    return this->Pos + translation;
   }
 
   vtkm::Vec3f Pos;
@@ -242,7 +248,7 @@ private:
   constexpr static vtkm::FloatDefault SPEED_OF_LIGHT =
     static_cast<vtkm::FloatDefault>(2.99792458e8);
 
-  friend struct mangled_diy_namespace::Serialization<vtkm::ChargedParticle>;
+  friend struct mangled_diy_namespace::Serialization<vtkm::Electron>;
 };
 
 } //namespace vtkm
@@ -274,10 +280,10 @@ public:
 };
 
 template <>
-struct Serialization<vtkm::ChargedParticle>
+struct Serialization<vtkm::Electron>
 {
 public:
-  static VTKM_CONT void save(BinaryBuffer& bb, const vtkm::ChargedParticle& e)
+  static VTKM_CONT void save(BinaryBuffer& bb, const vtkm::Electron& e)
   {
     vtkmdiy::save(bb, e.Pos);
     vtkmdiy::save(bb, e.ID);
@@ -290,7 +296,7 @@ public:
     vtkmdiy::save(bb, e.Momentum);
   }
 
-  static VTKM_CONT void load(BinaryBuffer& bb, vtkm::ChargedParticle& e)
+  static VTKM_CONT void load(BinaryBuffer& bb, vtkm::Electron& e)
   {
     vtkmdiy::load(bb, e.Pos);
     vtkmdiy::load(bb, e.ID);
