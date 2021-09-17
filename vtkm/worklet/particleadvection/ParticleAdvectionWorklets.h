@@ -79,6 +79,14 @@ public:
       else if (status.CheckSpatialBounds())
       {
         status = integrator.SmallStep(particle, time, outpos);
+        //DRP periodic in Y
+        if (outpos[1] < 0)
+        {
+          //std::cout<<" Steped OUT! "<<status<<std::endl;
+          outpos[1] += vtkm::TwoPi();
+          status = IntegratorStatus(status.CheckOk(), false, status.CheckTemporalBounds(), status.CheckInGhostCell());
+        }
+
         if (status.CheckOk())
         {
           integralCurve.StepUpdate(idx, time, outpos);

@@ -100,9 +100,9 @@ CalcBField(vtkm::cont::DataSet& ds)
   std::vector<vtkm::Vec3f> As_bHat(n);
   for (vtkm::Id i = 0; i < n; i++)
   {
-    vtkm::Vec3f b = vtkm::Normal(bPortal.Get(i));
+    vtkm::Vec3f bn = vtkm::Normal(bPortal.Get(i));
     vtkm::FloatDefault As = aPortal.Get(i);
-    As_bHat[i] = b * As;
+    As_bHat[i] = bn * As;
   }
 
   ds.AddField(vtkm::cont::make_FieldPoint("As_bHat", vtkm::cont::make_ArrayHandle(As_bHat, vtkm::CopyFlag::On)));
@@ -277,6 +277,60 @@ ReadMesh(adiosS* meshStuff, adiosS* dataStuff, bool isXYZ, bool cylAdd)
   return grid;
 }
 
+void
+RunPoincare(const vtkm::cont::DataSet& ds)
+{
+  using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec<double,3>>;
+  using FieldType = vtkm::worklet::particleadvection::VelocityField<FieldHandle>;
+  using GridEvalType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
+  using RK4Type = vtkm::worklet::particleadvection::RK4Integrator<GridEvalType>;
+  using Stepper = vtkm::worklet::particleadvection::Stepper<RK4Type, GridEvalType>;
+
+  FieldHandle BField;
+  ds.GetField("V").GetData().AsArrayHandle(BField);
+  const vtkm::FloatDefault stepSize = 0.05;
+  FieldType velocities(BField);
+  GridEvalType eval(ds, velocities);
+  Stepper rk4(eval, stepSize);
+
+  vtkm::worklet::Poincare p;
+  vtkm::Plane<> plane({0,3,0}, {0,1,0});
+  auto t1 = std::chrono::high_resolution_clock::now();
+
+  vtkm::Id numSeeds = 20;
+  vtkm::Id maxPunctures = 500;
+  vtkm::Id maxSteps = maxPunctures*1000;
+
+  vtkm::FloatDefault x0 = 2.8, x1 = 3.5;
+  vtkm::FloatDefault dx = (x1-x0) / (float)(numSeeds-1);
+  vtkm::FloatDefault x = x0;
+  std::vector<vtkm::Particle> seeds;
+  for (vtkm::Id id = 0; id < numSeeds; id++, x+=dx)
+    seeds.push_back({vtkm::Particle({x, 2.95, 0}, id)});
+  auto seedsArr = vtkm::cont::make_ArrayHandle(seeds, vtkm::CopyFlag::On);
+
+  auto res = p.Run(rk4, seedsArr, plane, maxSteps, maxPunctures, true);
+
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+  std::cout<<"Timer= "<<dt.count()<<std::endl;
+
+
+  if (1)
+  {
+    std::ofstream outPts;
+    outPts.open("points.txt");
+    int nPts = res.Positions.GetNumberOfValues();
+    auto portal = res.Positions.ReadPortal();
+    for (int i = 0; i < nPts; i++)
+    {
+      auto pt = portal.Get(i);
+      outPts<<pt[0]<<", "<<pt[1]<<", "<<pt[2]<<std::endl;
+    }
+    outPts.close();
+  }
+}
+
 int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
@@ -329,6 +383,10 @@ int main(int argc, char** argv)
 
   CalcBField(ds);
   ds.PrintSummary(std::cout);
+
+  RunPoincare(ds);
+  return 0;
+
 
   std::cout<<"**** Dump file...."<<std::endl;
   vtkm::io::VTKDataSetWriter writer("simple.vtk");
