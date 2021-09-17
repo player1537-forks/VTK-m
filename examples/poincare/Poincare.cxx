@@ -66,7 +66,7 @@ public:
 
 void RunPoinc(const vtkm::cont::DataSet& ds, vtkm::Id numSeeds, vtkm::Id maxPunctures)
 {
-#if 1
+#if 0
   std::cout<<"Locator test"<<std::endl;
   vtkm::cont::CellLocatorGeneral locator;
   locator.SetCellSet(ds.GetCellSet());
@@ -105,14 +105,17 @@ void RunPoinc(const vtkm::cont::DataSet& ds, vtkm::Id numSeeds, vtkm::Id maxPunc
   using Stepper = vtkm::worklet::particleadvection::Stepper<RK4Type, GridEvalType>;
 
 
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   FieldHandle BField;
   ds.GetField("B").GetData().AsArrayHandle(BField);
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   const vtkm::FloatDefault stepSize = 0.005;
 
   FieldType velocities(BField);
   GridEvalType eval(ds, velocities);
   Stepper rk4(eval, stepSize);
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   vtkm::Id maxSteps = maxPunctures * 10000;
 
@@ -123,10 +126,69 @@ void RunPoinc(const vtkm::cont::DataSet& ds, vtkm::Id numSeeds, vtkm::Id maxPunc
   auto seedsArr = vtkm::cont::make_ArrayHandle(seeds, vtkm::CopyFlag::On);
   vtkm::Plane<> plane({0,0,0}, {0,1,0});
   auto t1 = std::chrono::high_resolution_clock::now();
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+
   auto res = p.Run(rk4, seedsArr, plane, maxSteps, maxPunctures, true);
   auto t2 = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
   std::cout<<"Timer= "<<dt.count()<<std::endl;
+}
+
+void
+CalcBField(vtkm::cont::DataSet& ds)
+{
+    std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //Calculate B_hat
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> b;
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> A_s;
+    std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+
+  ds.GetField("B").GetData().AsArrayHandle(b);
+  ds.GetField("apars").GetData().AsArrayHandle(A_s);
+    std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+
+  auto bPortal = b.ReadPortal();
+  auto aPortal = A_s.ReadPortal();
+
+  vtkm::Id n = b.GetNumberOfValues();
+  std::vector<vtkm::Vec3f> As_bHat(n);
+  for (vtkm::Id i = 0; i < n; i++)
+  {
+    vtkm::Vec3f b = vtkm::Normal(bPortal.Get(i));
+    vtkm::FloatDefault As = aPortal.Get(i);
+    As_bHat[i] = b * As;
+  }
+    std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  ds.AddField(vtkm::cont::make_FieldPoint("As_bHat", vtkm::cont::make_ArrayHandle(As_bHat, vtkm::CopyFlag::On)));
+
+  vtkm::filter::Gradient gradient;
+  gradient.SetComputePointGradient(true);
+  gradient.SetComputeVorticity(true);
+  gradient.SetActiveField("As_bHat");
+  gradient.SetOutputFieldName("grad_As_bHat");
+  std::cout<<"Compute Grad"<<std::endl;
+  ds = gradient.Execute(ds);
+  std::cout<<"Compute Grad DONE"<<std::endl;
+  ds.PrintSummary(std::cout);
+
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> curl;
+  ds.GetField("Vorticity").GetData().AsArrayHandle(curl);
+  auto cPortal = curl.ReadPortal();
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+
+  //This is in cartesian coordintes.....
+  std::vector<vtkm::Vec3f> V(n);
+  for (vtkm::Id i = 0; i < n; i++)
+  {
+    vtkm::Vec3f c = cPortal.Get(i);
+    V[i] = bPortal.Get(i) + c;
+  }
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+
+  ds.AddField(vtkm::cont::make_FieldPoint("V", vtkm::cont::make_ArrayHandle(V, vtkm::CopyFlag::On)));
+
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 }
 
 int main(int argc, char** argv)
@@ -164,7 +226,7 @@ int main(int argc, char** argv)
     adiosStuff["diag"] = new adiosS(adios, "xgc.oneddiag.bp", "oneddiag", args);
     adiosStuff["units"] = new adiosS(adios, "xgc.units.bp", "units", args);
     adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "/node_data[0]/values", args);
-    bool isXYZ = false, is2D = false, isExplicit = false;
+    bool isXYZ = false, is2D = false, isExplicit = true;
     auto ds = ReadMesh(adiosStuff, fullGrid, extendToFull, isXYZ, is2D, isExplicit);
     std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
     ds.PrintSummary(std::cout);
@@ -172,6 +234,8 @@ int main(int argc, char** argv)
     ReadVar("dpot", adiosStuff["data"], ds, is2D, isXYZ);
     ReadVar("apars", adiosStuff["data"], ds, is2D, isXYZ);
     ReadVar("/node_data[0]/values", adiosStuff["bfield"], ds, is2D, isXYZ, "B");
+
+//    CalcBField(ds);
 
     /*
     vtkm::filter::Gradient gradient;
@@ -186,14 +250,11 @@ int main(int argc, char** argv)
     std::cout<<"IO created dataset"<<std::endl;
     ds.PrintSummary(std::cout);
 
-    /*
-    std::cout<<"**** NOT Dump file...."<<std::endl;
+    std::cout<<"**** Dump file...."<<std::endl;
     vtkm::io::VTKDataSetWriter writer("xgc0.vtk");
     writer.WriteDataSet(ds);
-    */
 
-    RunPoinc(ds, numSeeds, maxPunctures);
-
+    //RunPoinc(ds, numSeeds, maxPunctures);
 
     return 0;
   }

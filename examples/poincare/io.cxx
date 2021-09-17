@@ -448,9 +448,8 @@ ReadVar(const std::string &vname, adiosS *data, vtkm::cont::DataSet &ds, bool is
           ds.GetCoordinateSystem().GetData().AsArrayHandle(xgcCoords);
           isXGC = true;
         }
-
-//        ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
-//        auto cPortal = coords.ReadPortal();
+        else
+          ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
 
         vtkm::cont::ArrayHandle<vtkm::FloatDefault> R, Z, Phi;
         ds.GetField("R").GetData().AsArrayHandle(R);

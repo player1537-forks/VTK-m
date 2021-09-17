@@ -46,7 +46,7 @@ public:
     STRUCTURED,
     EXPSINGLE,
     EXPLICIT,
-    EXTRUDED
+    EXTRUDE
   };
 
   VTKM_CONT
@@ -72,7 +72,6 @@ public:
   {
     this->Type = HelperType::EXPSINGLE;
   }
-
 
   VTKM_CONT
   CellInterpolationHelper(const ShapeType& shape,
@@ -190,7 +189,7 @@ private:
   using Structured3DType = vtkm::cont::CellSetStructured<3>;
   using SingleExplicitType = vtkm::cont::CellSetSingleType<>;
   using ExplicitType = vtkm::cont::CellSetExplicit<>;
-  using ExtrudedCellSetType = vtkm::cont::CellSetExtrude;
+  using ExtrudeCellSetType = vtkm::cont::CellSetExtrude;
 
 public:
   VTKM_CONT
@@ -243,9 +242,16 @@ public:
                                                   vtkm::TopologyElementTagPoint());
       this->Type = vtkm::exec::CellInterpolationHelper::HelperType::EXPLICIT;
     }
-    else if (cellSet.IsSameType(ExtrudedCellSetType()))
+    else if (cellSet.IsSameType(ExtrudeCellSetType()))
     {
-      this->Type = vtkm::exec::CellInterpolationHelper::HelperType::EXTRUDED;
+      ExtrudeCellSetType CellSet = cellSet.Cast<ExtrudeCellSetType>();
+      this->CellShape = static_cast<vtkm::UInt8>(vtkm::CELL_SHAPE_WEDGE);
+      this->PointsPerCell = 6;
+//      this->ExtrudeConnectivity = CellSet.GetConnectivityArray();
+      vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleCast<vtkm::Id>(CellSet.GetConnectivityArray()),
+                            this->Connectivity);
+//      this->Connectivity = vtkm::cont::make_ArrayHandleCast<vtkm::Id>(CellSet.GetConnectivityArray());
+      this->Type = vtkm::exec::CellInterpolationHelper::HelperType::EXTRUDE;
     }
     else
       throw vtkm::cont::ErrorInternal("Unsupported cellset type");
@@ -266,6 +272,10 @@ public:
 
       case ExecutionType::HelperType::EXPLICIT:
         return ExecutionType(this->Shape, this->Offset, this->Connectivity, device, token);
+      case ExecutionType::HelperType::EXTRUDE:
+        //This is reall just an explicit single
+        return ExecutionType(
+          this->CellShape, this->PointsPerCell, this->Connectivity, device, token);
     }
     throw vtkm::cont::ErrorInternal("Undefined case for building cell interpolation helper");
   }
@@ -283,6 +293,8 @@ private:
   vtkm::cont::ArrayHandle<vtkm::Id> Offset;
   vtkm::cont::ArrayHandle<vtkm::Id> Connectivity;
   ExecutionType::HelperType Type;
+  //Variables required for extruded cellset
+  vtkm::cont::ArrayHandle<vtkm::Int32> ExtrudeConnectivity;
 };
 
 } //namespace cont

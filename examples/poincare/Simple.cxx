@@ -301,7 +301,7 @@ RunPoincare(const vtkm::cont::DataSet& ds)
   vtkm::Id maxPunctures = 500;
   vtkm::Id maxSteps = maxPunctures*1000;
 
-  vtkm::FloatDefault x0 = 2.8, x1 = 3.5;
+  vtkm::FloatDefault x0 = 2.9, x1 = 3.5;
   vtkm::FloatDefault dx = (x1-x0) / (float)(numSeeds-1);
   vtkm::FloatDefault x = x0;
   std::vector<vtkm::Particle> seeds;
