@@ -45,7 +45,8 @@ public:
   {
     STRUCTURED,
     EXPSINGLE,
-    EXPLICIT
+    EXPLICIT,
+    EXTRUDED
   };
 
   VTKM_CONT
@@ -189,6 +190,7 @@ private:
   using Structured3DType = vtkm::cont::CellSetStructured<3>;
   using SingleExplicitType = vtkm::cont::CellSetSingleType<>;
   using ExplicitType = vtkm::cont::CellSetExplicit<>;
+  using ExtrudedCellSetType = vtkm::cont::CellSetExtrude;
 
 public:
   VTKM_CONT
@@ -240,6 +242,10 @@ public:
       Connectivity = CellSet.GetConnectivityArray(vtkm::TopologyElementTagCell(),
                                                   vtkm::TopologyElementTagPoint());
       this->Type = vtkm::exec::CellInterpolationHelper::HelperType::EXPLICIT;
+    }
+    else if (cellSet.IsSameType(ExtrudedCellSetType()))
+    {
+      this->Type = vtkm::exec::CellInterpolationHelper::HelperType::EXTRUDED;
     }
     else
       throw vtkm::cont::ErrorInternal("Unsupported cellset type");

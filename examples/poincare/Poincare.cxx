@@ -94,8 +94,8 @@ void RunPoinc(const vtkm::cont::DataSet& ds, vtkm::Id numSeeds, vtkm::Id maxPunc
 
   vtkm::worklet::DispatcherMapField<FindCellWorklet> dispatcher;
   dispatcher.Invoke(points, locator, cellIds, pcoords);
-#endif
   return;
+#endif
 
   //poinc.
   using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec<double,3>>;
