@@ -26,6 +26,8 @@
 #include <vtkm/worklet/particleadvection/Stepper.h>
 #include <vtkm/worklet/testing/GenerateTestDataSets.h>
 
+#include <vtkm/filter/Gradient.h>
+
 #include <vtkm/io/VTKDataSetWriter.h>
 
 #include <fides/DataSetReader.h>
@@ -62,6 +64,71 @@ public:
   }
 };
 
+void RunPoinc(const vtkm::cont::DataSet& ds, vtkm::Id numSeeds, vtkm::Id maxPunctures)
+{
+#if 1
+  std::cout<<"Locator test"<<std::endl;
+  vtkm::cont::CellLocatorGeneral locator;
+  locator.SetCellSet(ds.GetCellSet());
+  locator.SetCoordinates(ds.GetCoordinateSystem());
+  locator.Update();
+
+  std::vector<vtkm::Vec3f> pts;
+  /*
+  pts.push_back({2.5, -3, 0});
+  pts.push_back({3, 0, 0});
+  pts.push_back({2.5, vtkm::Pi(), 0});
+  pts.push_back({2.5, vtkm::Pi(), .5});
+  pts.push_back({2.5, vtkm::Pi(), -.5});
+  */
+  pts.push_back({2.5, vtkm::Pi(), 0});
+//  pts.push_back({2.5, 0, .5});
+//  pts.push_back({2.5, 0.01, -.5});
+  pts.push_back({2.5, vtkm::TwoPi()-0.001, 0});
+  pts.push_back({2.5, vtkm::TwoPi(), 0});
+  pts.push_back({2.5, 0, 0});
+  pts.push_back({2.5, 0.001, 0});
+  auto points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
+  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
+
+  vtkm::worklet::DispatcherMapField<FindCellWorklet> dispatcher;
+  dispatcher.Invoke(points, locator, cellIds, pcoords);
+#endif
+  return;
+
+  //poinc.
+  using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec<double,3>>;
+  using FieldType = vtkm::worklet::particleadvection::VelocityField<FieldHandle>;
+  using GridEvalType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
+  using RK4Type = vtkm::worklet::particleadvection::RK4Integrator<GridEvalType>;
+  using Stepper = vtkm::worklet::particleadvection::Stepper<RK4Type, GridEvalType>;
+
+
+  FieldHandle BField;
+  ds.GetField("B").GetData().AsArrayHandle(BField);
+
+  const vtkm::FloatDefault stepSize = 0.005;
+
+  FieldType velocities(BField);
+  GridEvalType eval(ds, velocities);
+  Stepper rk4(eval, stepSize);
+
+  vtkm::Id maxSteps = maxPunctures * 10000;
+
+  std::vector<vtkm::Particle> seeds;
+
+  seeds.push_back({{2.5, 6, 0}, 0});
+  vtkm::worklet::Poincare p;
+  auto seedsArr = vtkm::cont::make_ArrayHandle(seeds, vtkm::CopyFlag::On);
+  vtkm::Plane<> plane({0,0,0}, {0,1,0});
+  auto t1 = std::chrono::high_resolution_clock::now();
+  auto res = p.Run(rk4, seedsArr, plane, maxSteps, maxPunctures, true);
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+  std::cout<<"Timer= "<<dt.count()<<std::endl;
+}
+
 int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
@@ -86,6 +153,8 @@ int main(int argc, char** argv)
   {
     bool fullGrid = true;
     std::string dataDir = std::string(argv[2]);
+    vtkm::Id numSeeds = std::stoi(argv[3]);
+    vtkm::Id maxPunctures = std::stoi(argv[4]);
     std::map<std::string, std::string> args;
     args["--dir"] = dataDir;
 
@@ -95,20 +164,38 @@ int main(int argc, char** argv)
     adiosStuff["diag"] = new adiosS(adios, "xgc.oneddiag.bp", "oneddiag", args);
     adiosStuff["units"] = new adiosS(adios, "xgc.units.bp", "units", args);
     adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "/node_data[0]/values", args);
-    bool isXYZ = true, is2D = false;
-    auto ds = ReadMesh(adiosStuff, fullGrid, extendToFull, isXYZ, is2D);
-//    adiosStuff["data"]->engine.BeginStep();
+    bool isXYZ = false, is2D = false, isExplicit = false;
+    auto ds = ReadMesh(adiosStuff, fullGrid, extendToFull, isXYZ, is2D, isExplicit);
+    std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+    ds.PrintSummary(std::cout);
+
     ReadVar("dpot", adiosStuff["data"], ds, is2D, isXYZ);
     ReadVar("apars", adiosStuff["data"], ds, is2D, isXYZ);
-
-//    adiosStuff["bfield"]->engine.BeginStep();
     ReadVar("/node_data[0]/values", adiosStuff["bfield"], ds, is2D, isXYZ, "B");
+
+    /*
+    vtkm::filter::Gradient gradient;
+    gradient.SetComputePointGradient(true);
+    gradient.SetActiveField("apars");
+    gradient.SetOutputFieldName("grad_apars");
+    std::cout<<"Compute Grad"<<std::endl;
+    ds = gradient.Execute(ds);
+    std::cout<<"Compute Grad DONE"<<std::endl;
+    */
+
     std::cout<<"IO created dataset"<<std::endl;
     ds.PrintSummary(std::cout);
 
-    std::cout<<"Dump file...."<<std::endl;
+    /*
+    std::cout<<"**** NOT Dump file...."<<std::endl;
     vtkm::io::VTKDataSetWriter writer("xgc0.vtk");
     writer.WriteDataSet(ds);
+    */
+
+    RunPoinc(ds, numSeeds, maxPunctures);
+
+
+    return 0;
   }
 
   //fides

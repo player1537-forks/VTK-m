@@ -69,6 +69,7 @@ VTKM_CONT void CellLocatorGeneral::Build()
   }
   else if (cellSet.IsType<ExtrudedCellSet>() && coords.GetData().IsType<XGCCoordinates>())
   {
+    std::cout<<"CreateXGC Cell Locator"<<std::endl;
     BuildForType<vtkm::cont::CellLocatorXGCGrid>(*this, this->LocatorImpl);
   }
   else

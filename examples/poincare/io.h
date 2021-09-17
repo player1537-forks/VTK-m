@@ -59,7 +59,7 @@ public:
 };
 
 vtkm::cont::DataSet
-ReadMesh(std::map<std::string, adiosS*> &adiosStuff, bool fullGrid=true, bool extend=true, bool isXYZ=true, bool is2D=false);
+ReadMesh(std::map<std::string, adiosS*> &adiosStuff, bool fullGrid=true, bool extend=true, bool isXYZ=true, bool is2D=false, bool isExplicit=true);
 
 adios2::StepStatus
 ReadVar(const std::string &vname, adiosS *data, vtkm::cont::DataSet &ds, bool is2D=false, bool isXYZ=true, std::string dataSetVarName="");

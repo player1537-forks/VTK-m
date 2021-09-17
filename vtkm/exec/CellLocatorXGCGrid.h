@@ -64,21 +64,32 @@ public:
                            vtkm::Id& cellId,
                            vtkm::Vec3f& parametric) const
   {
-    vtkm::FloatDefault x = point[0];
-    vtkm::FloatDefault y = point[1];
-    vtkm::FloatDefault z = point[2];
+    vtkm::Vec3f cylPt;
+    if (this->UseCylindrical)
+    {
+      cylPt = point;
+    }
+    else
+    {
+      vtkm::FloatDefault x = point[0];
+      vtkm::FloatDefault y = point[1];
+      vtkm::FloatDefault z = point[2];
 
-    vtkm::FloatDefault r = vtkm::Sqrt(x * x + y * y);
-    vtkm::FloatDefault theta = vtkm::ATan2(y, x);
-    if (theta < 0)
-      theta += vtkm::TwoPi();
+      vtkm::FloatDefault r = vtkm::Sqrt(x * x + y * y);
+      vtkm::FloatDefault theta = vtkm::ATan2(y, x);
+      if (theta < 0)
+        theta += vtkm::TwoPi();
+      cylPt[0] = r;
+      cylPt[1] = theta;
+      cylPt[2] = z;
+    }
+    vtkm::FloatDefault theta = cylPt[1];
 
-    vtkm::Vec3f cylPt(r, z, theta);
+    vtkm::Vec3f cylPt2D(cylPt[0], cylPt[2], 0);
+    std::cout << "FindCell: " << point << " --> " << cylPt << " 2d= "<<cylPt2D<<" theta= "<<(cylPt[1]*57.2958)<<std::endl;
 
-    std::cout << "FindCell: " << point << " --> " << cylPt << " theta= "<<(theta*57.2958)<<std::endl;
-    cylPt[2] = 0;
     vtkm::Id cid = -1;
-    auto res = this->PlaneLocator.FindCell(cylPt, cid, parametric);
+    auto res = this->PlaneLocator.FindCell(cylPt2D, cid, parametric);
     std::cout<<"     plane cid= "<<cid<<std::endl;
 
     if (res != vtkm::ErrorCode::Success)
@@ -90,29 +101,53 @@ public:
       cid += (planeIdx * this->CellsPerPlane);
 
     auto indices = this->Connectivity.GetIndices(cid);
-    std::cout<<"CID= "<<cid<<std::endl;
+    std::cout<<"CID= "<<cid<<" planeIdx= "<<planeIdx<<std::endl;
 
     auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
     for (int i = 0; i < 6; i++)
       std::cout << "Pt_" << i << " idx= " << indices[i] << " pt= "<<pts[i]<<std::endl;
 
     //do the wedge tests in R,Theta,Z space.
+    /*
     cylPt[0] = r;
     cylPt[1] = theta;
     cylPt[2] = z;
+    */
 
     vtkm::Vec<vtkm::Vec3f, 6> cylVerts, cylVertsDeg;
     for (int i = 0; i < 6; i++)
     {
       vtkm::Vec3f p = pts[i];
-      vtkm::FloatDefault r = vtkm::Sqrt(p[0]*p[0] + p[1]*p[1]);
-      vtkm::FloatDefault pTheta = vtkm::ATan2(p[1], p[0]);
-      if (pTheta < 0) pTheta += vtkm::TwoPi();
-      cylVerts[i][0] = r;
-      cylVerts[i][1] = pTheta;
-      cylVerts[i][2] = p[2];
+      if (this->UseCylindrical)
+      {
+        cylVerts[i] = p;
+      }
+      else
+      {
+        vtkm::FloatDefault r = vtkm::Sqrt(p[0]*p[0] + p[1]*p[1]);
+        vtkm::FloatDefault pTheta = vtkm::ATan2(p[1], p[0]);
+        if (pTheta < 0) pTheta += vtkm::TwoPi();
+        cylVerts[i][0] = r;
+        cylVerts[i][1] = pTheta;
+        cylVerts[i][2] = p[2];
+      }
+//      if (cylVerts[i][1] < 0)
+//        cylVerts[i][1] += vtkm::TwoPi();
       cylVertsDeg[i] = cylVerts[i];
-      cylVertsDeg[i][1] = pTheta * 57.2958;
+      cylVertsDeg[i][1] = p[1] * 57.2958;
+    }
+
+    //Wrap around. Last plane at 0, so do a wraparound.
+    //Need to handle the other case: last plane at 2pi
+    if (this->UseCylindrical && planeIdx == (this->NumPlanes-1))
+    {
+      //Last plane should be at 0,
+      VTKM_ASSERT(cylVerts[0][1] > cylVerts[3][1]);
+      VTKM_ASSERT(cylVerts[1][1] > cylVerts[4][1]);
+      VTKM_ASSERT(cylVerts[2][1] > cylVerts[5][1]);
+      cylVerts[3][1] += vtkm::TwoPi();
+      cylVerts[4][1] += vtkm::TwoPi();
+      cylVerts[5][1] += vtkm::TwoPi();
     }
 
     auto xx = cylPt;
@@ -135,6 +170,7 @@ public:
       std::cout << "   planeIdx= " << planeIdx << " cellId= " << cellId << std::endl;
       std::cout << "   parametric= " << parametric << std::endl;
       std::cout<<std::endl<<std::endl;
+      std::cout<<"************************ FOUND!!!!!!!!!!!"<<std::endl;
 
       return vtkm::ErrorCode::Success;
     }

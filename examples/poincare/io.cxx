@@ -39,6 +39,56 @@ static vtkm::Vec3f Cyl2CarVec(const vtkm::Vec3f& pCyl,
   return vCar;
 }
 
+static vtkm::cont::DataSet
+CreateXGCGeom(const std::vector<double>& rz,
+              const std::vector<int>& conn,
+              int numPlanes,
+              double totAngle,
+              std::vector<vtkm::FloatDefault> &RArr,
+              std::vector<vtkm::FloatDefault> &ZArr,
+              std::vector<vtkm::FloatDefault> &PhiArr,
+              std::vector<vtkm::FloatDefault> &PlaneArr)
+{
+
+  auto rzArr = vtkm::cont::make_ArrayHandle(rz, vtkm::CopyFlag::On);
+  bool isCyl = true;
+  auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(rzArr, numPlanes, isCyl);
+
+  int numNodes = rz.size()/2;
+  std::vector<vtkm::Int32> nextNode(numNodes);
+  for (int i = 0; i <numNodes; i++)
+    nextNode[i] = i;
+
+  auto connArr = vtkm::cont::make_ArrayHandle(conn, vtkm::CopyFlag::On);
+  auto nextNodeArr = vtkm::cont::make_ArrayHandle(nextNode, vtkm::CopyFlag::On);
+  auto cellSet = vtkm::cont::make_CellSetExtrude(connArr, coords, nextNodeArr, isCyl);
+
+  RArr.resize(numNodes * totNumPlanes);
+  ZArr.resize(numNodes * totNumPlanes);
+  PhiArr.resize(numNodes * totNumPlanes);
+  PlaneArr.resize(numNodes * totNumPlanes);
+
+  double phi = 0.0;
+  double dPhi = totAngle/static_cast<double>(numPlanes);
+  int idx = 0;
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int i = 0; i < numNodes; i++)
+    {
+      RArr[idx] = rz[i*2 + 0];
+      ZArr[idx] = rz[i*2 + 1];
+      PhiArr[idx] = phi;
+      PlaneArr[idx] = p;
+    }
+    phi += dPhi;
+  }
+
+  vtkm::cont::DataSet ds;
+  ds.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", coords));
+  ds.SetCellSet(cellSet);
+
+  return ds;
+}
 
 static void CreateGeom(bool fullTorus,
                        const std::vector<double>& rz,
@@ -107,7 +157,8 @@ static void CreateGeom(bool fullTorus,
             PlaneArr[idx] = 1 - static_cast<vtkm::FloatDefault>(p)/static_cast<vtkm::FloatDefault>(totNumPlanes);
         }
 
-        phi -= dPhi;
+        //phi -= dPhi;
+        phi += dPhi;
     }
     std::cout<<"FullTorus= "<<fullTorus<<std::endl;
     std::cout<<"#coords= "<<coords.size()<<std::endl;
@@ -168,7 +219,7 @@ static void CreateGeom(bool fullTorus,
 }
 
 vtkm::cont::DataSet
-readMesh(adiosS *stuff, int nPlanesBetween, bool extendToFullTorus, bool isXYZ, bool is2D)
+readMesh(adiosS *stuff, int nPlanesBetween, bool extendToFullTorus, bool isXYZ, bool is2D, bool isExplicit)
 {
     stuff->engine.BeginStep();
     stuff->engine.Get(stuff->io.InquireVariable<int>("n_n"), &numNodes, adios2::Mode::Sync);
@@ -197,17 +248,25 @@ readMesh(adiosS *stuff, int nPlanesBetween, bool extendToFullTorus, bool isXYZ, 
 
     double dPhi = totAngle/static_cast<double>(totNumPlanes);
 
-    std::vector<vtkm::Vec3f> coords;
+
     std::vector<vtkm::FloatDefault> RArr, ZArr, PhiArr, PlaneArr;
-    std::vector<vtkm::Id> connIds;
-    CreateGeom(extendToFullTorus, rz, conn, totNumPlanes, totAngle, coords, connIds, RArr, ZArr, PhiArr, PlaneArr, isXYZ, is2D);
 
-    vtkm::cont::DataSetBuilderExplicit dsb;
-    if (is2D)
-      grid = dsb.Create(coords, vtkm::CellShapeTagTriangle(), 3, connIds, "coords");
+    if (isExplicit)
+    {
+      std::vector<vtkm::Vec3f> coords;
+      std::vector<vtkm::Id> connIds;
+      CreateGeom(extendToFullTorus, rz, conn, totNumPlanes, totAngle, coords, connIds, RArr, ZArr, PhiArr, PlaneArr, isXYZ, is2D);
+
+      vtkm::cont::DataSetBuilderExplicit dsb;
+      if (is2D)
+        grid = dsb.Create(coords, vtkm::CellShapeTagTriangle(), 3, connIds, "coords");
+      else
+        grid = dsb.Create(coords, vtkm::CellShapeTagWedge(), 6, connIds, "coords");
+    }
     else
-      grid = dsb.Create(coords, vtkm::CellShapeTagWedge(), 6, connIds, "coords");
-
+    {
+      grid = CreateXGCGeom(rz, conn, totNumPlanes, totAngle, RArr, ZArr, PhiArr, PlaneArr);
+    }
 
     /*
     if (!is2D && isXYZ)
@@ -256,12 +315,12 @@ readMesh(adiosS *stuff, int nPlanesBetween, bool extendToFullTorus, bool isXYZ, 
 }
 
 vtkm::cont::DataSet
-ReadMesh(std::map<std::string, adiosS*> &adiosStuff, bool fullGrid, bool extend, bool isXYZ, bool is2D)
+ReadMesh(std::map<std::string, adiosS*> &adiosStuff, bool fullGrid, bool extend, bool isXYZ, bool is2D, bool isExplicit)
 {
-    auto data = adiosStuff["data"];
-    data->engine.Get(data->io.InquireVariable<int>("nphi"), &numPlanesInFile, adios2::Mode::Sync);
+  auto data = adiosStuff["data"];
+  data->engine.Get(data->io.InquireVariable<int>("nphi"), &numPlanesInFile, adios2::Mode::Sync);
 
-    return readMesh(adiosStuff["mesh"], planesBetween, extend, isXYZ, is2D);
+  return readMesh(adiosStuff["mesh"], planesBetween, extend, isXYZ, is2D, isExplicit);
 }
 
 std::vector<vtkm::FloatDefault>
@@ -378,9 +437,20 @@ ReadVar(const std::string &vname, adiosS *data, vtkm::cont::DataSet &ds, bool is
       }
       else
       {
-        vtkm::cont::ArrayHandle<vtkm::Vec3f> coords;
-        ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
-        auto cPortal = coords.ReadPortal();
+        using XGCCoordsType = vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault>;
+        using CoordsType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
+
+        bool isXGC = false;
+        XGCCoordsType xgcCoords;
+        CoordsType coords;
+        if (ds.GetCoordinateSystem().GetData().IsType<XGCCoordsType>())
+        {
+          ds.GetCoordinateSystem().GetData().AsArrayHandle(xgcCoords);
+          isXGC = true;
+        }
+
+//        ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+//        auto cPortal = coords.ReadPortal();
 
         vtkm::cont::ArrayHandle<vtkm::FloatDefault> R, Z, Phi;
         ds.GetField("R").GetData().AsArrayHandle(R);
@@ -396,7 +466,10 @@ ReadVar(const std::string &vname, adiosS *data, vtkm::cont::DataSet &ds, bool is
         {
           for (int j = 0; j < numNodes; j++)
           {
-            auto pCar = cPortal.Get(idx);
+            vtkm::Vec3f pCar;
+            if (isXGC) pCar = xgcCoords.ReadPortal().Get(idx);
+            else pCar = coords.ReadPortal().Get(idx);
+            //auto pCar = cPortal.Get(idx);
             auto R = arr[i*3+0];
             auto T = arr[i*3+2];
             auto Z = arr[i*3+1];
