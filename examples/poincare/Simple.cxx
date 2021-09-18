@@ -116,7 +116,7 @@ CalcBField(vtkm::cont::DataSet& ds)
   ds = gradient.Execute(ds);
   std::cout<<"Compute Grad DONE"<<std::endl;
 
-
+#if 0
   std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   vtkm::cont::ArrayHandle<vtkm::Vec3f> curl;
   ds.GetField("Vorticity").GetData().AsArrayHandle(curl);
@@ -131,6 +131,39 @@ CalcBField(vtkm::cont::DataSet& ds)
     V[i] = bPortal.Get(i) + c;
   }
   std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+
+  ds.AddField(vtkm::cont::make_FieldPoint("V", vtkm::cont::make_ArrayHandle(V, vtkm::CopyFlag::On)));
+#endif
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> coords;
+  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Vec3f,3>> grad;
+  ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+  ds.GetField("grad_As_bHat").GetData().AsArrayHandle(grad);
+
+  auto cPortal = coords.ReadPortal();
+  auto gPortal = grad.ReadPortal();
+  auto vec = grad.ReadPortal().Get(0);
+
+  std::vector<vtkm::Vec3f> V(n);
+  for (vtkm::Id i = 0; i < n; i++)
+  {
+    vtkm::Vec3f val = bPortal.Get(i);
+    vtkm::FloatDefault R = cPortal.Get(i)[0];
+    auto g = gPortal.Get(i);
+
+    //R: (1/R * dAz/dT  - dAT/dZ)
+    //T: dAr/dZ - dAz/dr
+    //Z: 1/R [ d(rAt)/dr - dAr/dT]
+    vtkm::FloatDefault rv, tv, zv;
+    rv = 1/R * g[2][1] - g[1][2];
+    tv = g[0][2] - g[2][1];
+    zv = 1/R * (R*g[1][0] - g[0][1]);
+    val[0] += rv;
+    val[1] += tv;
+    val[2] += zv;
+
+    V[i] = val;
+  }
 
   ds.AddField(vtkm::cont::make_FieldPoint("V", vtkm::cont::make_ArrayHandle(V, vtkm::CopyFlag::On)));
 
@@ -295,7 +328,6 @@ RunPoincare(const vtkm::cont::DataSet& ds)
 
   vtkm::worklet::Poincare p;
   vtkm::Plane<> plane({0,3,0}, {0,1,0});
-  auto t1 = std::chrono::high_resolution_clock::now();
 
   vtkm::Id numSeeds = 20;
   vtkm::Id maxPunctures = 500;
@@ -309,8 +341,8 @@ RunPoincare(const vtkm::cont::DataSet& ds)
     seeds.push_back({vtkm::Particle({x, 2.95, 0}, id)});
   auto seedsArr = vtkm::cont::make_ArrayHandle(seeds, vtkm::CopyFlag::On);
 
+  auto t1 = std::chrono::high_resolution_clock::now();
   auto res = p.Run(rk4, seedsArr, plane, maxSteps, maxPunctures, true);
-
   auto t2 = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
   std::cout<<"Timer= "<<dt.count()<<std::endl;
