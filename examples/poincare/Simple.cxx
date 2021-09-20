@@ -83,6 +83,103 @@ public:
     adios2::Engine engine;
 };
 
+enum TransformType {CAR_TO_CYL, CYL_TO_CAR};
+
+
+static vtkm::Vec3f
+TransformCarToCyl(const vtkm::Vec3f& v)
+{
+  auto x = v[0];
+  auto y = v[1];
+  auto z = v[2];
+  auto r = vtkm::Sqrt(x*x + y*y);
+  //VTK way...
+  //auto phi = vtkm::Pi() + vtkm::ATan2(-y, -x);
+  auto phi = vtkm::ATan2(y,x);
+  if (phi < 0)
+    phi += vtkm::TwoPi();
+
+  return vtkm::Vec3f(r,phi,z);
+}
+
+static vtkm::Vec3f
+TransformCylToCar(const vtkm::Vec3f& v)
+{
+  auto r = v[0];
+  auto t = v[1];
+  auto z = v[2];
+
+  return vtkm::Vec3f(r*vtkm::Cos(t),
+                     r*vtkm::Sin(t),
+                     z);
+}
+
+static vtkm::Vec3f
+TransformVec(const vtkm::Vec3f& pt,
+             const vtkm::Vec3f& vec,
+             const TransformType& transType)
+{
+  const vtkm::FloatDefault eps = 1.e-5;
+  const vtkm::FloatDefault epsInv = 1.e+5;
+
+//  std::cout<<"XFORM: p= "<<pt<<" v= "<<vec<<" "<<transType<<std::endl;
+
+  vtkm::Vec3f pt1;
+  if (transType == CAR_TO_CYL)
+    pt1 = TransformCarToCyl(pt);
+  else
+    pt1 = TransformCylToCar(pt);
+//  std::cout<<"XPT: pt "<<pt<<" ----> "<<pt1<<std::endl;
+
+  auto mag = vtkm::Sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2]);
+  vtkm::Vec3f tmp(vec[0]/mag, vec[1]/mag, vec[2]/mag);
+//  std::cout<<mag<<" tmp= |v|= "<<tmp<<std::endl;
+
+  for (int k = 0; k < 3; k++)
+    tmp[k] = pt[k] + (tmp[k]*eps);
+//  std::cout<<"pt+|v|*eps: tmp= "<<tmp<<std::endl;
+
+  vtkm::Vec3f v1;
+  if (transType == CAR_TO_CYL)
+  {
+    v1 = TransformCarToCyl(tmp);
+//    std::cout<<"  XF_car_cyl "<<tmp<<" --> "<<v1<<std::endl;
+    auto dPhi = v1[1] - pt[1];
+//    std::cout<<"******* dPhi= "<<dPhi<<std::endl;
+    //This was the wee fix.
+//    if (v1[1] > vtkm::Pi())
+//    {
+//      std::cout<<"     "<<v1<<std::endl;
+//      v1[1] -= vtkm::TwoPi();
+//    }
+  }
+  else
+    v1 = TransformCylToCar(tmp);
+
+//  std::cout<<"v1 "<<v1<<std::endl;
+//  std::cout<<"pt1 "<<pt1<<std::endl;
+//  std::cout<<"v1-pt1 "<<(v1-pt1)<<std::endl;
+
+  auto _vt = v1-pt1;
+//  std::cout<<"0 _vt "<<_vt<<std::endl;
+  if (_vt[1] > 1)
+    _vt[1] -= vtkm::TwoPi();
+  else if (_vt[1] < -1)
+    _vt[1] += vtkm::TwoPi();
+//  std::cout<<"1 _vt "<<_vt<<std::endl;
+
+  auto vt = _vt * (epsInv * mag);
+/*
+  vtkm::Vec3f vt((v1[0] - pt1[0]) * epsInv * mag,
+                 (v1[1] - pt1[1]) * epsInv * mag,
+                 (v1[2] - pt1[2]) * epsInv * mag);
+*/
+//  std::cout<<"vt "<<vt<<std::endl<<std::endl<<std::endl;
+
+  return vt;
+}
+
+
 static vtkm::Vec3f Cyl2CarVec(const vtkm::Vec3f& pCyl,
                               const vtkm::Vec3f& vCyl)
 {
@@ -109,6 +206,7 @@ static vtkm::Vec3f Cyl2CarVec(const vtkm::Vec3f& pCyl,
 
   return vCar;
 }
+
 
 void
 CalcBFieldXYZ(vtkm::cont::DataSet& ds)
@@ -168,7 +266,7 @@ CalcBFieldXYZ(vtkm::cont::DataSet& ds)
 
   auto cPortal = coords.ReadPortal();
   auto gPortal = grad.ReadPortal();
-  auto vec = grad.ReadPortal().Get(0);
+//  auto vec = grad.ReadPortal().Get(0);
 
   std::vector<vtkm::Vec3f> V(n);
   for (vtkm::Id i = 0; i < n; i++)
@@ -285,7 +383,7 @@ void
 ReadScalar(adiosS* stuff,
            vtkm::cont::DataSet& ds,
            const std::string& vname,
-           bool isXYZ,
+           bool /*isXYZ*/,
            bool cylAdd,
            std::string fileName="")
 {
@@ -317,9 +415,9 @@ ReadVec(adiosS* stuff,
   if (fileName.empty())
     fileName = vname;
 
-  auto v = stuff->io.InquireVariable<double>(fileName);
+  auto var = stuff->io.InquireVariable<double>(fileName);
   std::vector<double> tmp;
-  stuff->engine.Get(v, tmp, adios2::Mode::Sync);
+  stuff->engine.Get(var, tmp, adios2::Mode::Sync);
 
   std::vector<vtkm::Vec3f> vec;
   int NP = numPlanes;
@@ -343,6 +441,7 @@ ReadVec(adiosS* stuff,
       {
         auto ptRTZ = coordsRTZPortal.Get(idx);
         vecXYZ.push_back(Cyl2CarVec(ptRTZ, v));
+//        vecXYZ.push_back(TransformVec(ptRTZ, v, CYL_TO_CAR));
         idx++;
       }
     }
@@ -356,7 +455,7 @@ ReadVec(adiosS* stuff,
 }
 
 vtkm::cont::DataSet
-ReadMesh(adiosS* meshStuff, adiosS* dataStuff, bool isXYZ, bool cylAdd)
+ReadMesh(adiosS* meshStuff, adiosS* /*dataStuff*/, bool isXYZ, bool cylAdd)
 {
   std::vector<double> rz;
   std::vector<int> conn;
@@ -380,7 +479,6 @@ ReadMesh(adiosS* meshStuff, adiosS* dataStuff, bool isXYZ, bool cylAdd)
     if (p == NP-1)
       phi = vtkm::TwoPi();
 
-    vtkm::Vec3f pt;
     for (int i = 0; i < numNodes; i++)
     {
       double R = rz[i*2 +0];
@@ -435,7 +533,7 @@ ReadMesh(adiosS* meshStuff, adiosS* dataStuff, bool isXYZ, bool cylAdd)
 }
 
 void
-RunPoincare(const vtkm::cont::DataSet& ds, const std::string& vname)
+RunPoincare(const vtkm::cont::DataSet& ds, const std::string& vname, vtkm::Id numSeeds, vtkm::Id maxPunctures)
 {
   using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec<double,3>>;
   using FieldType = vtkm::worklet::particleadvection::VelocityField<FieldHandle>;
@@ -453,8 +551,6 @@ RunPoincare(const vtkm::cont::DataSet& ds, const std::string& vname)
   vtkm::worklet::Poincare p;
   vtkm::Plane<> plane({0,3,0}, {0,1,0});
 
-  vtkm::Id numSeeds = 20;
-  vtkm::Id maxPunctures = 500;
   vtkm::Id maxSteps = maxPunctures*1000;
 
   vtkm::FloatDefault x0 = 2.9, x1 = 3.5;
@@ -487,6 +583,34 @@ RunPoincare(const vtkm::cont::DataSet& ds, const std::string& vname)
   }
 }
 
+void
+RunDebug(const vtkm::cont::DataSet& ds,
+         vtkm::cont::DataSet& dsCyl)
+{
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> B_XYZ, B_RTZ, coordsXYZ;
+  ds.GetField("B").GetData().AsArrayHandle(B_XYZ);
+  ds.GetField("coordsXYZ").GetData().AsArrayHandle(coordsXYZ);
+
+  auto bPortal = B_XYZ.ReadPortal();
+  auto cPortal = coordsXYZ.ReadPortal();
+  vtkm::Id n = bPortal.GetNumberOfValues();
+
+  B_RTZ.Allocate(n);
+  auto bRTZPortal = B_RTZ.WritePortal();
+  for (vtkm::Id i = 0; i < n; i++)
+  {
+    auto pXYZ = cPortal.Get(i);
+    auto bXYZ = bPortal.Get(i);
+
+    vtkm::Vec3f v = TransformVec(pXYZ, bXYZ, CAR_TO_CYL);
+    bRTZPortal.Set(i, v);
+  }
+  dsCyl.AddField(vtkm::cont::make_FieldPoint("B_RTZ", B_RTZ));
+
+  vtkm::io::VTKDataSetWriter writer("debug.vtk");
+  writer.WriteDataSet(dsCyl);
+}
+
 int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
@@ -495,17 +619,51 @@ int main(int argc, char** argv)
   auto opts = vtkm::cont::InitializeOptions::DefaultAnyDevice;
   auto config = vtkm::cont::Initialize(argc, argv, opts);
 
+  /*
   using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec<double,3>>;
   using FieldType = vtkm::worklet::particleadvection::VelocityField<FieldHandle>;
   using GridEvalType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
   using RK4Type = vtkm::worklet::particleadvection::RK4Integrator<GridEvalType>;
   using Stepper = vtkm::worklet::particleadvection::Stepper<RK4Type, GridEvalType>;
+  */
 
   if (argc < 4)
   {
     std::cerr<<"Usage: "<<argv[0]<<" dataFile numSeeds maxPunctures [options]"<<std::endl;
     std::cerr<<config.Usage<<std::endl;
     return -1;
+  }
+
+  if (0)
+  {
+    //BUM!! _c= [2.8,0,0] _v= [-2.79403e-07,-0.66192,-3.18708e-17]  _RES= [9.02608e-07,415896,-3.18708e-17]
+    vtkm::Vec3f p(2.8,0,0);
+    std::cout<<p<<" --> "<<TransformCarToCyl(p)<<std::endl;
+    vtkm::Vec3f pXYZ(p), vecXYZ(-2.79403e-07,-0.66192,-3.18708e-17);
+    std::cout<<"CAR --> CYL"<<std::endl;
+    vtkm::Vec3f vecRTZ = TransformVec(pXYZ, vecXYZ, CAR_TO_CYL);
+    std::cout<<"XYZ: "<<vecXYZ<<" --> "<<vecRTZ<<std::endl;
+//    return 0;
+  }
+
+
+  if (0)
+  {
+    vtkm::Vec3f p(-2.77605, -.3654730, 0);
+    std::cout<<p<<" --> "<<TransformCarToCyl(p)<<std::endl;
+    vtkm::Vec3f pXYZ(p), vecXYZ(-0.0863977, 0.656257,-3.18708e-17);
+    std::cout<<"CAR --> CYL"<<std::endl;
+    vtkm::Vec3f vecRTZ = TransformVec(pXYZ, vecXYZ, CAR_TO_CYL);
+    std::cout<<"XYZ: "<<vecXYZ<<" --> "<<vecRTZ<<std::endl;
+    return 0;
+  }
+
+  if (0)
+  {
+    vtkm::Vec3f pRTZ(1, vtkm::Pi(), 0), vecRTZ(-.1,1,-.1);
+    vtkm::Vec3f vecXYZ = TransformVec(pRTZ, vecRTZ, CYL_TO_CAR);
+    std::cout<<"RTZ: "<<vecRTZ<<" --> "<<vecXYZ<<std::endl;
+    return 0;
   }
 
   std::string dataDir = std::string(argv[2]);
@@ -538,18 +696,88 @@ int main(int argc, char** argv)
   ReadVec(bfieldStuff, ds, "B", isXYZ, cylAdd, "/node_data[0]/values");
   ds.PrintSummary(std::cout);
 
+
+  if (0)
+  {
+    auto dsCyl = ReadMesh(meshStuff, dataStuff, false, false);
+    RunDebug(ds, dsCyl);
+    return 0;
+  }
+
+
+
   //CalcBField(ds);
+  //CalcBFieldXYZ(ds, dsCyl);
+
+  std::cout<<"**** Dump file: simple.vtk  ...."<<std::endl;
+//  vtkm::io::VTKDataSetWriter writer("simple.vtk");
+//  writer.WriteDataSet(ds);
+  ds.PrintSummary(std::cout);
+
+  //RunPoincare(ds, "V");
+  //RunPoincare(ds, "V_XYZ");
+
+
+  //Now, convert the XYZ to Cyl
+  isXYZ = false;
+  cylAdd = false;
+  auto dsCyl = ReadMesh(meshStuff, dataStuff, isXYZ, cylAdd);
+  ReadVec(bfieldStuff, dsCyl, "B", isXYZ, cylAdd, "/node_data[0]/values");
+  if (0)
+  {
+    std::cout<<"**** Dump file: simpleCYL.vtk  ...."<<std::endl;
+    vtkm::io::VTKDataSetWriter writer("simpleCYL.vtk");
+    writer.WriteDataSet(dsCyl);
+    return 0;
+  }
+  if (0)
+  {
+    std::cout<<"**** Dump file: simpleXYZ.vtk  ...."<<std::endl;
+    vtkm::io::VTKDataSetWriter writer("simpleXYZ.vtk");
+    writer.WriteDataSet(ds);
+    return 0;
+  }
+
+  //Calc the V field in XYZ coordintes. V_XYZ.
   CalcBFieldXYZ(ds);
 
-  std::cout<<"**** Dump file...."<<std::endl;
-  vtkm::io::VTKDataSetWriter writer("simple.vtk");
-  writer.WriteDataSet(ds);
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> V_XYZ, coordsXYZ;
+  ds.GetField("V_XYZ").GetData().AsArrayHandle(V_XYZ);
+  ds.GetField("coordsXYZ").GetData().AsArrayHandle(coordsXYZ);
+  auto vxyzPortal = V_XYZ.ReadPortal();
+  auto cxyzPortal = coordsXYZ.ReadPortal();
+
+  vtkm::Id n = vxyzPortal.GetNumberOfValues();
+  std::vector<vtkm::Vec3f> V_RTZ;
+  for (vtkm::Id i = 0; i < n; i++)
+  {
+    auto _c = cxyzPortal.Get(i);
+    auto _v = vxyzPortal.Get(i);
+    auto _r = TransformVec(_c, _v, CAR_TO_CYL);
+    if (vtkm::Magnitude(_r) > 100)
+    {
+      std::cout<<"BUM!! _c= "<<_c<<" _v= "<<_v<<"  _RES= "<<_r<<std::endl;
+      return 0;
+    }
+    V_RTZ.push_back(TransformVec(cxyzPortal.Get(i), vxyzPortal.Get(i), CAR_TO_CYL));
+  }
+
+  dsCyl.AddField(vtkm::cont::make_FieldPoint("V_RTZ", vtkm::cont::make_ArrayHandle(V_RTZ, vtkm::CopyFlag::On)));
+  dsCyl.PrintSummary(std::cout);
+  if (0)
+  {
+    std::cout<<"**** Dump file: simpleRTZ.vtk  ...."<<std::endl;
+    vtkm::io::VTKDataSetWriter writer("simpleRTZ.vtk");
+    writer.WriteDataSet(dsCyl);
+
+//    std::cout<<"**** Dump file: simpleXYZ.vtk  ...."<<std::endl;
+//    vtkm::io::VTKDataSetWriter writer2("simpleXYZ.vtk");
+//    writer2.WriteDataSet(ds);
+  }
 
 
-  ds.PrintSummary(std::cout);
-  RunPoincare(ds, "V");
-  RunPoincare(ds, "V_XYZ");
-  return 0;
+  std::cout<<"RunPoinc"<<std::endl;
+  RunPoincare(dsCyl, "V_RTZ", numSeeds, maxPunctures);
 
 
   return 0;
