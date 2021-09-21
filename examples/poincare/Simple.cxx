@@ -293,7 +293,7 @@ CalcBFieldXYZ(vtkm::cont::DataSet& ds)
 }
 
 void
-CalcBField(vtkm::cont::DataSet& ds)
+ComputeV(vtkm::cont::DataSet& ds)
 {
   vtkm::cont::ArrayHandle<vtkm::Vec3f> b;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> A_s;
@@ -351,7 +351,6 @@ CalcBField(vtkm::cont::DataSet& ds)
 
   auto cPortal = coords.ReadPortal();
   auto gPortal = grad.ReadPortal();
-  auto vec = grad.ReadPortal().Get(0);
 
   std::vector<vtkm::Vec3f> V(n);
   for (vtkm::Id i = 0; i < n; i++)
@@ -360,13 +359,14 @@ CalcBField(vtkm::cont::DataSet& ds)
     vtkm::FloatDefault R = cPortal.Get(i)[0];
     auto g = gPortal.Get(i);
 
+    //From: https://www.therightgate.com/deriving-curl-in-cylindrical-and-spherical/
     //R: (1/R * dAz/dT  - dAT/dZ)
     //T: dAr/dZ - dAz/dr
-    //Z: 1/R [ d(rAt)/dr - dAr/dT]
+    //Z: Az/R + dAt/dr - 1/R dAr/dT]
     vtkm::FloatDefault rv, tv, zv;
     rv = 1/R * g[2][1] - g[1][2];
     tv = g[0][2] - g[2][1];
-    zv = 1/R * (R*g[1][0] - g[0][1]);
+    zv = As_bHat[i][1]/R + g[1][0] - 1/R*g[0][1];
     val[0] += rv;
     val[1] += tv;
     val[2] += zv;
@@ -543,7 +543,7 @@ RunPoincare(const vtkm::cont::DataSet& ds, const std::string& vname, vtkm::Id nu
 
   FieldHandle BField;
   ds.GetField(vname).GetData().AsArrayHandle(BField);
-  const vtkm::FloatDefault stepSize = 0.05;
+  const vtkm::FloatDefault stepSize = 0.01; //0.05;
   FieldType velocities(BField);
   GridEvalType eval(ds, velocities);
   Stepper rk4(eval, stepSize);
@@ -687,6 +687,28 @@ int main(int argc, char** argv)
   dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &numPlanes, adios2::Mode::Sync);
   meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_n"), &numNodes, adios2::Mode::Sync);
   meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_t"), &numTri, adios2::Mode::Sync);
+
+
+  //Try and do everything in cylindrical coords.
+  if (1)
+  {
+    bool isXYZ = false;
+    bool cylAdd = false;
+    auto ds = ReadMesh(meshStuff, dataStuff, isXYZ, cylAdd);
+    ReadScalar(dataStuff, ds, "dpot", isXYZ, cylAdd);
+    ReadScalar(dataStuff, ds, "apars", isXYZ, cylAdd);
+    ReadVec(bfieldStuff, ds, "B", isXYZ, cylAdd, "/node_data[0]/values");
+    ComputeV(ds);
+    RunPoincare(ds, "V", numSeeds, maxPunctures);
+    ds.PrintSummary(std::cout);
+
+//    vtkm::io::VTKDataSetWriter writer("computeV.vtk");
+//    writer.WriteDataSet(ds);
+    return 0;
+  }
+
+
+
 
   bool isXYZ = true;
   bool cylAdd = false;
