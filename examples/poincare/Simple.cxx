@@ -533,7 +533,11 @@ ReadMesh(adiosS* meshStuff, adiosS* /*dataStuff*/, bool isXYZ, bool cylAdd)
 }
 
 void
-RunPoincare(const vtkm::cont::DataSet& ds, const std::string& vname, vtkm::Id numSeeds, vtkm::Id maxPunctures)
+RunPoincare(const vtkm::cont::DataSet& ds,
+            const std::string& vname,
+            vtkm::Id numSeeds,
+            vtkm::Id maxPunctures,
+            vtkm::FloatDefault step)
 {
   using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec<double,3>>;
   using FieldType = vtkm::worklet::particleadvection::VelocityField<FieldHandle>;
@@ -543,7 +547,7 @@ RunPoincare(const vtkm::cont::DataSet& ds, const std::string& vname, vtkm::Id nu
 
   FieldHandle BField;
   ds.GetField(vname).GetData().AsArrayHandle(BField);
-  const vtkm::FloatDefault stepSize = 0.01; //0.05;
+  const vtkm::FloatDefault stepSize = step;
   FieldType velocities(BField);
   GridEvalType eval(ds, velocities);
   Stepper rk4(eval, stepSize);
@@ -577,7 +581,8 @@ RunPoincare(const vtkm::cont::DataSet& ds, const std::string& vname, vtkm::Id nu
     for (int i = 0; i < nPts; i++)
     {
       auto pt = portal.Get(i);
-      outPts<<pt[0]<<", "<<pt[1]<<", "<<pt[2]<<std::endl;
+      //outPts<<pt[0]<<", "<<pt[1]<<", "<<pt[2]<<std::endl;
+      outPts<<pt[0]<<", "<<pt[2]<<", 0"<<std::endl;
     }
     outPts.close();
   }
@@ -611,6 +616,57 @@ RunDebug(const vtkm::cont::DataSet& ds,
   writer.WriteDataSet(dsCyl);
 }
 
+class CalculateABhat : public vtkm::worklet::WorkletMapField
+{
+public:
+  using ControlSignature = void(FieldIn B,
+                                FieldIn apars,
+                                FieldOut output);
+  using ExecutionSignature = void(_1, _2, _3);
+
+  VTKM_EXEC void operator()(const vtkm::Vec3f& bvec,
+                            const vtkm::FloatDefault& apars,
+                            vtkm::Vec3f& output) const
+  {
+    output = vtkm::Normal(bvec) * apars;
+  }
+};
+
+class CalculateVecField : public vtkm::worklet::WorkletMapField
+{
+public:
+  using ControlSignature = void(FieldIn coords,
+                                FieldIn B,
+                                FieldIn apars,
+                                FieldIn gradient,
+                                FieldOut output);
+  using ExecutionSignature = void(_1, _2, _3, _4, _5);
+
+  template <typename GradientType>
+  VTKM_EXEC void operator()(const vtkm::Vec3f& point,
+                            const vtkm::Vec3f& bvec,
+                            const vtkm::Vec3f& a_bHat,
+                            const GradientType& grad,
+                            vtkm::Vec3f& output) const
+  {
+    const auto& R = point[0];
+    output = bvec;
+
+    //From: https://www.therightgate.com/deriving-curl-in-cylindrical-and-spherical/
+    //R: (1/R * dAz/dT  - dAT/dZ)
+    //T: dAr/dZ - dAz/dr
+    //Z: Az/R + dAt/dr - 1/R dAr/dT]
+    auto rv = 1/R * grad[2][1] - grad[1][2];
+    auto tv = grad[0][2] - grad[2][1];
+    auto zv = a_bHat[1]/R + grad[1][0] - 1/R*grad[0][1];
+
+    output[0] += rv;
+    output[1] += tv;
+    output[2] += zv;
+  }
+};
+
+
 int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
@@ -627,9 +683,9 @@ int main(int argc, char** argv)
   using Stepper = vtkm::worklet::particleadvection::Stepper<RK4Type, GridEvalType>;
   */
 
-  if (argc < 4)
+  if (argc < 5)
   {
-    std::cerr<<"Usage: "<<argv[0]<<" dataFile numSeeds maxPunctures [options]"<<std::endl;
+    std::cerr<<"Usage: "<<argv[0]<<" dataFile numSeeds maxPunctures stepSize [options]"<<std::endl;
     std::cerr<<config.Usage<<std::endl;
     return -1;
   }
@@ -669,6 +725,7 @@ int main(int argc, char** argv)
   std::string dataDir = std::string(argv[2]);
   vtkm::Id numSeeds = std::stoi(argv[3]);
   vtkm::Id maxPunctures = std::stoi(argv[4]);
+  vtkm::FloatDefault stepSize = std::stof(argv[5]);
   std::map<std::string, std::string> args;
   args["--dir"] = dataDir;
 
@@ -689,7 +746,7 @@ int main(int argc, char** argv)
   meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_t"), &numTri, adios2::Mode::Sync);
 
 
-  //Try and do everything in cylindrical coords.
+  //Try and do everything in cylindrical coords and worklets.
   if (1)
   {
     bool isXYZ = false;
@@ -698,15 +755,32 @@ int main(int argc, char** argv)
     ReadScalar(dataStuff, ds, "dpot", isXYZ, cylAdd);
     ReadScalar(dataStuff, ds, "apars", isXYZ, cylAdd);
     ReadVec(bfieldStuff, ds, "B", isXYZ, cylAdd, "/node_data[0]/values");
-    ComputeV(ds);
-    RunPoincare(ds, "V", numSeeds, maxPunctures);
-    ds.PrintSummary(std::cout);
 
-//    vtkm::io::VTKDataSetWriter writer("computeV.vtk");
-//    writer.WriteDataSet(ds);
+    vtkm::cont::Invoker invoker;
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> a_bhat, b;
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> apars;
+    ds.GetField("B").GetData().AsArrayHandle(b);
+    ds.GetField("apars").GetData().AsArrayHandle(apars);
+    invoker(CalculateABhat{}, b, apars, a_bhat);
+    ds.AddField(vtkm::cont::make_FieldPoint("As_bHat", a_bhat));
+
+    vtkm::filter::Gradient grad;
+    grad.SetComputePointGradient(true);
+    grad.SetActiveField("As_bHat");
+    grad.SetOutputFieldName("gradient");
+    ds = grad.Execute(ds);
+
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, output;
+    vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Vec3f,3>> gradient;
+
+    ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+    ds.GetField("gradient").GetData().AsArrayHandle(gradient);
+    invoker(CalculateVecField{}, coords, b, a_bhat, gradient, output);
+    ds.AddField(vtkm::cont::make_FieldPoint("V", output));
+
+    RunPoincare(ds, "V", numSeeds, maxPunctures, stepSize);
     return 0;
   }
-
 
 
 
@@ -799,7 +873,7 @@ int main(int argc, char** argv)
 
 
   std::cout<<"RunPoinc"<<std::endl;
-  RunPoincare(dsCyl, "V_RTZ", numSeeds, maxPunctures);
+  RunPoincare(dsCyl, "V_RTZ", numSeeds, maxPunctures, stepSize);
 
 
   return 0;
