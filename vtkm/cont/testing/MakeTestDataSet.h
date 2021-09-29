@@ -18,6 +18,7 @@
 #include <vtkm/cont/DataSetBuilderUniform.h>
 
 #include <vtkm/cont/testing/Testing.h>
+#include <vtkm/io/VTKDataSetWriter.h>
 
 #include <numeric>
 
@@ -76,6 +77,9 @@ public:
   vtkm::cont::DataSet Make3DExplicitDataSetZoo();
   vtkm::cont::DataSet Make3DExplicitDataSetPolygonal();
   vtkm::cont::DataSet Make3DExplicitDataSetCowNose();
+
+  // XGC Grid
+  vtkm::cont::DataSet MakeXGCDataSet();
 };
 
 //Make a simple 1D dataset.
@@ -1571,6 +1575,44 @@ inline vtkm::cont::DataSet MakeTestDataSet::Make3DExplicitDataSetCowNose()
 
   return dataSet;
 }
+
+inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet()
+{
+  const vtkm::Id numPlanes = 8;
+
+  std::vector<vtkm::FloatDefault> rz = { 1, 0, 1, 1, 2, 0, 2, 1 };
+
+  //vtkm::cont::ArrayHandle<vtkm::FloatDefault> pts;
+  auto pts = vtkm::cont::make_ArrayHandle(rz, vtkm::CopyFlag::On);
+
+  pts.Allocate(rz.size());
+  auto portal = pts.WritePortal();
+  for (vtkm::Id i = 0; i < static_cast<vtkm::Id>(rz.size()); i++)
+    portal.Set(i, rz[i]);
+
+  bool isCyl = false;
+  auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, isCyl);
+
+  //std::vector<vtkm::Int32> nextNode = {0,1,2,3};
+  //std::vector<vtkm::Int32> conn = {0,2,1,  1,2,3};
+  std::vector<vtkm::Int32> nextNode = { 0, 1, 2 };
+  std::vector<vtkm::Int32> conn = { 0, 2, 1 };
+
+  auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, isCyl);
+
+  vtkm::cont::DataSet dataSet;
+  dataSet.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", coords));
+  dataSet.SetCellSet(cellSet);
+  dataSet.PrintSummary(std::cout);
+
+  vtkm::io::VTKDataSetWriter writer("xgc.vtk");
+  writer.WriteDataSet(dataSet);
+
+
+  return dataSet;
+}
+
+
 }
 }
 } // namespace vtkm::cont::testing

@@ -39,6 +39,7 @@ using CellSetListExplicitDefault = CellSetListExplicit<>;
 
 using CellSetListCommon = vtkm::List<vtkm::cont::CellSetStructured<2>,
                                      vtkm::cont::CellSetStructured<3>,
+                                     vtkm::cont::CellSetExtrude,
                                      vtkm::cont::CellSetExplicit<>,
                                      vtkm::cont::CellSetSingleType<>>;
 

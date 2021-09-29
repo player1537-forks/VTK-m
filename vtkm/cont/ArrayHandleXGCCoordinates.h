@@ -221,6 +221,11 @@ public:
     return GetMetaData(buffers).UseCylindrical;
   }
 
+  VTKM_CONT static void SetUseCylindrical(bool useCyl, const vtkm::cont::internal::Buffer* buffers)
+  {
+    GetMetaData(buffers).UseCylindrical = useCyl;
+  }
+
   VTKM_CONT static ReadPortalType CreateReadPortal(const vtkm::cont::internal::Buffer* buffers,
                                                    vtkm::cont::DeviceAdapterId device,
                                                    vtkm::cont::Token& token)
@@ -323,6 +328,11 @@ public:
   VTKM_CONT bool GetUseCylindrical() const
   {
     return StorageType::GetUseCylindrical(this->GetBuffers());
+  }
+
+  VTKM_CONT void SetUseCylindrical(bool useCyl)
+  {
+    StorageType::SetUseCylindrical(useCyl, this->GetBuffers());
   }
 
   VTKM_CONT vtkm::Id GetNumberOfPointsPerPlane() const

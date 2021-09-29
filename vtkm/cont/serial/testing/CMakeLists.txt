@@ -16,6 +16,7 @@ set(unit_tests
   UnitTestSerialCellLocatorRectilinearGrid.cxx
   UnitTestSerialCellLocatorTwoLevel.cxx
   UnitTestSerialCellLocatorUniformGrid.cxx
+  UnitTestSerialCellLocatorXGCGrid.cxx
   UnitTestSerialComputeRange.cxx
   UnitTestSerialColorTable.cxx
   UnitTestSerialDataSetExplicit.cxx

@@ -12,9 +12,12 @@
 #include <vtkm/cont/ArrayHandle.h>
 #include <vtkm/cont/ArrayHandleCartesianProduct.h>
 #include <vtkm/cont/ArrayHandleUniformPointCoordinates.h>
+#include <vtkm/cont/ArrayHandleXGCCoordinates.h>
 #include <vtkm/cont/CellLocatorRectilinearGrid.h>
 #include <vtkm/cont/CellLocatorTwoLevel.h>
 #include <vtkm/cont/CellLocatorUniformGrid.h>
+#include <vtkm/cont/CellLocatorXGCGrid.h>
+#include <vtkm/cont/CellSetExtrude.h>
 #include <vtkm/cont/CellSetStructured.h>
 
 namespace
@@ -45,11 +48,13 @@ namespace cont
 VTKM_CONT void CellLocatorGeneral::Build()
 {
   using StructuredCellSet = vtkm::cont::CellSetStructured<3>;
+  using ExtrudedCellSet = vtkm::cont::CellSetExtrude;
   using UniformCoordinates = vtkm::cont::ArrayHandleUniformPointCoordinates;
   using RectilinearCoordinates =
     vtkm::cont::ArrayHandleCartesianProduct<vtkm::cont::ArrayHandle<vtkm::FloatDefault>,
                                             vtkm::cont::ArrayHandle<vtkm::FloatDefault>,
                                             vtkm::cont::ArrayHandle<vtkm::FloatDefault>>;
+  using XGCCoordinates = vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault>;
 
   vtkm::cont::DynamicCellSet cellSet = this->GetCellSet();
   vtkm::cont::CoordinateSystem coords = this->GetCoordinates();
@@ -61,6 +66,11 @@ VTKM_CONT void CellLocatorGeneral::Build()
   else if (cellSet.IsType<StructuredCellSet>() && coords.GetData().IsType<RectilinearCoordinates>())
   {
     BuildForType<vtkm::cont::CellLocatorRectilinearGrid>(*this, this->LocatorImpl);
+  }
+  else if (cellSet.IsType<ExtrudedCellSet>() && coords.GetData().IsType<XGCCoordinates>())
+  {
+    std::cout << "CreateXGC Cell Locator" << std::endl;
+    BuildForType<vtkm::cont::CellLocatorXGCGrid>(*this, this->LocatorImpl);
   }
   else
   {

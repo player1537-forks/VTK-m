@@ -62,6 +62,7 @@ set(headers
   CellLocatorTwoLevel.h
   CellLocatorUniformBins.h
   CellLocatorUniformGrid.h
+  CellLocatorXGCGrid.h
   CellSet.h
   CellSetExplicit.h
   CellSetExtrude.h
@@ -172,6 +173,7 @@ set(device_sources
   CellLocatorRectilinearGrid.cxx
   CellLocatorTwoLevel.cxx
   CellLocatorUniformGrid.cxx
+  CellLocatorXGCGrid.cxx
   CellSet.cxx
   CellSetExplicit.cxx
   CellSetExtrude.cxx

@@ -193,6 +193,7 @@ inline ConnectivityExtrude::ConnectivityExtrude(const ConnectivityPortalType& co
 VTKM_EXEC inline ConnectivityExtrude::IndicesType ConnectivityExtrude::GetIndices(
   const vtkm::Id2& index) const
 {
+  //  std::cout<<"GetIndices: (cellId, plane)= "<<index[0]<<", "<<index[1]<<std::endl;
   vtkm::Id tr = index[0];
   vtkm::Id p0 = index[1];
   vtkm::Id p1 = (p0 < (this->NumberOfPlanes - 1)) ? (p0 + 1) : 0;

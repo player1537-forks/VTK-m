@@ -17,6 +17,7 @@ set(headers
   TestingCellLocatorRectilinearGrid.h
   TestingCellLocatorTwoLevel.h
   TestingCellLocatorUniformGrid.h
+  TestingCellLocatorXGCGrid.h
   TestingColorTable.h
   TestingComputeRange.h
   TestingDeviceAdapter.h
@@ -25,75 +26,72 @@ set(headers
   TestingFancyArrayHandles.h
   TestingImplicitFunction.h
   TestingPointLocatorSparseGrid.h
-  TestingRuntimeDeviceConfiguration.h
   TestingSerialization.h
   TestingVirtualObjectHandle.h
   )
 
 set(unit_tests
   UnitTestAlgorithm.cxx
-  UnitTestArrayCopy.cxx
-  UnitTestArrayExtractComponent.cxx
-  UnitTestArrayGetValues.cxx
-  UnitTestArrayHandleCartesianProduct.cxx
-  UnitTestArrayHandleCompositeVector.cxx
-  UnitTestArrayHandleConcatenate.cxx
-  UnitTestArrayHandleCounting.cxx
-  UnitTestArrayHandleDecorator.cxx
-  UnitTestArrayHandleDiscard.cxx
-  UnitTestArrayHandleExtractComponent.cxx
-  UnitTestArrayHandleImplicit.cxx
-  UnitTestArrayHandleIndex.cxx
-  UnitTestArrayHandleOffsetsToNumComponents.cxx
-  UnitTestArrayHandlePermutation.cxx
-  UnitTestArrayHandleRandomStandardNormal.cxx
-  UnitTestArrayHandleRandomUniformBits.cxx
-  UnitTestArrayHandleRandomUniformReal.cxx
-  UnitTestArrayHandleReverse.cxx
-  UnitTestArrayHandleSwizzle.cxx
-  UnitTestArrayHandleThreadSafety.cxx
-  UnitTestArrayHandleTransform.cxx
-  UnitTestArrayHandleUniformPointCoordinates.cxx
-  UnitTestArrayHandleVirtual.cxx
-  UnitTestArrayHandleXGCCoordinates.cxx
-  UnitTestArrayPortalToIterators.cxx
-  UnitTestArrayRangeCompute.cxx
-  UnitTestCellLocatorChooser.cxx
+  #UnitTestArrayCopy.cxx
+  #UnitTestArrayExtractComponent.cxx
+  #UnitTestArrayGetValues.cxx
+  #UnitTestArrayHandleCartesianProduct.cxx
+  #UnitTestArrayHandleCompositeVector.cxx
+  #UnitTestArrayHandleConcatenate.cxx
+  #UnitTestArrayHandleCounting.cxx
+  #UnitTestArrayHandleDecorator.cxx
+  #UnitTestArrayHandleDiscard.cxx
+  #UnitTestArrayHandleExtractComponent.cxx
+  #UnitTestArrayHandleImplicit.cxx
+  #UnitTestArrayHandleIndex.cxx
+  #UnitTestArrayHandleOffsetsToNumComponents.cxx
+  #UnitTestArrayHandlePermutation.cxx
+  #UnitTestArrayHandleRandomStandardNormal.cxx
+  #UnitTestArrayHandleRandomUniformBits.cxx
+  #UnitTestArrayHandleRandomUniformReal.cxx
+  #UnitTestArrayHandleReverse.cxx
+  #UnitTestArrayHandleSwizzle.cxx
+  #UnitTestArrayHandleThreadSafety.cxx
+  #UnitTestArrayHandleTransform.cxx
+  #UnitTestArrayHandleUniformPointCoordinates.cxx
+  #UnitTestArrayHandleVirtual.cxx
+  #UnitTestArrayHandleXGCCoordinates.cxx
+  #UnitTestArrayPortalToIterators.cxx
+  #UnitTestArrayRangeCompute.cxx
+  #UnitTestCellLocatorChooser.cxx
   UnitTestCellLocatorGeneral.cxx
-  UnitTestCellSet.cxx
-  UnitTestCellSetExplicit.cxx
-  UnitTestCellSetExtrude.cxx
-  UnitTestCellSetPermutation.cxx
-  UnitTestContTesting.cxx
-  UnitTestDataSetBuilderCurvilinear.cxx
-  UnitTestDataSetBuilderExplicit.cxx
-  UnitTestDataSetBuilderRectilinear.cxx
-  UnitTestDataSetBuilderUniform.cxx
-  UnitTestDataSetConvertToExpected.cxx
-  UnitTestDataSetPermutation.cxx
-  UnitTestDataSetRectilinear.cxx
-  UnitTestDataSetUniform.cxx
-  UnitTestDeviceAdapterAlgorithmDependency.cxx
-  UnitTestDeviceAdapterAlgorithmGeneral.cxx
-  UnitTestDeviceSelectOnThreads.cxx
-  UnitTestDynamicCellSet.cxx
-  UnitTestError.cxx
-  UnitTestFieldRangeCompute.cxx
-  UnitTestInitialize.cxx
-  UnitTestLogging.cxx
-  UnitTestMoveConstructors.cxx
-  UnitTestParticleArrayCopy.cxx
-  UnitTestPartitionedDataSet.cxx
-  UnitTestRuntimeDeviceInformation.cxx
-  UnitTestRuntimeDeviceNames.cxx
-  UnitTestScopedRuntimeDeviceTracker.cxx
-  UnitTestStorageList.cxx
-  UnitTestStorageListTag.cxx
-  UnitTestTimer.cxx
-  UnitTestToken.cxx
-  UnitTestTryExecute.cxx
-  UnitTestUnknownArrayHandle.cxx
-  UnitTestVariantArrayHandle.cxx
+  #UnitTestCellSet.cxx
+  #UnitTestCellSetExplicit.cxx
+  #UnitTestCellSetExtrude.cxx
+  #UnitTestCellSetPermutation.cxx
+  #UnitTestContTesting.cxx
+  #UnitTestDataSetBuilderCurvilinear.cxx
+  #UnitTestDataSetBuilderExplicit.cxx
+  #UnitTestDataSetBuilderRectilinear.cxx
+  #UnitTestDataSetBuilderUniform.cxx
+  #UnitTestDataSetPermutation.cxx
+  #UnitTestDataSetRectilinear.cxx
+  #UnitTestDataSetUniform.cxx
+  #UnitTestDeviceAdapterAlgorithmDependency.cxx
+  #UnitTestDeviceAdapterAlgorithmGeneral.cxx
+  #UnitTestDynamicCellSet.cxx
+  #UnitTestError.cxx
+  #UnitTestFieldRangeCompute.cxx
+  #UnitTestInitialize.cxx
+  #UnitTestLogging.cxx
+  #UnitTestMoveConstructors.cxx
+  #UnitTestParticleArrayCopy.cxx
+  #UnitTestPartitionedDataSet.cxx
+  #UnitTestRuntimeDeviceInformation.cxx
+  #UnitTestRuntimeDeviceNames.cxx
+  #UnitTestScopedRuntimeDeviceTracker.cxx
+  #UnitTestStorageList.cxx
+  #UnitTestStorageListTag.cxx
+  #UnitTestTimer.cxx
+  #UnitTestToken.cxx
+  #UnitTestTryExecute.cxx
+  #UnitTestUnknownArrayHandle.cxx
+  #UnitTestVariantArrayHandle.cxx
   )
 
 set(library_sources
@@ -110,7 +108,7 @@ vtkm_library(
   DEVICE_SOURCES ${library_sources_device}
   HEADERS ${headers}
   )
-target_link_libraries(vtkm_cont_testing PUBLIC vtkm_cont)
+target_link_libraries(vtkm_cont_testing PUBLIC vtkm_cont vtkm_io)
 
 vtkm_unit_tests(SOURCES ${unit_tests} DEFINES VTKM_NO_ERROR_ON_MIXED_CUDA_CXX_TAG)
 
