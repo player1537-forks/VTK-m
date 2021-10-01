@@ -80,6 +80,7 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   std::cout << "************************** #Cells= " << numberOfCells << std::endl;
 
   std::cout << "Fix me: Last cell is implicit." << std::endl;
+  std::cout << "TODO: Add corner cases." << std::endl;
   std::uniform_int_distribution<vtkm::Id> cellIdGen;
   std::uniform_real_distribution<vtkm::FloatDefault> pcoordGen;
 

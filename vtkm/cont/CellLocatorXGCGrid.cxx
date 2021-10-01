@@ -134,16 +134,10 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
   this->Update();
 
   auto locMux = this->TwoLevelLocator.PrepareForExecution(device, token);
-
-  //using CellLocatorExtrudeType = vtkm::cont::CellSetExtrude::ExecConnectivityType<vtkm::TopologyElementTagCell, vtkm::TopologyElementTagPoint>;
-  //using CellLocatorExtrudeType = vtkm::cont::CellSetExtrude::CellSetExtrudeConnectivityChoser::ExecConnectivity<vtkm::TopologyElementTagCell, vtkm::TopologyElementTagPoint>;
-  //using CellLocatorExtrudeType = vtkm::exec::ConnectivityExtrude;
-  //  using CellLocatorSingleType = vtkm::cont::CellSetSingleType<>::ExecConnectivityType<vtkm::TopologyElementTagCell, vtkm::TopologyElementTagPoint>;
   using SingleConnectivityType =
     vtkm::cont::CellSetSingleType<>::ExecConnectivityType<vtkm::TopologyElementTagCell,
                                                           vtkm::TopologyElementTagPoint>;
   using ExtrudeConnectivityType = vtkm::exec::ConnectivityExtrude;
-
 
   vtkm::cont::DynamicCellSet cellSet = this->GetCellSet();
   auto xgcCellSet = cellSet.Cast<vtkm::cont::CellSetExtrude>();
@@ -155,67 +149,16 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
 
   if (this->IsCylindrical)
   {
-//    vtkm::cont::CellLocatorTwoLevel::ExecObjType x;
-#if 1
     auto locator = locMux.Locators.Get<vtkm::exec::CellLocatorTwoLevel<ExtrudeConnectivityType>>();
-    //locMux.Locators.meow();
-
-    //    locator.meow();
-
-    //    return vtkm::exec::CellLocatorXGCGrid(locator);
-
     return vtkm::exec::CellLocatorXGCGrid(
       cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane, this->IsCylindrical);
-#endif
   }
   else
   {
     auto locator = locMux.Locators.Get<vtkm::exec::CellLocatorTwoLevel<SingleConnectivityType>>();
-    //    locator.meow();
     return vtkm::exec::CellLocatorXGCGrid(
       cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane, this->IsCylindrical);
   }
-
-
-#if 0
-//  using CoordsPortalType =
-//    typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
-
-  this->TwoLevelLocator.Update();
-  this->Update();
-
-  auto locMux = this->TwoLevelLocator.PrepareForExecution(device, token);
-  using CellLocatorType = vtkm::cont::CellSetSingleType<>::ExecConnectivityType<vtkm::TopologyElementTagCell, vtkm::TopologyElementTagPoint>;
-
-  //auto coords = this->GetCoordinates().GetData();
-  vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault> xgcCoords;
-  this->GetCoordinates().GetData().AsArrayHandle(xgcCoords);
-  //auto xgcCoords = coords.Cast<vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault>>();
-  auto coordsExec = xgcCoords.PrepareForInput(device, token);
-  //CoordsPortalType coordsExec = xgcCoords.PrepareForInput(device, token);
-//  coordsExec.meow();
-//  vtkm::internal::ArrayPortalXGCCoordinates<vtkm::internal::ArrayPortalBasicRead<vtkm::FloatDefault>> bum;
-//  bum = xgcCoords.PrepareForInput(device, token);
-  vtkm::cont::DynamicCellSet cellSet = this->GetCellSet();
-  auto xgcCellSet = cellSet.Cast<vtkm::cont::CellSetExtrude>();
-  auto cellSetExec = xgcCellSet.PrepareForInput(device, vtkm::TopologyElementTagCell{}, vtkm::TopologyElementTagPoint{}, token);
-  //cellSetExec.meow();
-
-  auto locator = locMux.Locators.Get<vtkm::exec::CellLocatorTwoLevel<CellLocatorType>>();
-  return vtkm::exec::CellLocatorXGCGrid(cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane, this->IsCylindrical);
-#endif
-
-  /*
-  return vtkm::exec::CellLocatorXGCGrid(//xgcCellSet,
-                                        this->GetCellSet(),
-                                        locator,
-                                        this->IsCylindrical,
-                                        this->CellsPerPlane,
-                                        this->NumPlanes);
-//                                        device,
-//                                        token);
-//                                        cellSetExec);
-*/
 }
 
 } //namespace cont
