@@ -57,6 +57,7 @@ public:
                             PointType& wc) const
   {
     auto status = vtkm::exec::CellInterpolate(points, pc, cellShape, wc);
+    /*
     std::cout << "Parametric to World: " << pc << " --> " << wc << std::endl;
     std::cout << " wedge points: " << std::endl;
     for (int i = 0; i < 6; i++)
@@ -64,6 +65,7 @@ public:
     PointType wc2;
     vtkm::exec::ParametricCoordinatesToWorldCoordinates(points, pc, cellShape, wc2);
     std::cout << "  ---------------> convert back: " << wc2 << std::endl;
+    */
 
     if (status != vtkm::ErrorCode::Success)
       this->RaiseError(vtkm::ErrorString(status));
@@ -76,7 +78,11 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
                          vtkm::cont::ArrayHandle<vtkm::Vec3f>& wcoords,
                          bool isCyl)
 {
-  vtkm::Id numberOfCells = ds.GetNumberOfCells();
+  vtkm::cont::DynamicCellSet cellSet = ds.GetCellSet();
+  auto xgcCellSet = cellSet.Cast<vtkm::cont::CellSetExtrude>();
+
+  //Handle the periodic case as well.
+  vtkm::Id numberOfCells = ds.GetNumberOfCells() - xgcCellSet.GetNumberOfCellsPerPlane();
   std::cout << "************************** #Cells= " << numberOfCells << std::endl;
 
   std::cout << "Fix me: Last cell is implicit." << std::endl;
@@ -89,7 +95,7 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
 
   if (isCyl)
   {
-    cellIdGen = std::uniform_int_distribution<vtkm::Id>(0, numberOfCells - 2);
+    cellIdGen = std::uniform_int_distribution<vtkm::Id>(0, numberOfCells - 1);
     pcoordGen = std::uniform_real_distribution<vtkm::FloatDefault>(0.0f, 1.0f);
   }
   else
@@ -120,6 +126,10 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
     vtkm::Vec3f p{ p0, p1, p2 };
     pc.push_back(p);
   }
+  cids.push_back(0);
+  pc.push_back({ .15, .15, .5 });
+  cids.push_back(1);
+  pc.push_back({ .15, .15, .5 });
 
 #if 0
   //Add some corner points.
@@ -164,12 +174,8 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   {
     auto pt = wcPortal.Get(i);
     ptF << pt[0] << "," << pt[1] << "," << pt[2] << std::endl;
-    std::cout << "   " << i << ": " << cidPortal.Get(i) << " " << pcPortal.Get(i) << " --> "
-              << wcPortal.Get(i) << std::endl;
-    auto p = wcPortal.Get(i);
-    auto R2 = p[0] * p[0] + p[1] * p[1];
-    auto R = vtkm::Sqrt(R2);
-    std::cout << "     eps testing: " << p << " --> " << R2 << " " << R << std::endl;
+    std::cout << "   " << i << ": cell= " << cidPortal.Get(i) << " param= " << pcPortal.Get(i)
+              << " --> wc= " << wcPortal.Get(i) << std::endl;
   }
   std::cout << "****************************************" << std::endl;
   std::cout << "****************************************" << std::endl;
@@ -210,7 +216,7 @@ public:
 
   void TestLocator(bool isCyl) const
   {
-    vtkm::cont::DataSet dataset = vtkm::cont::testing::MakeTestDataSet().MakeXGCDataSet(isCyl);
+    vtkm::cont::DataSet dataset = vtkm::cont::testing::MakeTestDataSet().MakeXGCDataSet(isCyl, 3);
     vtkm::cont::CoordinateSystem coords = dataset.GetCoordinateSystem();
     vtkm::cont::DynamicCellSet cellSet = dataset.GetCellSet();
 
@@ -254,7 +260,7 @@ public:
   {
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(DeviceAdapter());
     this->TestLocator(true);
-    this->TestLocator(false);
+    //this->TestLocator(false);
   }
 };
 
