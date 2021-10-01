@@ -1579,15 +1579,15 @@ inline vtkm::cont::DataSet MakeTestDataSet::Make3DExplicitDataSetCowNose()
 inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical, vtkm::Id numPlanes)
 {
 
-  std::vector<vtkm::FloatDefault> rz = { 1, 0, 1, 1, 2, 0 }; //, 2,1};
+  std::vector<vtkm::FloatDefault> rz = { 1, 0, 1, 1, 2, 0, 2, 1 };
 
   auto pts = vtkm::cont::make_ArrayHandle(rz, vtkm::CopyFlag::On);
   auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, useCylindrical);
 
   //  std::vector<vtkm::Int32> nextNode = {0,1,2,3};
   //  std::vector<vtkm::Int32> conn = {0,2,1,  1,2,3};
-  std::vector<vtkm::Int32> nextNode = { 0, 1, 2 };
-  std::vector<vtkm::Int32> conn = { 0, 2, 1 };
+  std::vector<vtkm::Int32> nextNode = { 0, 1, 2, 3 };
+  std::vector<vtkm::Int32> conn = { 0, 2, 1, 1, 2, 3 };
 
   auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, useCylindrical);
 
