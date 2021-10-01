@@ -10,55 +10,20 @@
 
 #include <vtkm/cont/Algorithm.h>
 #include <vtkm/cont/ArrayCopy.h>
+#include <vtkm/cont/ArrayHandleCompositeVector.h>
+#include <vtkm/cont/ArrayHandleConstant.h>
 #include <vtkm/cont/ArrayHandleStride.h>
 #include <vtkm/cont/ArrayHandleXGCCoordinates.h>
 #include <vtkm/cont/CellLocatorTwoLevel.h>
 #include <vtkm/cont/CellLocatorXGCGrid.h>
 #include <vtkm/cont/CellSetExtrude.h>
 #include <vtkm/cont/CellSetSingleType.h>
-#include <vtkm/cont/Invoker.h>
 #include <vtkm/exec/ConnectivityExtrude.h>
-#include <vtkm/worklet/WorkletMapField.h>
 
 namespace vtkm
 {
 namespace cont
 {
-
-namespace internal
-{
-class ExtractRZPoints : public vtkm::worklet::WorkletMapField
-{
-public:
-  ExtractRZPoints(bool cyl)
-    : IsCylindrical(cyl)
-  {
-  }
-
-  using ControlSignature = void(WholeArrayIn points1,
-                                WholeArrayIn points2,
-
-
-                                FieldOut output);
-  using ExecutionSignature = void(_1, _2);
-
-  VTKM_EXEC void operator()(const vtkm::Vec3f& point, vtkm::Vec3f& output) const
-  {
-    vtkm::FloatDefault R, Z = point[2];
-    if (this->IsCylindrical)
-      R = point[0];
-    else
-      R = vtkm::Sqrt(point[0] * point[0] + point[1] * point[1]);
-
-    output[0] = R;
-    output[1] = Z;
-    output[2] = 0;
-  }
-
-private:
-  bool IsCylindrical;
-};
-}
 
 using XGCType = vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault>;
 using ExtrudedCell = vtkm::cont::CellSetExtrude;
@@ -79,50 +44,43 @@ void CellLocatorXGCGrid::Build()
   XGCType xgcCoordSys;
   coords.GetData().AsArrayHandle(xgcCoordSys);
   this->IsCylindrical = xgcCoordSys.GetUseCylindrical();
-  auto rzPts = xgcCoordSys.GetArray();
+
   auto xgcCellSet = cellSet.Cast<vtkm::cont::CellSetExtrude>();
-
-  vtkm::Id ptsPerPlane = xgcCellSet.GetNumberOfPointsPerPlane();
   this->NumPlanes = xgcCellSet.GetNumberOfPlanes();
-
+  this->CellsPerPlane = xgcCellSet.GetNumberOfCellsPerPlane();
 
   //If cylindrical, create a TwoLevelLocator on the 3D points.
   if (this->IsCylindrical)
   {
-    this->TwoLevelLocator.SetCellSet(cellSet);
-    this->TwoLevelLocator.SetCoordinates(coords);
+    this->CellLocator.SetCellSet(cellSet);
+    this->CellLocator.SetCoordinates(coords);
   }
   else
   {
-    //Create the RZ 2D plane.
-    vtkm::cont::ArrayHandle<vtkm::Vec3f> planePts;
-    planePts.Allocate(ptsPerPlane);
-    auto portal = rzPts.ReadPortal();
-    auto portal3d = planePts.WritePortal();
-    //TODO: make this a worklet.
-    std::cout << "Create RZ builder." << std::endl;
-    for (vtkm::Id i = 0; i < ptsPerPlane; i++)
-    {
-      vtkm::Vec3f rzPt(portal.Get(i * 2 + 0), portal.Get(i * 2 + 1), 0);
-      std::cout << "   " << i << "RZ= " << rzPt << std::endl;
-      portal3d.Set(i, rzPt);
-    }
+    //For cartesian, create a locator on the RZ plane points.
+    auto rzPts = xgcCoordSys.GetArray();
 
-    std::cout << "NPTS= " << planePts.GetNumberOfValues() << " " << rzPts.GetNumberOfValues()
-              << std::endl;
+    //Create the RZ 2D plane.
+    vtkm::Id num = rzPts.GetNumberOfValues();
+    ArrayHandleStride<vtkm::FloatDefault> RCoords(rzPts, num / 2, 2, 0);
+    ArrayHandleStride<vtkm::FloatDefault> ZCoords(rzPts, num / 2, 2, 1);
+    auto ZeroArray = vtkm::cont::make_ArrayHandleConstant(vtkm::FloatDefault(0), num / 2);
+
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> planePts;
+    vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleCompositeVector(RCoords, ZCoords, ZeroArray),
+                          planePts);
+
     vtkm::cont::ArrayHandle<vtkm::Id> conn;
     vtkm::cont::ArrayCopy(
       vtkm::cont::make_ArrayHandleCast<vtkm::Id>(xgcCellSet.GetConnectivityArray()), conn);
-    this->PlaneCells.Fill(ptsPerPlane, vtkm::CELL_SHAPE_TRIANGLE, 3, conn);
-    this->CellsPerPlane = this->PlaneCells.GetNumberOfCells();
+    vtkm::cont::CellSetSingleType<> planeCells;
+    vtkm::Id ptsPerPlane = xgcCellSet.GetNumberOfPointsPerPlane();
+    planeCells.Fill(ptsPerPlane, vtkm::CELL_SHAPE_TRIANGLE, 3, conn);
+    this->CellsPerPlane = planeCells.GetNumberOfCells();
 
-    this->PlaneCoords = vtkm::cont::CoordinateSystem("coords", planePts);
-    this->TwoLevelLocator.SetCellSet(this->PlaneCells);
-    this->TwoLevelLocator.SetCoordinates(this->PlaneCoords);
-
-    std::cout << "Build 2DPlane locator" << std::endl;
-    vtkm::cont::printSummary_ArrayHandle(planePts, std::cout, true);
-    vtkm::cont::printSummary_ArrayHandle(conn, std::cout, true);
+    //Use RZ plane for the locator
+    this->CellLocator.SetCellSet(planeCells);
+    this->CellLocator.SetCoordinates(vtkm::cont::CoordinateSystem("coords", planePts));
   }
 }
 
@@ -130,14 +88,10 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
   vtkm::cont::DeviceAdapterId device,
   vtkm::cont::Token& token) const
 {
-  this->TwoLevelLocator.Update();
+  this->CellLocator.Update();
   this->Update();
 
-  auto locMux = this->TwoLevelLocator.PrepareForExecution(device, token);
-  using SingleConnectivityType =
-    vtkm::cont::CellSetSingleType<>::ExecConnectivityType<vtkm::TopologyElementTagCell,
-                                                          vtkm::TopologyElementTagPoint>;
-  using ExtrudeConnectivityType = vtkm::exec::ConnectivityExtrude;
+  auto locMux = this->CellLocator.PrepareForExecution(device, token);
 
   vtkm::cont::DynamicCellSet cellSet = this->GetCellSet();
   auto xgcCellSet = cellSet.Cast<vtkm::cont::CellSetExtrude>();
@@ -149,12 +103,17 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
 
   if (this->IsCylindrical)
   {
+    using ExtrudeConnectivityType = vtkm::exec::ConnectivityExtrude;
+
     auto locator = locMux.Locators.Get<vtkm::exec::CellLocatorTwoLevel<ExtrudeConnectivityType>>();
     return vtkm::exec::CellLocatorXGCGrid(
       cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane, this->IsCylindrical);
   }
   else
   {
+    using SingleConnectivityType =
+      vtkm::cont::CellSetSingleType<>::ExecConnectivityType<vtkm::TopologyElementTagCell,
+                                                            vtkm::TopologyElementTagPoint>;
     auto locator = locMux.Locators.Get<vtkm::exec::CellLocatorTwoLevel<SingleConnectivityType>>();
     return vtkm::exec::CellLocatorXGCGrid(
       cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane, this->IsCylindrical);

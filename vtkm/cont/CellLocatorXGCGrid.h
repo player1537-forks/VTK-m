@@ -30,19 +30,10 @@ public:
                                                                vtkm::cont::Token& token) const;
 
 private:
-  vtkm::Id NumPlanes;
-  vtkm::Id CellsPerPlane;
-  bool IsCylindrical;
-  vtkm::cont::CellLocatorTwoLevel TwoLevelLocator;
-  vtkm::cont::CoordinateSystem PlaneCoords;
-  vtkm::cont::CellSetSingleType<> PlaneCells;
-
-  vtkm::Id3 CellDims;
-  vtkm::Id3 PointDims;
-  vtkm::Vec3f Origin;
-  vtkm::Vec3f InvSpacing;
-  vtkm::Vec3f MaxPoint;
-  bool Is3D = true;
+  vtkm::cont::CellLocatorTwoLevel CellLocator;
+  vtkm::Id CellsPerPlane = -1;
+  bool IsCylindrical = false;
+  vtkm::Id NumPlanes = -1;
 
   friend Superclass;
   VTKM_CONT void Build();

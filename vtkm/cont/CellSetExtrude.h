@@ -95,6 +95,7 @@ public:
   }
 
   vtkm::Int32 GetNumberOfPointsPerPlane() const { return this->NumberOfPointsPerPlane; }
+  vtkm::Int32 GetNumberOfCellsPerPlane() const { return this->NumberOfCellsPerPlane; }
 
   const vtkm::cont::ArrayHandle<vtkm::Int32>& GetNextNodeArray() const { return this->NextNode; }
 
