@@ -87,7 +87,8 @@ public:
                            vtkm::Id& cellId,
                            vtkm::Vec3f& parametric) const
   {
-
+    std::cout << std::endl;
+    std::cout << "***************** FindCell: " << point << std::endl;
     if (this->UseCylindrical)
       return this->FindCellCylindrical(point, cellId, parametric);
     else

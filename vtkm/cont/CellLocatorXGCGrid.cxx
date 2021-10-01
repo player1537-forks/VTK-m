@@ -94,39 +94,36 @@ void CellLocatorXGCGrid::Build()
   }
   else
   {
-    std::cout << "TODO" << std::endl;
+    //Create the RZ 2D plane.
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> planePts;
+    planePts.Allocate(ptsPerPlane);
+    auto portal = rzPts.ReadPortal();
+    auto portal3d = planePts.WritePortal();
+    //TODO: make this a worklet.
+    std::cout << "Create RZ builder." << std::endl;
+    for (vtkm::Id i = 0; i < ptsPerPlane; i++)
+    {
+      vtkm::Vec3f rzPt(portal.Get(i * 2 + 0), portal.Get(i * 2 + 1), 0);
+      std::cout << "   " << i << "RZ= " << rzPt << std::endl;
+      portal3d.Set(i, rzPt);
+    }
+
+    std::cout << "NPTS= " << planePts.GetNumberOfValues() << " " << rzPts.GetNumberOfValues()
+              << std::endl;
+    vtkm::cont::ArrayHandle<vtkm::Id> conn;
+    vtkm::cont::ArrayCopy(
+      vtkm::cont::make_ArrayHandleCast<vtkm::Id>(xgcCellSet.GetConnectivityArray()), conn);
+    this->PlaneCells.Fill(ptsPerPlane, vtkm::CELL_SHAPE_TRIANGLE, 3, conn);
+    this->CellsPerPlane = this->PlaneCells.GetNumberOfCells();
+
+    this->PlaneCoords = vtkm::cont::CoordinateSystem("coords", planePts);
+    this->TwoLevelLocator.SetCellSet(this->PlaneCells);
+    this->TwoLevelLocator.SetCoordinates(this->PlaneCoords);
+
+    std::cout << "Build 2DPlane locator" << std::endl;
+    vtkm::cont::printSummary_ArrayHandle(planePts, std::cout, true);
+    vtkm::cont::printSummary_ArrayHandle(conn, std::cout, true);
   }
-
-#if 0
-  //Create the RZ 2D plane.
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> planePts;
-  planePts.Allocate(ptsPerPlane);
-  auto portal = rzPts.ReadPortal();
-  auto portal3d = planePts.WritePortal();
-  //TODO: make this a worklet.
-  std::cout<<"Create RZ builder."<<std::endl;
-  for (vtkm::Id i = 0; i < ptsPerPlane; i++)
-  {
-    vtkm::Vec3f rzPt(portal.Get(i*2+0), portal.Get(i*2+1), 0);
-    std::cout<<"   "<<i<<"RZ= "<<rzPt<<std::endl;
-    portal3d.Set(i, rzPt);
-  }
-
-  std::cout<<"NPTS= "<<planePts.GetNumberOfValues()<<" "<<rzPts.GetNumberOfValues()<<std::endl;
-  vtkm::cont::ArrayHandle<vtkm::Id> conn;
-  vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleCast<vtkm::Id>(xgcCellSet.GetConnectivityArray()),
-                        conn);
-  this->PlaneCells.Fill(ptsPerPlane, vtkm::CELL_SHAPE_TRIANGLE, 3, conn);
-  this->CellsPerPlane = this->PlaneCells.GetNumberOfCells();
-
-  this->PlaneCoords = vtkm::cont::CoordinateSystem("coords", planePts);
-  this->TwoLevelLocator.SetCellSet(this->PlaneCells);
-  this->TwoLevelLocator.SetCoordinates(this->PlaneCoords);
-
-  std::cout<<"Build 2DPlane locator"<<std::endl;
-  vtkm::cont::printSummary_ArrayHandle(planePts, std::cout, true);
-  vtkm::cont::printSummary_ArrayHandle(conn, std::cout, true);
-#endif
 }
 
 vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(

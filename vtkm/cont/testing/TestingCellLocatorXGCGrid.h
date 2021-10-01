@@ -80,8 +80,24 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   std::cout << "************************** #Cells= " << numberOfCells << std::endl;
 
   std::cout << "Fix me: Last cell is implicit." << std::endl;
-  std::uniform_int_distribution<vtkm::Id> cellIdGen(0, numberOfCells - 2);
-  std::uniform_real_distribution<vtkm::FloatDefault> pcoordGen(0.0f, 1.0f);
+  std::uniform_int_distribution<vtkm::Id> cellIdGen;
+  std::uniform_real_distribution<vtkm::FloatDefault> pcoordGen;
+
+  vtkm::FloatDefault zero(0), one(1);
+  static const vtkm::FloatDefault eps = 1e-4;
+
+  if (isCyl)
+  {
+    cellIdGen = std::uniform_int_distribution<vtkm::Id>(0, numberOfCells - 2);
+    pcoordGen = std::uniform_real_distribution<vtkm::FloatDefault>(0.0f, 1.0f);
+  }
+  else
+  {
+    zero = eps;
+    one = 1 - eps;
+    cellIdGen = std::uniform_int_distribution<vtkm::Id>(0, numberOfCells - 1);
+    pcoordGen = std::uniform_real_distribution<vtkm::FloatDefault>(0.05f, 0.95f);
+  }
 
   std::vector<vtkm::Id> cids;
   std::vector<vtkm::Vec3f> pc, wc;
@@ -104,23 +120,28 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
     pc.push_back(p);
   }
 
+#if 0
   //Add some corner points.
   //Pts at Z=0 or Z=1 are the same point, so either cell would do.
   //Tweak it by eps so that it will be one and only one cell.
-  static const vtkm::FloatDefault eps = 1e-6;
 
-  cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({ 0, 0, eps });
+  //This is problematic for cylindrical. (0,0,0) in cell 4 is the same as (0,0,1) in cell 5.
+//  cids.push_back(5);
+//  pc.push_back({zero,zero,zero});
+//  cids.push_back(cellIdGen(RandomGenerator));
+//  pc.push_back({zero,zero,zero});
+
   cids.push_back(cellIdGen(RandomGenerator)); //pt not in plane
-  pc.push_back({ 0, 0, 1 - eps });
+  pc.push_back({zero,zero,one});
   cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({ 1, 0, eps });
+  pc.push_back({one,zero,eps});
   cids.push_back(cellIdGen(RandomGenerator)); //wrong cell
-  pc.push_back({ 1, 0, 1 - eps });
+  pc.push_back({one,zero,one});
   cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({ 0, 1, eps });
+  pc.push_back({zero,one,eps});
   cids.push_back(cellIdGen(RandomGenerator)); //wrong cell / wrong param
-  pc.push_back({ 0, 1, 1 - eps });
+  pc.push_back({zero,one,one});
+#endif
 
   cellIds = vtkm::cont::make_ArrayHandle(cids, vtkm::CopyFlag::On);
   pcoords = vtkm::cont::make_ArrayHandle(pc, vtkm::CopyFlag::On);
@@ -130,25 +151,27 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   dispatcher.Invoke(
     ds.GetCellSet(), ds.GetCoordinateSystem().GetDataAsMultiplexer(), pcoords, wcoords);
 
-#if 0
-  std::cout<<"****************************************"<<std::endl;
-  std::cout<<"RandomInput"<<std::endl<<std::endl;
-  std::ofstream ptF; ptF.open("points.txt");
+#if 1
+  std::cout << "****************************************" << std::endl;
+  std::cout << "RandomInput" << std::endl << std::endl;
+  std::ofstream ptF;
+  ptF.open("points.txt");
   auto cidPortal = cellIds.ReadPortal();
   auto pcPortal = pcoords.ReadPortal();
   auto wcPortal = wcoords.ReadPortal();
   for (vtkm::Id i = 0; i < cidPortal.GetNumberOfValues(); i++)
   {
     auto pt = wcPortal.Get(i);
-    ptF<<pt[0]<<","<<pt[1]<<","<<pt[2]<<std::endl;
-    std::cout<<"   "<<i<<": "<<cidPortal.Get(i)<<" "<<pcPortal.Get(i)<<" --> "<<wcPortal.Get(i)<<std::endl;
+    ptF << pt[0] << "," << pt[1] << "," << pt[2] << std::endl;
+    std::cout << "   " << i << ": " << cidPortal.Get(i) << " " << pcPortal.Get(i) << " --> "
+              << wcPortal.Get(i) << std::endl;
     auto p = wcPortal.Get(i);
-    auto R2 = p[0]*p[0] + p[1]*p[1];
+    auto R2 = p[0] * p[0] + p[1] * p[1];
     auto R = vtkm::Sqrt(R2);
-    std::cout<<"     eps testing: "<<p<<" --> "<<R2<<" "<<R<<std::endl;
+    std::cout << "     eps testing: " << p << " --> " << R2 << " " << R << std::endl;
   }
-  std::cout<<"****************************************"<<std::endl;
-  std::cout<<"****************************************"<<std::endl;
+  std::cout << "****************************************" << std::endl;
+  std::cout << "****************************************" << std::endl;
 #endif
 }
 
@@ -184,9 +207,8 @@ class TestingCellLocatorXGCGrid
 public:
   using Algorithm = vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>;
 
-  void TestLocator() const
+  void TestLocator(bool isCyl) const
   {
-    bool isCyl = true;
     vtkm::cont::DataSet dataset = vtkm::cont::testing::MakeTestDataSet().MakeXGCDataSet(isCyl);
     vtkm::cont::CoordinateSystem coords = dataset.GetCoordinateSystem();
     vtkm::cont::DynamicCellSet cellSet = dataset.GetCellSet();
@@ -225,77 +247,13 @@ public:
       VTKM_TEST_ASSERT(test_equal(pcoordsPortal.Get(i), expPCoordsPortal.Get(i), 1e-3),
                        "Incorrect parameteric coordinates");
     }
-
-
-#if 0
-    vtkm::Bounds bounds = coords.GetBounds();
-    std::cout << "X bounds : " << bounds.X.Min << " to " << bounds.X.Max << std::endl;
-    std::cout << "Y bounds : " << bounds.Y.Min << " to " << bounds.Y.Max << std::endl;
-    std::cout << "Z bounds : " << bounds.Z.Min << " to " << bounds.Z.Max << std::endl;
-
-    using StructuredType = vtkm::cont::CellSetStructured<3>;
-    vtkm::Id3 cellDims =
-      cellSet.Cast<StructuredType>().GetSchedulingRange(vtkm::TopologyElementTagCell());
-    std::cout << "Dimensions of dataset : " << cellDims << std::endl;
-
-
-    // Generate some sample points.
-    using PointType = vtkm::Vec3f;
-    std::vector<PointType> pointsVec;
-    std::default_random_engine dre;
-    std::uniform_real_distribution<vtkm::Float32> inBounds(0.0f, 4.0f);
-    for (size_t i = 0; i < 10; i++)
-    {
-      PointType point = vtkm::make_Vec(inBounds(dre), inBounds(dre), inBounds(dre));
-      pointsVec.push_back(point);
-    }
-    std::uniform_real_distribution<vtkm::Float32> outBounds(4.0f, 5.0f);
-    for (size_t i = 0; i < 5; i++)
-    {
-      PointType point = vtkm::make_Vec(outBounds(dre), outBounds(dre), outBounds(dre));
-      pointsVec.push_back(point);
-    }
-    std::uniform_real_distribution<vtkm::Float32> outBounds2(-1.0f, 0.0f);
-    for (size_t i = 0; i < 5; i++)
-    {
-      PointType point = vtkm::make_Vec(outBounds2(dre), outBounds2(dre), outBounds2(dre));
-      pointsVec.push_back(point);
-    }
-
-    // Add points right on the boundary.
-    pointsVec.push_back(vtkm::make_Vec(0, 0, 0));
-    pointsVec.push_back(vtkm::make_Vec(4, 4, 4));
-    pointsVec.push_back(vtkm::make_Vec(4, 0, 0));
-    pointsVec.push_back(vtkm::make_Vec(0, 4, 0));
-    pointsVec.push_back(vtkm::make_Vec(0, 0, 4));
-    pointsVec.push_back(vtkm::make_Vec(4, 4, 0));
-    pointsVec.push_back(vtkm::make_Vec(0, 4, 4));
-    pointsVec.push_back(vtkm::make_Vec(4, 0, 4));
-
-    vtkm::cont::ArrayHandle<PointType> points =
-      vtkm::cont::make_ArrayHandle(pointsVec, vtkm::CopyFlag::Off);
-    // Query the points using the locators.
-    vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
-    vtkm::cont::ArrayHandle<PointType> parametric;
-    vtkm::cont::ArrayHandle<bool> match;
-    LocatorWorklet worklet(bounds, cellDims);
-    vtkm::worklet::DispatcherMapField<LocatorWorklet> dispatcher(worklet);
-    dispatcher.SetDevice(DeviceAdapter());
-    dispatcher.Invoke(points, locator, cellIds, parametric, match);
-
-    auto matchPortal = match.ReadPortal();
-    for (vtkm::Id index = 0; index < match.GetNumberOfValues(); index++)
-    {
-      VTKM_TEST_ASSERT(matchPortal.Get(index), "Points do not match");
-    }
-    std::cout << "Test finished successfully." << std::endl;
-#endif
   }
 
   void operator()() const
   {
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(DeviceAdapter());
-    this->TestLocator();
+    this->TestLocator(true);
+    this->TestLocator(false);
   }
 };
 
