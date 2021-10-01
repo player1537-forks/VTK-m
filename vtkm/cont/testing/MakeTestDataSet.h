@@ -79,7 +79,7 @@ public:
   vtkm::cont::DataSet Make3DExplicitDataSetCowNose();
 
   // XGC Grid
-  vtkm::cont::DataSet MakeXGCDataSet(bool useCylindrical = false);
+  vtkm::cont::DataSet MakeXGCDataSet(bool useCylindrical = false, vtkm::Id numPlanes = 8);
 };
 
 //Make a simple 1D dataset.
@@ -1576,24 +1576,16 @@ inline vtkm::cont::DataSet MakeTestDataSet::Make3DExplicitDataSetCowNose()
   return dataSet;
 }
 
-inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical)
+inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical, vtkm::Id numPlanes)
 {
-  const vtkm::Id numPlanes = 8;
 
   std::vector<vtkm::FloatDefault> rz = { 1, 0, 1, 1, 2, 0 }; //, 2,1};
 
-  //vtkm::cont::ArrayHandle<vtkm::FloatDefault> pts;
   auto pts = vtkm::cont::make_ArrayHandle(rz, vtkm::CopyFlag::On);
-
-  pts.Allocate(rz.size());
-  auto portal = pts.WritePortal();
-  for (vtkm::Id i = 0; i < static_cast<vtkm::Id>(rz.size()); i++)
-    portal.Set(i, rz[i]);
-
   auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, useCylindrical);
 
-  //std::vector<vtkm::Int32> nextNode = {0,1,2,3};
-  //std::vector<vtkm::Int32> conn = {0,2,1,  1,2,3};
+  //  std::vector<vtkm::Int32> nextNode = {0,1,2,3};
+  //  std::vector<vtkm::Int32> conn = {0,2,1,  1,2,3};
   std::vector<vtkm::Int32> nextNode = { 0, 1, 2 };
   std::vector<vtkm::Int32> conn = { 0, 2, 1 };
 
@@ -1606,7 +1598,6 @@ inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical)
 
   vtkm::io::VTKDataSetWriter writer("xgc.vtk");
   writer.WriteDataSet(dataSet);
-
 
   return dataSet;
 }
