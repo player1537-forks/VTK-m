@@ -21,6 +21,7 @@
 #include <vtkm/cont/CellSetSingleType.h>
 
 #include <vtkm/exec/CellInside.h>
+#include <vtkm/exec/CellLocatorMultiplexer.h>
 #include <vtkm/exec/CellLocatorTwoLevel.h>
 #include <vtkm/exec/ConnectivityExtrude.h>
 #include <vtkm/exec/ParametricCoordinates.h>
@@ -32,12 +33,14 @@ namespace exec
 {
 
 using FloatVec3 = vtkm::Vec3f;
-using CellLocatorType =
+using ConnSingleType =
   vtkm::cont::CellSetSingleType<>::ExecConnectivityType<vtkm::TopologyElementTagCell,
                                                         vtkm::TopologyElementTagPoint>;
 
 using CoordsPortalType = vtkm::internal::ArrayPortalXGCCoordinates<
   vtkm::internal::ArrayPortalBasicRead<vtkm::FloatDefault>>;
+
+using ConnExtrudeType = vtkm::exec::ConnectivityExtrude;
 
 class VTKM_ALWAYS_EXPORT CellLocatorXGCGrid
 {
@@ -45,7 +48,7 @@ public:
   VTKM_CONT
   CellLocatorXGCGrid(const vtkm::exec::ConnectivityExtrude& conn,
                      const CoordsPortalType& coords,
-                     const vtkm::exec::CellLocatorTwoLevel<CellLocatorType>& planeLocator,
+                     const vtkm::exec::CellLocatorTwoLevel<ConnSingleType>& locator,
                      const vtkm::Id& numPlanes,
                      const vtkm::Id& cellsPerPlane,
                      const bool& useCylindrical)
@@ -53,18 +56,47 @@ public:
     , Connectivity(conn)
     , Coords(coords)
     , NumPlanes(numPlanes)
-    , PlaneLocator(planeLocator)
+    , LocatorMux(locator)
     , ThetaSpacing(vtkm::TwoPi() / numPlanes)
     , UseCylindrical(useCylindrical)
   {
+    //REDO these. make sure that UseCyl is set appropriately.
   }
+
+  VTKM_CONT
+  CellLocatorXGCGrid(const vtkm::exec::ConnectivityExtrude& conn,
+                     const CoordsPortalType& coords,
+                     const vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>& locator,
+                     const vtkm::Id& numPlanes,
+                     const vtkm::Id& cellsPerPlane,
+                     const bool& useCylindrical)
+    : CellsPerPlane(cellsPerPlane)
+    , Connectivity(conn)
+    , Coords(coords)
+    , NumPlanes(numPlanes)
+    , LocatorMux(locator)
+    , ThetaSpacing(vtkm::TwoPi() / numPlanes)
+    , UseCylindrical(useCylindrical)
+  {
+    //REDO these. make sure that UseCyl is set appropriately.
+  }
+
 
   VTKM_EXEC
   vtkm::ErrorCode FindCell(const vtkm::Vec3f& point,
                            vtkm::Id& cellId,
                            vtkm::Vec3f& parametric) const
   {
-    std::cout << "FindCell: INPUT: " << point << std::endl;
+
+    if (this->UseCylindrical)
+    {
+      using LocType = vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>;
+      return this->LocatorMux.Locators.Get<LocType>().FindCell(point, cellId, parametric);
+    }
+    return vtkm::ErrorCode::Success;
+
+#if 0
+    std::cout<<"FindCell: INPUT: "<<point<<std::endl;
     vtkm::Vec3f cylPt;
     if (this->UseCylindrical)
     {
@@ -87,27 +119,28 @@ public:
     vtkm::FloatDefault theta = cylPt[1];
 
     vtkm::Vec3f cylPt2D(cylPt[0], cylPt[2], 0);
-    std::cout << "FindCell: " << point << " --> " << cylPt << " 2d= " << cylPt2D
-              << " theta= " << (cylPt[1] * 57.2958) << std::endl;
+    std::cout << "FindCell: " << point << " --> " << cylPt << " 2d= "<<cylPt2D<<" theta= "<<(cylPt[1]*57.2958)<<std::endl;
 
     vtkm::Id cid = -1;
-    auto res = this->PlaneLocator.FindCell(cylPt2D, cid, parametric);
-    std::cout << "     plane cid= " << cid << std::endl;
+    /*
+    auto res = this->Locator.FindCell(cylPt2D, cid, parametric);
+    std::cout<<"     plane cid= "<<cid<<std::endl;
 
     if (res != vtkm::ErrorCode::Success)
     {
-      std::cout << "*******************************************************" << std::endl;
-      std::cout << "*******************************************************" << std::endl;
-      std::cout << "*******************************************************" << std::endl;
-      std::cout << "*******************************************************" << std::endl;
-      std::cout << "*******************************************************" << std::endl;
-      std::cout << "  Pt NOT in 2D plane. " << std::endl;
-      std::cout << "   cylPt2D= " << cylPt2D << std::endl;
-      std::cout << "*******************************************************" << std::endl;
-      std::cout << "*******************************************************" << std::endl;
-      std::cout << "*******************************************************" << std::endl;
+      std::cout<<"*******************************************************"<<std::endl;
+      std::cout<<"*******************************************************"<<std::endl;
+      std::cout<<"*******************************************************"<<std::endl;
+      std::cout<<"*******************************************************"<<std::endl;
+      std::cout<<"*******************************************************"<<std::endl;
+      std::cout<<"  Pt NOT in 2D plane. "<<std::endl;
+      std::cout<<"   cylPt2D= "<<cylPt2D<<std::endl;
+      std::cout<<"*******************************************************"<<std::endl;
+      std::cout<<"*******************************************************"<<std::endl;
+      std::cout<<"*******************************************************"<<std::endl;
       return res;
     }
+    */
 
     vtkm::Id planeIdx = vtkm::Floor(theta / this->ThetaSpacing);
 
@@ -115,11 +148,11 @@ public:
       cid += (planeIdx * this->CellsPerPlane);
 
     auto indices = this->Connectivity.GetIndices(cid);
-    std::cout << "CID= " << cid << " planeIdx= " << planeIdx << std::endl;
+    std::cout<<"CID= "<<cid<<" planeIdx= "<<planeIdx<<std::endl;
 
     auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
     for (int i = 0; i < 6; i++)
-      std::cout << "Pt_" << i << " idx= " << indices[i] << " pt= " << pts[i] << std::endl;
+      std::cout << "Pt_" << i << " idx= " << indices[i] << " pt= "<<pts[i]<<std::endl;
 
     //do the wedge tests in R,Theta,Z space.
     /*
@@ -138,23 +171,22 @@ public:
       }
       else
       {
-        vtkm::FloatDefault r = vtkm::Sqrt(p[0] * p[0] + p[1] * p[1]);
+        vtkm::FloatDefault r = vtkm::Sqrt(p[0]*p[0] + p[1]*p[1]);
         vtkm::FloatDefault pTheta = vtkm::ATan2(p[1], p[0]);
-        if (pTheta < 0)
-          pTheta += vtkm::TwoPi();
+        if (pTheta < 0) pTheta += vtkm::TwoPi();
         cylVerts[i][0] = r;
         cylVerts[i][1] = pTheta;
         cylVerts[i][2] = p[2];
       }
-      //      if (cylVerts[i][1] < 0)
-      //        cylVerts[i][1] += vtkm::TwoPi();
+//      if (cylVerts[i][1] < 0)
+//        cylVerts[i][1] += vtkm::TwoPi();
       cylVertsDeg[i] = cylVerts[i];
       cylVertsDeg[i][1] = p[1] * 57.2958;
     }
 
     //Wrap around. Last plane at 0, so do a wraparound.
     //Need to handle the other case: last plane at 2pi
-    if (this->UseCylindrical && planeIdx == (this->NumPlanes - 1))
+    if (this->UseCylindrical && planeIdx == (this->NumPlanes-1))
     {
       //Last plane should be at 0,
       VTKM_ASSERT(cylVerts[0][1] > cylVerts[3][1]);
@@ -166,10 +198,10 @@ public:
     }
 
     auto xx = cylPt;
-    xx[1] *= 57.2958;
-    std::cout << "****** cylPt= " << xx << std::endl;
+    xx[1] *=  57.2958;
+    std::cout<<"****** cylPt= "<<xx<<std::endl;
     for (int i = 0; i < 6; i++)
-      std::cout << "CPt_" << i << " idx= " << indices[i] << " pt= " << cylVertsDeg[i] << std::endl;
+      std::cout << "CPt_" << i << " idx= " << indices[i] << " pt= "<<cylVertsDeg[i]<<std::endl;
 
 
     FloatVec3 pc;
@@ -179,25 +211,26 @@ public:
     if (inside)
     {
       VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
-        pts, point, vtkm::CellShapeTagWedge{}, parametric));
+                             pts, point, vtkm::CellShapeTagWedge{}, parametric));
       inside = vtkm::exec::CellInside(parametric, vtkm::CellShapeTagWedge{});
 
       cellId = cid;
-      //      auto status = vtkm::exec::ParametricCoordinatesToWorldCoordinates(pts, pc, vtkm::CellShapeTagWedge{}, point);
-      //      parametric = pc;
+//      auto status = vtkm::exec::ParametricCoordinatesToWorldCoordinates(pts, pc, vtkm::CellShapeTagWedge{}, point);
+//      parametric = pc;
 
-      std::cout << "******** WCoords= " << point << std::endl;
+      std::cout<<"******** WCoords= "<<point<<std::endl;
       std::cout << " *** cellId= " << cellId << " p: " << parametric << std::endl;
       std::cout << "   planeIdx= " << planeIdx << " cellId= " << cellId << std::endl;
       std::cout << "   parametric= " << parametric << std::endl;
-      std::cout << std::endl << std::endl;
-      std::cout << "************************ FOUND!!!!!!!!!!!" << std::endl;
+      std::cout<<std::endl<<std::endl;
+      std::cout<<"************************ FOUND!!!!!!!!!!!"<<std::endl;
 
       return vtkm::ErrorCode::Success;
     }
 
-    std::cout << "************************ NOT FOUND" << std::endl;
+    std::cout<<"************************ NOT FOUND"<<std::endl;
     return vtkm::ErrorCode::CellNotFound;
+#endif
   }
 
   VTKM_DEPRECATED(1.6, "Locators are no longer pointers. Use . operator.")
@@ -304,7 +337,11 @@ private:
   vtkm::exec::ConnectivityExtrude Connectivity;
   CoordsPortalType Coords;
   vtkm::Id NumPlanes;
-  vtkm::exec::CellLocatorTwoLevel<CellLocatorType> PlaneLocator;
+  vtkm::exec::CellLocatorMultiplexer<vtkm::exec::CellLocatorTwoLevel<ConnSingleType>,
+                                     vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>>
+    LocatorMux;
+  //  vtkm::exec::CellLocatorTwoLevel<ConnSingleType> Locator;
+  //  vtkm::exec::CellLocatorTwoLevel<vtkm::exec::ConnectivityExtrude> Locator2;
   vtkm::FloatDefault ThetaSpacing;
   bool UseCylindrical;
 };

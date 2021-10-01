@@ -79,7 +79,7 @@ public:
   vtkm::cont::DataSet Make3DExplicitDataSetCowNose();
 
   // XGC Grid
-  vtkm::cont::DataSet MakeXGCDataSet();
+  vtkm::cont::DataSet MakeXGCDataSet(bool useCylindrical = false);
 };
 
 //Make a simple 1D dataset.
@@ -1576,11 +1576,11 @@ inline vtkm::cont::DataSet MakeTestDataSet::Make3DExplicitDataSetCowNose()
   return dataSet;
 }
 
-inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet()
+inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical)
 {
   const vtkm::Id numPlanes = 8;
 
-  std::vector<vtkm::FloatDefault> rz = { 1, 0, 1, 1, 2, 0, 2, 1 };
+  std::vector<vtkm::FloatDefault> rz = { 1, 0, 1, 1, 2, 0 }; //, 2,1};
 
   //vtkm::cont::ArrayHandle<vtkm::FloatDefault> pts;
   auto pts = vtkm::cont::make_ArrayHandle(rz, vtkm::CopyFlag::On);
@@ -1590,15 +1590,14 @@ inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet()
   for (vtkm::Id i = 0; i < static_cast<vtkm::Id>(rz.size()); i++)
     portal.Set(i, rz[i]);
 
-  bool isCyl = false;
-  auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, isCyl);
+  auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, useCylindrical);
 
   //std::vector<vtkm::Int32> nextNode = {0,1,2,3};
   //std::vector<vtkm::Int32> conn = {0,2,1,  1,2,3};
   std::vector<vtkm::Int32> nextNode = { 0, 1, 2 };
   std::vector<vtkm::Int32> conn = { 0, 2, 1 };
 
-  auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, isCyl);
+  auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, useCylindrical);
 
   vtkm::cont::DataSet dataSet;
   dataSet.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", coords));

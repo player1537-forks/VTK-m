@@ -67,9 +67,7 @@ namespace cont
 {
 namespace internal
 {
-
 using CellSetList = vtkm::ListAppend<VTKM_DEFAULT_CELL_SET_LIST_STRUCTURED, VTKM_DEFAULT_CELL_SET_LIST_UNSTRUCTURED>;
-
 }
 }
 } // namespace vtkm::cont::internal

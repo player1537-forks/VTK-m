@@ -70,63 +70,86 @@ public:
   }
 };
 
-
 void GenerateRandomInput(const vtkm::cont::DataSet& ds,
-                         vtkm::Id count,
                          vtkm::cont::ArrayHandle<vtkm::Id>& cellIds,
                          vtkm::cont::ArrayHandle<vtkm::Vec3f>& pcoords,
-                         vtkm::cont::ArrayHandle<vtkm::Vec3f>& wcoords)
+                         vtkm::cont::ArrayHandle<vtkm::Vec3f>& wcoords,
+                         bool isCyl)
 {
   vtkm::Id numberOfCells = ds.GetNumberOfCells();
+  std::cout << "************************** #Cells= " << numberOfCells << std::endl;
 
-  std::uniform_int_distribution<vtkm::Id> cellIdGen(0, numberOfCells - 1);
-  //std::uniform_real_distribution<vtkm::FloatDefault> pcoordGen(0.0f, 1.0f);
-  std::uniform_real_distribution<vtkm::FloatDefault> pcoordGen(0.1f, 0.9f); //FIX ME
+  std::cout << "Fix me: Last cell is implicit." << std::endl;
+  std::uniform_int_distribution<vtkm::Id> cellIdGen(0, numberOfCells - 2);
+  std::uniform_real_distribution<vtkm::FloatDefault> pcoordGen(0.0f, 1.0f);
 
-  cellIds.Allocate(count);
-  pcoords.Allocate(count);
-  wcoords.Allocate(count);
+  std::vector<vtkm::Id> cids;
+  std::vector<vtkm::Vec3f> pc, wc;
 
-  auto cellIdPortal = cellIds.WritePortal();
-  auto pcoordsPortal = pcoords.WritePortal();
-  for (vtkm::Id i = 0; i < count; ++i)
+  const vtkm::Id count = 20;
+  for (vtkm::Id i = 0; i < count; i++)
   {
     vtkm::Id cid = cellIdGen(RandomGenerator);
-    //cid = 0;
-    cellIdPortal.Set(i, cid);
-    auto p0 = pcoordGen(RandomGenerator);
-    auto p1 = pcoordGen(RandomGenerator);
-    auto p2 = pcoordGen(RandomGenerator);
-
+    cids.push_back(cid);
+    vtkm::FloatDefault p0 = pcoordGen(RandomGenerator);
+    vtkm::FloatDefault p1 = pcoordGen(RandomGenerator);
+    vtkm::FloatDefault p2 = pcoordGen(RandomGenerator);
     while (p0 + p1 > 1)
     {
       p0 = pcoordGen(RandomGenerator);
       p1 = pcoordGen(RandomGenerator);
     }
 
-    vtkm::Vec3f pc{ p0, p1, p2 };
-    std::cout << "cid= " << cellIdPortal.Get(i) << "  GEN RANDOMINPUT: " << pc << std::endl;
-    pcoordsPortal.Set(i, pc);
+    vtkm::Vec3f p{ p0, p1, p2 };
+    pc.push_back(p);
   }
+
+  //Add some corner points.
+  //Pts at Z=0 or Z=1 are the same point, so either cell would do.
+  //Tweak it by eps so that it will be one and only one cell.
+  static const vtkm::FloatDefault eps = 1e-6;
+
+  cids.push_back(cellIdGen(RandomGenerator));
+  pc.push_back({ 0, 0, eps });
+  cids.push_back(cellIdGen(RandomGenerator)); //pt not in plane
+  pc.push_back({ 0, 0, 1 - eps });
+  cids.push_back(cellIdGen(RandomGenerator));
+  pc.push_back({ 1, 0, eps });
+  cids.push_back(cellIdGen(RandomGenerator)); //wrong cell
+  pc.push_back({ 1, 0, 1 - eps });
+  cids.push_back(cellIdGen(RandomGenerator));
+  pc.push_back({ 0, 1, eps });
+  cids.push_back(cellIdGen(RandomGenerator)); //wrong cell / wrong param
+  pc.push_back({ 0, 1, 1 - eps });
+
+  cellIds = vtkm::cont::make_ArrayHandle(cids, vtkm::CopyFlag::On);
+  pcoords = vtkm::cont::make_ArrayHandle(pc, vtkm::CopyFlag::On);
 
   vtkm::worklet::DispatcherMapTopology<ParametricToWorldCoordinates> dispatcher(
     ParametricToWorldCoordinates::MakeScatter(cellIds));
   dispatcher.Invoke(
     ds.GetCellSet(), ds.GetCoordinateSystem().GetDataAsMultiplexer(), pcoords, wcoords);
 
-  std::cout << "****************************************" << std::endl;
-  std::cout << "RandomInput" << std::endl << std::endl;
-  std::ofstream ptF;
-  ptF.open("points.txt");
-  for (vtkm::Id i = 0; i < count; i++)
+#if 0
+  std::cout<<"****************************************"<<std::endl;
+  std::cout<<"RandomInput"<<std::endl<<std::endl;
+  std::ofstream ptF; ptF.open("points.txt");
+  auto cidPortal = cellIds.ReadPortal();
+  auto pcPortal = pcoords.ReadPortal();
+  auto wcPortal = wcoords.ReadPortal();
+  for (vtkm::Id i = 0; i < cidPortal.GetNumberOfValues(); i++)
   {
-    auto pt = wcoords.ReadPortal().Get(i);
-    ptF << pt[0] << "," << pt[1] << "," << pt[2] << std::endl;
-    std::cout << "   " << i << ": " << cellIdPortal.Get(i) << " " << pcoordsPortal.Get(i) << " --> "
-              << wcoords.ReadPortal().Get(i) << std::endl;
+    auto pt = wcPortal.Get(i);
+    ptF<<pt[0]<<","<<pt[1]<<","<<pt[2]<<std::endl;
+    std::cout<<"   "<<i<<": "<<cidPortal.Get(i)<<" "<<pcPortal.Get(i)<<" --> "<<wcPortal.Get(i)<<std::endl;
+    auto p = wcPortal.Get(i);
+    auto R2 = p[0]*p[0] + p[1]*p[1];
+    auto R = vtkm::Sqrt(R2);
+    std::cout<<"     eps testing: "<<p<<" --> "<<R2<<" "<<R<<std::endl;
   }
-  std::cout << "****************************************" << std::endl;
-  std::cout << "****************************************" << std::endl;
+  std::cout<<"****************************************"<<std::endl;
+  std::cout<<"****************************************"<<std::endl;
+#endif
 }
 
 
@@ -163,7 +186,8 @@ public:
 
   void TestLocator() const
   {
-    vtkm::cont::DataSet dataset = vtkm::cont::testing::MakeTestDataSet().MakeXGCDataSet();
+    bool isCyl = true;
+    vtkm::cont::DataSet dataset = vtkm::cont::testing::MakeTestDataSet().MakeXGCDataSet(isCyl);
     vtkm::cont::CoordinateSystem coords = dataset.GetCoordinateSystem();
     vtkm::cont::DynamicCellSet cellSet = dataset.GetCellSet();
 
@@ -175,11 +199,11 @@ public:
     locator.Update();
 
     //Generate some test points.
-    const vtkm::Id numPoints = 15;
     vtkm::cont::ArrayHandle<vtkm::Id> expCellIds;
     vtkm::cont::ArrayHandle<vtkm::Vec3f> expPCoords;
     vtkm::cont::ArrayHandle<vtkm::Vec3f> points;
-    GenerateRandomInput(dataset, numPoints, expCellIds, expPCoords, points);
+    GenerateRandomInput(dataset, expCellIds, expPCoords, points, isCyl);
+    vtkm::Id numPoints = expCellIds.GetNumberOfValues();
 
     vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
     vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
@@ -194,13 +218,12 @@ public:
     {
       std::cout << i << ":   TEST: " << pcoordsPortal.Get(i)
                 << " should be: " << expPCoordsPortal.Get(i) << std::endl;
-      std::cout << "    cellID: " << cellIdPortal.Get(i)
+      std::cout << ":       wcoords= : " << points.ReadPortal().Get(i) << std::endl;
+      std::cout << "        cellID: " << cellIdPortal.Get(i)
                 << " should be: " << expCellIdsPortal.Get(i) << std::endl;
-      /*
       VTKM_TEST_ASSERT(cellIdPortal.Get(i) == expCellIdsPortal.Get(i), "Incorrect cell ids");
       VTKM_TEST_ASSERT(test_equal(pcoordsPortal.Get(i), expPCoordsPortal.Get(i), 1e-3),
                        "Incorrect parameteric coordinates");
-*/
     }
 
 
