@@ -50,17 +50,17 @@ public:
                      const CoordsPortalType& coords,
                      const vtkm::exec::CellLocatorTwoLevel<ConnSingleType>& locator,
                      const vtkm::Id& numPlanes,
-                     const vtkm::Id& cellsPerPlane,
-                     const bool& useCylindrical)
+                     const vtkm::Id& cellsPerPlane)
     : CellsPerPlane(cellsPerPlane)
     , Connectivity(conn)
     , Coords(coords)
-    , NumPlanes(numPlanes)
     , LocatorMux(locator)
+    , NumPlanes(numPlanes)
     , ThetaSpacing(vtkm::TwoPi() / numPlanes)
-    , UseCylindrical(useCylindrical)
+    , Periodic(true)
+    , UseCylindrical(false)
   {
-    //REDO these. make sure that UseCyl is set appropriately.
+    this->LastPlaneTheta = this->ThetaSpacing * static_cast<vtkm::FloatDefault>(numPlanes - 1);
   }
 
   VTKM_CONT
@@ -69,18 +69,21 @@ public:
                      const vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>& locator,
                      const vtkm::Id& numPlanes,
                      const vtkm::Id& cellsPerPlane,
-                     const bool& useCylindrical)
+                     bool periodic)
     : CellsPerPlane(cellsPerPlane)
     , Connectivity(conn)
     , Coords(coords)
     , NumPlanes(numPlanes)
     , LocatorMux(locator)
     , ThetaSpacing(vtkm::TwoPi() / numPlanes)
-    , UseCylindrical(useCylindrical)
+    , Periodic(periodic)
+    , UseCylindrical(true)
   {
-    //REDO these. make sure that UseCyl is set appropriately.
-  }
+    this->LastPlaneTheta = this->ThetaSpacing * static_cast<vtkm::FloatDefault>(numPlanes - 1);
 
+    //Non-periodic case not supported.
+    //VTKM_ASSERT(this->Connectivity.GetPeriodic());
+  }
 
   VTKM_EXEC
   vtkm::ErrorCode FindCell(const vtkm::Vec3f& point,
@@ -106,8 +109,27 @@ private:
                                       vtkm::Id& cellId,
                                       vtkm::Vec3f& parametric) const
   {
+    std::cout << " LAST PLANE THETA= " << this->LastPlaneTheta << std::endl;
+    std::cout << "   pt= " << point << std::endl;
+
     using LocType = vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>;
-    return this->LocatorMux.Locators.Get<LocType>().FindCell(point, cellId, parametric);
+    auto loc = this->LocatorMux.Locators.Get<LocType>();
+
+    //Normal case. Point is *NOT* in a wrap around cell.
+    if (point[1] > this->LastPlaneTheta)
+    {
+      //Shift the point BACK to the cell that isn't a wrap around.
+      vtkm::Vec3f shiftPt(point[0], point[1] - this->ThetaSpacing, point[2]);
+      std::cout << "****** SHIFT: " << point << " ---> " << shiftPt << std::endl;
+      auto status = loc.FindCell(shiftPt, cellId, parametric);
+
+      //Found the cell.  Now, the *RIGHT* cell will be offset by numCellsPerPlane
+      if (status == vtkm::ErrorCode::Success)
+        cellId += this->CellsPerPlane;
+      return status;
+    }
+    else
+      return loc.FindCell(point, cellId, parametric);
   }
 
   VTKM_EXEC
@@ -222,10 +244,12 @@ private:
   vtkm::Id CellsPerPlane;
   vtkm::exec::ConnectivityExtrude Connectivity;
   CoordsPortalType Coords;
+  vtkm::FloatDefault LastPlaneTheta;
   vtkm::exec::CellLocatorMultiplexer<vtkm::exec::CellLocatorTwoLevel<ConnSingleType>,
                                      vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>>
     LocatorMux;
   vtkm::Id NumPlanes;
+  bool Periodic;
   vtkm::FloatDefault ThetaSpacing;
   bool UseCylindrical;
 };

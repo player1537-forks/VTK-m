@@ -55,6 +55,9 @@ public:
   CellShapeTag GetCellShape(vtkm::Id) const { return vtkm::CellShapeTagWedge(); }
 
   VTKM_EXEC
+  bool GetPeriodic() const { return this->Periodic; }
+
+  VTKM_EXEC
   IndicesType GetIndices(vtkm::Id index) const
   {
     return this->GetIndices(this->FlatToLogicalToIndex(index));
@@ -89,6 +92,7 @@ private:
   vtkm::Int32 NumberOfPointsPerPlane;
   vtkm::Int32 NumberOfPlanes;
   vtkm::Id NumberOfCells;
+  bool Periodic;
 };
 
 
@@ -167,6 +171,7 @@ public:
   ConnectivityPortalType Connectivity;
   OffsetsPortalType Offsets;
   CountsPortalType Counts;
+  bool Periodic;
   PrevNodePortalType PrevNode;
   vtkm::Int32 NumberOfCellsPerPlane;
   vtkm::Int32 NumberOfPointsPerPlane;
@@ -185,9 +190,10 @@ inline ConnectivityExtrude::ConnectivityExtrude(const ConnectivityPortalType& co
   , NumberOfCellsPerPlane(cellsPerPlane)
   , NumberOfPointsPerPlane(pointsPerPlane)
   , NumberOfPlanes(numPlanes)
+  , Periodic(periodic)
 {
-  this->NumberOfCells = periodic ? (static_cast<vtkm::Id>(cellsPerPlane) * numPlanes)
-                                 : (static_cast<vtkm::Id>(cellsPerPlane) * (numPlanes - 1));
+  this->NumberOfCells = this->Periodic ? (static_cast<vtkm::Id>(cellsPerPlane) * numPlanes)
+                                       : (static_cast<vtkm::Id>(cellsPerPlane) * (numPlanes - 1));
 }
 
 VTKM_EXEC inline ConnectivityExtrude::IndicesType ConnectivityExtrude::GetIndices(

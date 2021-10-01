@@ -31,9 +31,10 @@ public:
 
 private:
   vtkm::cont::CellLocatorTwoLevel CellLocator;
-  vtkm::Id CellsPerPlane = -1;
+  vtkm::Id CellsPerPlane = 0;
   bool IsCylindrical = false;
-  vtkm::Id NumPlanes = -1;
+  bool IsPeriodic = false;
+  vtkm::Id NumPlanes = 0;
 
   friend Superclass;
   VTKM_CONT void Build();

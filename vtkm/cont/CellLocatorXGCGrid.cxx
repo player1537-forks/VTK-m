@@ -52,8 +52,21 @@ void CellLocatorXGCGrid::Build()
   //If cylindrical, create a TwoLevelLocator on the 3D points.
   if (this->IsCylindrical)
   {
-    this->CellLocator.SetCellSet(cellSet);
     this->CellLocator.SetCoordinates(coords);
+
+    //The cell locator needs to work on a non-periodic connectivity.
+    //Create a non-periodic cellset and set the periodic flag.
+    this->IsPeriodic = xgcCellSet.GetIsPeriodic();
+    if (this->IsPeriodic)
+    {
+      vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault> xgcCoords;
+      this->GetCoordinates().GetData().AsArrayHandle(xgcCoords);
+      auto nonPeriodicCellSet = vtkm::cont::make_CellSetExtrude(
+        xgcCellSet.GetConnectivityArray(), xgcCoords, xgcCellSet.GetNextNodeArray(), false);
+      this->CellLocator.SetCellSet(nonPeriodicCellSet);
+    }
+    else
+      this->CellLocator.SetCellSet(cellSet);
   }
   else
   {
@@ -95,10 +108,12 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
 
   vtkm::cont::DynamicCellSet cellSet = this->GetCellSet();
   auto xgcCellSet = cellSet.Cast<vtkm::cont::CellSetExtrude>();
-  auto cellSetExec = xgcCellSet.PrepareForInput(
-    device, vtkm::TopologyElementTagCell{}, vtkm::TopologyElementTagPoint{}, token);
   vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault> xgcCoords;
   this->GetCoordinates().GetData().AsArrayHandle(xgcCoords);
+
+  auto cellSetExec = xgcCellSet.PrepareForInput(
+    device, vtkm::TopologyElementTagCell{}, vtkm::TopologyElementTagPoint{}, token);
+
   auto coordsExec = xgcCoords.PrepareForInput(device, token);
 
   if (this->IsCylindrical)
@@ -107,7 +122,7 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
 
     auto locator = locMux.Locators.Get<vtkm::exec::CellLocatorTwoLevel<ExtrudeConnectivityType>>();
     return vtkm::exec::CellLocatorXGCGrid(
-      cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane, this->IsCylindrical);
+      cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane, this->IsPeriodic);
   }
   else
   {
@@ -116,7 +131,7 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
                                                             vtkm::TopologyElementTagPoint>;
     auto locator = locMux.Locators.Get<vtkm::exec::CellLocatorTwoLevel<SingleConnectivityType>>();
     return vtkm::exec::CellLocatorXGCGrid(
-      cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane, this->IsCylindrical);
+      cellSetExec, coordsExec, locator, this->NumPlanes, this->CellsPerPlane);
   }
 }
 

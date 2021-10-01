@@ -33,6 +33,8 @@ namespace
 {
 std::default_random_engine RandomGenerator;
 
+static bool IS_CYL = false;
+
 class ParametricToWorldCoordinates : public vtkm::worklet::WorkletVisitCellsWithPoints
 {
 public:
@@ -56,16 +58,25 @@ public:
                             const PointType& pc,
                             PointType& wc) const
   {
-    auto status = vtkm::exec::CellInterpolate(points, pc, cellShape, wc);
-    /*
+    //wrap around....
+    auto tmpPts = points;
+    if (IS_CYL && tmpPts[0][1] > tmpPts[3][1])
+    {
+      tmpPts[3][1] = vtkm::TwoPi();
+      tmpPts[4][1] = vtkm::TwoPi();
+      tmpPts[5][1] = vtkm::TwoPi();
+    }
+
+    auto status = vtkm::exec::CellInterpolate(tmpPts, pc, cellShape, wc);
+
     std::cout << "Parametric to World: " << pc << " --> " << wc << std::endl;
     std::cout << " wedge points: " << std::endl;
+
     for (int i = 0; i < 6; i++)
-      std::cout << i << ":  " << points[i] << std::endl;
+      std::cout << i << ":  " << tmpPts[i] << std::endl;
     PointType wc2;
-    vtkm::exec::ParametricCoordinatesToWorldCoordinates(points, pc, cellShape, wc2);
+    vtkm::exec::ParametricCoordinatesToWorldCoordinates(tmpPts, pc, cellShape, wc2);
     std::cout << "  ---------------> convert back: " << wc2 << std::endl;
-    */
 
     if (status != vtkm::ErrorCode::Success)
       this->RaiseError(vtkm::ErrorString(status));
@@ -81,28 +92,25 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   vtkm::cont::DynamicCellSet cellSet = ds.GetCellSet();
   auto xgcCellSet = cellSet.Cast<vtkm::cont::CellSetExtrude>();
 
-  //Handle the periodic case as well.
-  vtkm::Id numberOfCells = ds.GetNumberOfCells() - xgcCellSet.GetNumberOfCellsPerPlane();
-  std::cout << "************************** #Cells= " << numberOfCells << std::endl;
+  vtkm::Id numCells = ds.GetNumberOfCells();
+  if (!xgcCellSet.GetIsPeriodic())
+    numCells -= xgcCellSet.GetNumberOfCellsPerPlane();
 
   std::cout << "Fix me: Last cell is implicit." << std::endl;
   std::cout << "TODO: Add corner cases." << std::endl;
-  std::uniform_int_distribution<vtkm::Id> cellIdGen;
+
+  auto cellIdGen = std::uniform_int_distribution<vtkm::Id>(0, numCells - 1);
   std::uniform_real_distribution<vtkm::FloatDefault> pcoordGen;
 
   vtkm::FloatDefault zero(0), one(1);
   static const vtkm::FloatDefault eps = 1e-4;
 
   if (isCyl)
-  {
-    cellIdGen = std::uniform_int_distribution<vtkm::Id>(0, numberOfCells - 1);
     pcoordGen = std::uniform_real_distribution<vtkm::FloatDefault>(0.0f, 1.0f);
-  }
   else
   {
     zero = eps;
     one = 1 - eps;
-    cellIdGen = std::uniform_int_distribution<vtkm::Id>(0, numberOfCells - 1);
     pcoordGen = std::uniform_real_distribution<vtkm::FloatDefault>(0.05f, 0.95f);
   }
 
@@ -113,7 +121,6 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   for (vtkm::Id i = 0; i < count; i++)
   {
     vtkm::Id cid = cellIdGen(RandomGenerator);
-    cids.push_back(cid);
     vtkm::FloatDefault p0 = pcoordGen(RandomGenerator);
     vtkm::FloatDefault p1 = pcoordGen(RandomGenerator);
     vtkm::FloatDefault p2 = pcoordGen(RandomGenerator);
@@ -125,11 +132,15 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
 
     vtkm::Vec3f p{ p0, p1, p2 };
     pc.push_back(p);
+    cids.push_back(cid);
   }
+
   cids.push_back(0);
-  pc.push_back({ .15, .15, .5 });
+  pc.push_back({ .15, .15, .995 });
   cids.push_back(1);
-  pc.push_back({ .15, .15, .5 });
+  pc.push_back({ .15, .15, .995 });
+  cids.push_back(2);
+  pc.push_back({ .15, .15, .995 });
 
 #if 0
   //Add some corner points.
@@ -157,6 +168,7 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   cellIds = vtkm::cont::make_ArrayHandle(cids, vtkm::CopyFlag::On);
   pcoords = vtkm::cont::make_ArrayHandle(pc, vtkm::CopyFlag::On);
 
+  IS_CYL = isCyl;
   vtkm::worklet::DispatcherMapTopology<ParametricToWorldCoordinates> dispatcher(
     ParametricToWorldCoordinates::MakeScatter(cellIds));
   dispatcher.Invoke(
@@ -191,14 +203,16 @@ public:
                                 ExecObject locator,
                                 FieldOut cellIds,
                                 FieldOut pcoords);
-  using ExecutionSignature = void(_1, _2, _3, _4);
+  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4);
 
   template <typename LocatorType>
-  VTKM_EXEC void operator()(const vtkm::Vec3f& point,
+  VTKM_EXEC void operator()(const vtkm::Id& index,
+                            const vtkm::Vec3f& point,
                             const LocatorType& locator,
                             vtkm::Id& cellId,
                             vtkm::Vec3f& pcoords) const
   {
+    std::cout << "FindCell: " << index << " pt= " << point << std::endl;
     vtkm::ErrorCode status = locator.FindCell(point, cellId, pcoords);
     if (status != vtkm::ErrorCode::Success)
     {
@@ -216,11 +230,12 @@ public:
 
   void TestLocator(bool isCyl) const
   {
-    vtkm::cont::DataSet dataset = vtkm::cont::testing::MakeTestDataSet().MakeXGCDataSet(isCyl, 3);
+    vtkm::cont::DataSet dataset =
+      vtkm::cont::testing::MakeTestDataSet().MakeXGCDataSet(isCyl, 16, true);
     vtkm::cont::CoordinateSystem coords = dataset.GetCoordinateSystem();
     vtkm::cont::DynamicCellSet cellSet = dataset.GetCellSet();
 
-    std::cout << "XGC Grid Test!!" << std::endl;
+    std::cout << "XGC Grid Test!!  ISCYL=  " << isCyl << std::endl;
     vtkm::cont::CellLocatorXGCGrid locator;
     locator.SetCoordinates(coords);
     locator.SetCellSet(cellSet);
@@ -260,7 +275,7 @@ public:
   {
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(DeviceAdapter());
     this->TestLocator(true);
-    //this->TestLocator(false);
+    this->TestLocator(false);
   }
 };
 

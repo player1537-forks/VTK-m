@@ -79,7 +79,9 @@ public:
   vtkm::cont::DataSet Make3DExplicitDataSetCowNose();
 
   // XGC Grid
-  vtkm::cont::DataSet MakeXGCDataSet(bool useCylindrical = false, vtkm::Id numPlanes = 8);
+  vtkm::cont::DataSet MakeXGCDataSet(bool useCylindrical = false,
+                                     vtkm::Id numPlanes = 8,
+                                     bool isPeriodic = true);
 };
 
 //Make a simple 1D dataset.
@@ -1576,20 +1578,22 @@ inline vtkm::cont::DataSet MakeTestDataSet::Make3DExplicitDataSetCowNose()
   return dataSet;
 }
 
-inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical, vtkm::Id numPlanes)
+inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical,
+                                                           vtkm::Id numPlanes,
+                                                           bool isPeriodic)
 {
-  std::vector<vtkm::FloatDefault> rz = { 1, 0, 1, 1, 2, 0, 2, 1 };
+  std::vector<vtkm::FloatDefault> rz = { 1, 0, 1, 1, 2, 0 }; //, 2, 1 };
 
   auto pts = vtkm::cont::make_ArrayHandle(rz, vtkm::CopyFlag::On);
   auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, useCylindrical);
 
-  std::vector<vtkm::Int32> nextNode = { 0, 1, 2, 3 };
-  std::vector<vtkm::Int32> conn = { 0, 2, 1, 1, 2, 3 };
+  std::vector<vtkm::Int32> nextNode = { 0, 1, 2 }; //, 3};
+  std::vector<vtkm::Int32> conn = { 0, 2, 1 };     //,  1,2,3};
   //std::vector<vtkm::Int32> nextNode = { 0, 1, 2, 3 };
   ////std::vector<vtkm::Int32> conn = { 0, 2, 1, 1, 2, 3 };
   //std::vector<vtkm::Int32> conn = {1,2,0, 1,3,2};
 
-  auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, useCylindrical);
+  auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, isPeriodic);
 
   vtkm::cont::DataSet dataSet;
   dataSet.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", coords));
