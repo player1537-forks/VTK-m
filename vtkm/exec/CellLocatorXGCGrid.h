@@ -89,11 +89,77 @@ public:
   {
 
     if (this->UseCylindrical)
+      return this->FindCellCylindrical(point, cellId, parametric);
+    else
+      return this->FindCellCartesian(point, cellId, parametric);
+  }
+
+  VTKM_DEPRECATED(1.6, "Locators are no longer pointers. Use . operator.")
+  VTKM_EXEC CellLocatorXGCGrid* operator->() { return this; }
+  VTKM_DEPRECATED(1.6, "Locators are no longer pointers. Use . operator.")
+  VTKM_EXEC const CellLocatorXGCGrid* operator->() const { return this; }
+
+private:
+  VTKM_EXEC
+  vtkm::ErrorCode FindCellCylindrical(const vtkm::Vec3f& point,
+                                      vtkm::Id& cellId,
+                                      vtkm::Vec3f& parametric) const
+  {
+    using LocType = vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>;
+    return this->LocatorMux.Locators.Get<LocType>().FindCell(point, cellId, parametric);
+  }
+
+  VTKM_EXEC
+  vtkm::ErrorCode FindCellCartesian(const vtkm::Vec3f& point,
+                                    vtkm::Id& cellId,
+                                    vtkm::Vec3f& parametric) const
+  {
+    using LocType = vtkm::exec::CellLocatorTwoLevel<ConnSingleType>;
+    LocType locator = this->LocatorMux.Locators.Get<LocType>();
+
+    //Convert to cylindrical
+    vtkm::FloatDefault x = point[0];
+    vtkm::FloatDefault y = point[1];
+    vtkm::FloatDefault z = point[2];
+
+    vtkm::FloatDefault r = vtkm::Sqrt(x * x + y * y);
+    vtkm::FloatDefault theta = vtkm::ATan2(y, x);
+    if (theta < 0)
+      theta += vtkm::TwoPi();
+
+    //Point in cylindrical R,Z space for plane locator.
+    vtkm::Vec3f cylPtRZ(r, z, 0);
+
+    vtkm::Id cid = -1;
+    auto res = locator.FindCell(cylPtRZ, cid, parametric);
+    if (res != vtkm::ErrorCode::Success)
     {
-      using LocType = vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>;
-      return this->LocatorMux.Locators.Get<LocType>().FindCell(point, cellId, parametric);
+      std::cout << "*******************************************************" << std::endl;
+      std::cout << "  Pt NOT in 2D plane. " << std::endl;
+      std::cout << "   cylPtRZ= " << cylPtRZ << std::endl;
+      std::cout << "*******************************************************" << std::endl;
     }
-    return vtkm::ErrorCode::Success;
+
+    vtkm::Id planeIdx = vtkm::Floor(theta / this->ThetaSpacing);
+    if (planeIdx > 0)
+      cid += (planeIdx * this->CellsPerPlane);
+    auto indices = this->Connectivity.GetIndices(cid);
+    auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
+
+    vtkm::Vec3f pc;
+    bool inside;
+    VTKM_RETURN_ON_ERROR(this->PointInsideCell(point, pts, pc, inside));
+    if (inside)
+    {
+      VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
+        pts, point, vtkm::CellShapeTagWedge{}, parametric));
+      inside = vtkm::exec::CellInside(parametric, vtkm::CellShapeTagWedge{});
+
+      cellId = cid;
+      return vtkm::ErrorCode::Success;
+    }
+    return vtkm::ErrorCode::CellNotFound;
+  }
 
 #if 0
     std::cout<<"FindCell: INPUT: "<<point<<std::endl;
@@ -210,13 +276,8 @@ public:
     VTKM_RETURN_ON_ERROR(this->PointInsideCell(cylPt, cylVerts, pc, inside));
     if (inside)
     {
-      VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
-                             pts, point, vtkm::CellShapeTagWedge{}, parametric));
-      inside = vtkm::exec::CellInside(parametric, vtkm::CellShapeTagWedge{});
-
       cellId = cid;
-//      auto status = vtkm::exec::ParametricCoordinatesToWorldCoordinates(pts, pc, vtkm::CellShapeTagWedge{}, point);
-//      parametric = pc;
+      parametric = pc;
 
       std::cout<<"******** WCoords= "<<point<<std::endl;
       std::cout << " *** cellId= " << cellId << " p: " << parametric << std::endl;
@@ -230,15 +291,10 @@ public:
 
     std::cout<<"************************ NOT FOUND"<<std::endl;
     return vtkm::ErrorCode::CellNotFound;
-#endif
   }
+#endif
 
-  VTKM_DEPRECATED(1.6, "Locators are no longer pointers. Use . operator.")
-  VTKM_EXEC CellLocatorXGCGrid* operator->() { return this; }
-  VTKM_DEPRECATED(1.6, "Locators are no longer pointers. Use . operator.")
-  VTKM_EXEC const CellLocatorXGCGrid* operator->() const { return this; }
 
-private:
   template <typename PointsVecType>
   vtkm::Bounds ComputeCellBounds(const PointsVecType& points) const
   {
