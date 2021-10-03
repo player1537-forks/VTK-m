@@ -200,10 +200,13 @@ private:
     return { FloatVec3(minp), FloatVec3(maxp) };
   }
 
+#if 0
   VTKM_EXEC bool InBounds(const FloatVec3& point,
                           const vtkm::Bounds& bounds,
                           const vtkm::FloatDefault& eps) const
   {
+    return bounds.Contains(point);
+    /*
 #define isBetween(A, B, C) (((A - B) > -eps) && ((A - C) < eps))
 
     std::cout << "   InBounds: " << point << " " << bounds;
@@ -211,13 +214,12 @@ private:
         isBetween(point[1], bounds.Y.Min, bounds.Y.Max) &&
         isBetween(point[2], bounds.Z.Min, bounds.Z.Max))
     {
-      std::cout << " -->INSIDE" << std::endl;
       return true;
     }
-    std::cout << " -->OUTSIDE" << std::endl;
     return false;
+    */
   }
-
+#endif
 
   template <typename CoordsType>
   VTKM_EXEC vtkm::ErrorCode PointInsideCell(FloatVec3 point,
@@ -228,8 +230,9 @@ private:
     vtkm::Bounds bounds = this->ComputeCellBounds(cellPoints);
 
     inside = false;
-    vtkm::FloatDefault eps = 1e-6;
-    if (this->InBounds(point, bounds, eps))
+    //    static constexpr vtkm::FloatDefault eps = 1e-6;
+    //    if (this->InBounds(point, bounds, eps))
+    if (bounds.Contains(point))
     {
       VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
         cellPoints, point, vtkm::CellShapeTagWedge{}, parametricCoordinates));
