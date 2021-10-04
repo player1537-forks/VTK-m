@@ -1586,7 +1586,7 @@ inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical,
   rz.insert(rz.end(), { 1, 0 }); //P0: (1,0)
   rz.insert(rz.end(), { 1, 1 }); //P1: (1,1)
   rz.insert(rz.end(), { 2, 0 }); //P2: (2,0)
-  //rz.insert(rz.end(), {2,1});  //P3: (2,1)
+  rz.insert(rz.end(), { 2, 1 }); //P3: (2,1)
 
   auto pts = vtkm::cont::make_ArrayHandle(rz, vtkm::CopyFlag::On);
   auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, useCylindrical);
@@ -1597,7 +1597,7 @@ inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical,
 
   std::vector<vtkm::Int32> conn;
   conn.insert(conn.end(), { 0, 2, 1 }); //Tri0: {0,2,1}
-                                        //  conn.insert(conn.end(), {1,2,3});  //Tri1: {1,2,3}
+  conn.insert(conn.end(), { 1, 2, 3 }); //Tri1: {1,2,3}
 
   auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, isPeriodic);
 

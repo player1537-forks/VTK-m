@@ -142,6 +142,8 @@ private:
 
     vtkm::FloatDefault r = vtkm::Sqrt(x * x + y * y);
     vtkm::FloatDefault theta = vtkm::ATan2(y, x);
+    //std::cout<<"  FindCellCart: "<<point<<" R= "<<r<<" Z= "<<z<<" theta= "<<theta<<" "<<(theta*57.2958)<<std::endl;
+
     if (theta < 0)
       theta += vtkm::TwoPi();
 

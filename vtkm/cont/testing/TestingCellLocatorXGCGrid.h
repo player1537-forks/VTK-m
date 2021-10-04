@@ -71,7 +71,6 @@ public:
     }
 
     auto status = vtkm::exec::CellInterpolate(tmpPts, pc, cellShape, wc);
-
     /*
     std::cout << "Parametric to World: " << pc << " --> " << wc << std::endl;
     std::cout << " wedge points: " << std::endl;
@@ -81,8 +80,7 @@ public:
     PointType wc2;
     vtkm::exec::ParametricCoordinatesToWorldCoordinates(tmpPts, pc, cellShape, wc2);
     std::cout << "  ---------------> convert back: " << wc2 << std::endl;
-    */
-
+*/
     if (status != vtkm::ErrorCode::Success)
       this->RaiseError(vtkm::ErrorString(status));
   }
@@ -107,17 +105,11 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   auto cellIdGen = std::uniform_int_distribution<vtkm::Id>(0, numCells - 1);
   std::uniform_real_distribution<vtkm::FloatDefault> pcoordGen;
 
-  static const vtkm::FloatDefault eps = 1e-4;
-  vtkm::FloatDefault zero(0), one(1), z0(eps), z1(1 - eps);
-
+  //Cartesian is not as accurate. Points too close to a boundary will be outside.
   if (isCyl)
     pcoordGen = std::uniform_real_distribution<vtkm::FloatDefault>(0.0f, 1.0f);
   else
-  {
-    zero = eps;
-    one = 1 - eps;
-    pcoordGen = std::uniform_real_distribution<vtkm::FloatDefault>(0.05f, 0.95f);
-  }
+    pcoordGen = std::uniform_real_distribution<vtkm::FloatDefault>(0.1f, 0.9f);
 
   std::vector<vtkm::Id> cids;
   std::vector<vtkm::Vec3f> pc, wc;
@@ -140,23 +132,6 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
     cids.push_back(cid);
   }
 
-  //Add some cases along edges.
-  //Pts at Z=0 or Z=1 are the same point, so either cell would do.
-  //Tweak it by eps so that it will be one and only one cell.
-  cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({ zero, zero, z0 });
-  cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({ zero, one, z0 });
-  cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({ one, zero, z0 });
-
-  cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({ zero, zero, z1 });
-  cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({ zero, one, z1 });
-  cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({ one, zero, z1 });
-
   cellIds = vtkm::cont::make_ArrayHandle(cids, vtkm::CopyFlag::On);
   pcoords = vtkm::cont::make_ArrayHandle(pc, vtkm::CopyFlag::On);
 
@@ -167,7 +142,6 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
           ds.GetCoordinateSystem().GetDataAsMultiplexer(),
           pcoords,
           wcoords);
-
   /*
   std::cout << "****************************************" << std::endl;
   std::cout << "RandomInput" << std::endl << std::endl;
@@ -197,21 +171,17 @@ public:
                                 ExecObject locator,
                                 FieldOut cellIds,
                                 FieldOut pcoords);
-  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4);
+  using ExecutionSignature = void(_1, _2, _3, _4);
 
   template <typename LocatorType>
-  VTKM_EXEC void operator()(const vtkm::Id& index,
-                            const vtkm::Vec3f& point,
+  VTKM_EXEC void operator()(const vtkm::Vec3f& point,
                             const LocatorType& locator,
                             vtkm::Id& cellId,
                             vtkm::Vec3f& pcoords) const
   {
-    std::cout << "FindCell: " << index << " pt= " << point << std::endl;
     vtkm::ErrorCode status = locator.FindCell(point, cellId, pcoords);
     if (status != vtkm::ErrorCode::Success)
-    {
       this->RaiseError(vtkm::ErrorString(status));
-    }
   }
 };
 
@@ -222,14 +192,15 @@ class TestingCellLocatorXGCGrid
 public:
   using Algorithm = vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>;
 
-  void TestLocator(bool isCyl) const
+  void TestLocator(bool isCyl, vtkm::Id numPlanes) const
   {
     vtkm::cont::DataSet dataset =
-      vtkm::cont::testing::MakeTestDataSet().MakeXGCDataSet(isCyl, 16, true);
+      vtkm::cont::testing::MakeTestDataSet().MakeXGCDataSet(isCyl, numPlanes, true);
     vtkm::cont::CoordinateSystem coords = dataset.GetCoordinateSystem();
     vtkm::cont::DynamicCellSet cellSet = dataset.GetCellSet();
 
-    std::cout << "XGC Grid Test. Cylindrical= " << isCyl << std::endl;
+    std::cout << "XGC Grid Test. Cylindrical= " << isCyl << " numPlanes= " << numPlanes
+              << std::endl;
     vtkm::cont::CellLocatorXGCGrid locator;
     locator.SetCoordinates(coords);
     locator.SetCellSet(cellSet);
@@ -270,8 +241,12 @@ public:
   void operator()() const
   {
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(DeviceAdapter());
-    this->TestLocator(true);
-    this->TestLocator(false);
+    std::vector<bool> isCyl = { true, false };
+    std::vector<vtkm::Id> numPlanes = { 8, 16, 32 };
+
+    for (const auto& c : isCyl)
+      for (const auto& np : numPlanes)
+        this->TestLocator(c, np);
   }
 };
 
