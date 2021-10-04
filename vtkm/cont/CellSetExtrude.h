@@ -174,9 +174,11 @@ CellSetExtrude make_CellSetExtrude(const vtkm::cont::ArrayHandle<vtkm::Int32>& c
                                    const vtkm::cont::ArrayHandle<vtkm::Int32>& nextNode,
                                    bool periodic = true)
 {
-  return CellSetExtrude{
-    conn, coords.GetNumberOfPointsPerPlane(), coords.GetNumberOfPlanes(), nextNode, periodic
-  };
+  return CellSetExtrude{ conn,
+                         static_cast<vtkm::Int32>(coords.GetNumberOfPointsPerPlane()),
+                         static_cast<vtkm::Int32>(coords.GetNumberOfPlanes()),
+                         nextNode,
+                         periodic };
 }
 
 template <typename T>

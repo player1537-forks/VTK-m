@@ -55,7 +55,6 @@ public:
     , Connectivity(conn)
     , Coords(coords)
     , LocatorMux(locator)
-    , NumPlanes(numPlanes)
     , Periodic(true)
     , ThetaSpacing(vtkm::TwoPi() / numPlanes)
     , UseCylindrical(false)
@@ -74,7 +73,6 @@ public:
     , Connectivity(conn)
     , Coords(coords)
     , LocatorMux(locator)
-    , NumPlanes(numPlanes)
     , Periodic(periodic)
     , ThetaSpacing(vtkm::TwoPi() / numPlanes)
     , UseCylindrical(true)
@@ -227,7 +225,6 @@ private:
   vtkm::exec::CellLocatorMultiplexer<vtkm::exec::CellLocatorTwoLevel<ConnSingleType>,
                                      vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>>
     LocatorMux;
-  vtkm::Id NumPlanes;
   bool Periodic;
   vtkm::FloatDefault ThetaSpacing;
   bool UseCylindrical;
