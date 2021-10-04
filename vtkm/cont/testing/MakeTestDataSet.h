@@ -1582,26 +1582,34 @@ inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical,
                                                            vtkm::Id numPlanes,
                                                            bool isPeriodic)
 {
-  std::vector<vtkm::FloatDefault> rz = { 1, 0, 1, 1, 2, 0 }; //, 2, 1 };
+  std::vector<vtkm::FloatDefault> rz;
+  rz.insert(rz.end(), { 1, 0 }); //P0: (1,0)
+  rz.insert(rz.end(), { 1, 1 }); //P1: (1,1)
+  rz.insert(rz.end(), { 2, 0 }); //P2: (2,0)
+  //rz.insert(rz.end(), {2,1});  //P3: (2,1)
 
   auto pts = vtkm::cont::make_ArrayHandle(rz, vtkm::CopyFlag::On);
   auto coords = vtkm::cont::make_ArrayHandleXGCCoordinates(pts, numPlanes, useCylindrical);
 
-  std::vector<vtkm::Int32> nextNode = { 0, 1, 2 }; //, 3};
-  std::vector<vtkm::Int32> conn = { 0, 2, 1 };     //,  1,2,3};
-  //std::vector<vtkm::Int32> nextNode = { 0, 1, 2, 3 };
-  ////std::vector<vtkm::Int32> conn = { 0, 2, 1, 1, 2, 3 };
-  //std::vector<vtkm::Int32> conn = {1,2,0, 1,3,2};
+  std::vector<vtkm::Int32> nextNode;
+  for (std::size_t i = 0; i < rz.size() / 2; i++)
+    nextNode.push_back(i);
+
+  std::vector<vtkm::Int32> conn;
+  conn.insert(conn.end(), { 0, 2, 1 }); //Tri0: {0,2,1}
+                                        //  conn.insert(conn.end(), {1,2,3});  //Tri1: {1,2,3}
 
   auto cellSet = vtkm::cont::make_CellSetExtrude(conn, coords, nextNode, isPeriodic);
 
   vtkm::cont::DataSet dataSet;
   dataSet.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", coords));
   dataSet.SetCellSet(cellSet);
-  dataSet.PrintSummary(std::cout);
 
+  /*
+  dataSet.PrintSummary(std::cout);
   vtkm::io::VTKDataSetWriter writer("xgc.vtk");
   writer.WriteDataSet(dataSet);
+  */
 
   return dataSet;
 }

@@ -87,7 +87,7 @@ void CellLocatorXGCGrid::Build()
     vtkm::cont::ArrayCopy(
       vtkm::cont::make_ArrayHandleCast<vtkm::Id>(xgcCellSet.GetConnectivityArray()), conn);
     vtkm::cont::CellSetSingleType<> planeCells;
-    vtkm::Id ptsPerPlane = xgcCellSet.GetNumberOfPointsPerPlane();
+    vtkm::Id ptsPerPlane = static_cast<vtkm::Id>(xgcCellSet.GetNumberOfPointsPerPlane());
     planeCells.Fill(ptsPerPlane, vtkm::CELL_SHAPE_TRIANGLE, 3, conn);
     this->CellsPerPlane = planeCells.GetNumberOfCells();
 

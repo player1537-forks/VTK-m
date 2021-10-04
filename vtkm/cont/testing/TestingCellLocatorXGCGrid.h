@@ -33,11 +33,14 @@ namespace
 {
 std::default_random_engine RandomGenerator;
 
-static bool IS_CYL = false;
-
 class ParametricToWorldCoordinates : public vtkm::worklet::WorkletVisitCellsWithPoints
 {
 public:
+  ParametricToWorldCoordinates(bool isCyl)
+    : IsCylindrical(isCyl)
+  {
+  }
+
   using ControlSignature = void(CellSetIn cellset,
                                 FieldInPoint coords,
                                 FieldInOutCell pcs,
@@ -60,7 +63,7 @@ public:
   {
     //wrap around....
     auto tmpPts = points;
-    if (IS_CYL && tmpPts[0][1] > tmpPts[3][1])
+    if (this->IsCylindrical && tmpPts[0][1] > tmpPts[3][1])
     {
       tmpPts[3][1] = vtkm::TwoPi();
       tmpPts[4][1] = vtkm::TwoPi();
@@ -69,6 +72,7 @@ public:
 
     auto status = vtkm::exec::CellInterpolate(tmpPts, pc, cellShape, wc);
 
+    /*
     std::cout << "Parametric to World: " << pc << " --> " << wc << std::endl;
     std::cout << " wedge points: " << std::endl;
 
@@ -77,10 +81,14 @@ public:
     PointType wc2;
     vtkm::exec::ParametricCoordinatesToWorldCoordinates(tmpPts, pc, cellShape, wc2);
     std::cout << "  ---------------> convert back: " << wc2 << std::endl;
+    */
 
     if (status != vtkm::ErrorCode::Success)
       this->RaiseError(vtkm::ErrorString(status));
   }
+
+private:
+  bool IsCylindrical;
 };
 
 void GenerateRandomInput(const vtkm::cont::DataSet& ds,
@@ -96,14 +104,11 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   if (!xgcCellSet.GetIsPeriodic())
     numCells -= xgcCellSet.GetNumberOfCellsPerPlane();
 
-  std::cout << "Fix me: Last cell is implicit." << std::endl;
-  std::cout << "TODO: Add corner cases." << std::endl;
-
   auto cellIdGen = std::uniform_int_distribution<vtkm::Id>(0, numCells - 1);
   std::uniform_real_distribution<vtkm::FloatDefault> pcoordGen;
 
-  vtkm::FloatDefault zero(0), one(1);
   static const vtkm::FloatDefault eps = 1e-4;
+  vtkm::FloatDefault zero(0), one(1), z0(eps), z1(1 - eps);
 
   if (isCyl)
     pcoordGen = std::uniform_real_distribution<vtkm::FloatDefault>(0.0f, 1.0f);
@@ -135,46 +140,35 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
     cids.push_back(cid);
   }
 
-  cids.push_back(0);
-  pc.push_back({ .15, .15, .995 });
-  cids.push_back(1);
-  pc.push_back({ .15, .15, .995 });
-  cids.push_back(2);
-  pc.push_back({ .15, .15, .995 });
-
-#if 0
-  //Add some corner points.
+  //Add some cases along edges.
   //Pts at Z=0 or Z=1 are the same point, so either cell would do.
   //Tweak it by eps so that it will be one and only one cell.
-
-  //This is problematic for cylindrical. (0,0,0) in cell 4 is the same as (0,0,1) in cell 5.
-//  cids.push_back(5);
-//  pc.push_back({zero,zero,zero});
-//  cids.push_back(cellIdGen(RandomGenerator));
-//  pc.push_back({zero,zero,zero});
-
-  cids.push_back(cellIdGen(RandomGenerator)); //pt not in plane
-  pc.push_back({zero,zero,one});
   cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({one,zero,eps});
-  cids.push_back(cellIdGen(RandomGenerator)); //wrong cell
-  pc.push_back({one,zero,one});
+  pc.push_back({ zero, zero, z0 });
   cids.push_back(cellIdGen(RandomGenerator));
-  pc.push_back({zero,one,eps});
-  cids.push_back(cellIdGen(RandomGenerator)); //wrong cell / wrong param
-  pc.push_back({zero,one,one});
-#endif
+  pc.push_back({ zero, one, z0 });
+  cids.push_back(cellIdGen(RandomGenerator));
+  pc.push_back({ one, zero, z0 });
+
+  cids.push_back(cellIdGen(RandomGenerator));
+  pc.push_back({ zero, zero, z1 });
+  cids.push_back(cellIdGen(RandomGenerator));
+  pc.push_back({ zero, one, z1 });
+  cids.push_back(cellIdGen(RandomGenerator));
+  pc.push_back({ one, zero, z1 });
 
   cellIds = vtkm::cont::make_ArrayHandle(cids, vtkm::CopyFlag::On);
   pcoords = vtkm::cont::make_ArrayHandle(pc, vtkm::CopyFlag::On);
 
-  IS_CYL = isCyl;
-  vtkm::worklet::DispatcherMapTopology<ParametricToWorldCoordinates> dispatcher(
-    ParametricToWorldCoordinates::MakeScatter(cellIds));
-  dispatcher.Invoke(
-    ds.GetCellSet(), ds.GetCoordinateSystem().GetDataAsMultiplexer(), pcoords, wcoords);
+  vtkm::cont::Invoker invoker;
+  invoker(ParametricToWorldCoordinates{ isCyl },
+          ParametricToWorldCoordinates::MakeScatter(cellIds),
+          ds.GetCellSet(),
+          ds.GetCoordinateSystem().GetDataAsMultiplexer(),
+          pcoords,
+          wcoords);
 
-#if 1
+  /*
   std::cout << "****************************************" << std::endl;
   std::cout << "RandomInput" << std::endl << std::endl;
   std::ofstream ptF;
@@ -186,12 +180,12 @@ void GenerateRandomInput(const vtkm::cont::DataSet& ds,
   {
     auto pt = wcPortal.Get(i);
     ptF << pt[0] << "," << pt[1] << "," << pt[2] << std::endl;
-    std::cout << "   " << i << ": cell= " << cidPortal.Get(i) << " param= " << pcPortal.Get(i)
-              << " --> wc= " << wcPortal.Get(i) << std::endl;
+    std::cout << "   " << i << ": cell= " << cidPortal.Get(i) << " param= " << pcPortal.Get(i) << " --> wc= "
+              << wcPortal.Get(i) << std::endl;
   }
   std::cout << "****************************************" << std::endl;
   std::cout << "****************************************" << std::endl;
-#endif
+*/
 }
 
 
@@ -235,11 +229,10 @@ public:
     vtkm::cont::CoordinateSystem coords = dataset.GetCoordinateSystem();
     vtkm::cont::DynamicCellSet cellSet = dataset.GetCellSet();
 
-    std::cout << "XGC Grid Test!!  ISCYL=  " << isCyl << std::endl;
+    std::cout << "XGC Grid Test. Cylindrical= " << isCyl << std::endl;
     vtkm::cont::CellLocatorXGCGrid locator;
     locator.SetCoordinates(coords);
     locator.SetCellSet(cellSet);
-
     locator.Update();
 
     //Generate some test points.
@@ -251,8 +244,9 @@ public:
 
     vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
     vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
-    vtkm::worklet::DispatcherMapField<FindCellWorklet> dispatcher;
-    dispatcher.Invoke(points, locator, cellIds, pcoords);
+
+    vtkm::cont::Invoker invoker;
+    invoker(FindCellWorklet{}, points, locator, cellIds, pcoords);
 
     auto cellIdPortal = cellIds.ReadPortal();
     auto expCellIdsPortal = expCellIds.ReadPortal();
@@ -260,11 +254,13 @@ public:
     auto expPCoordsPortal = expPCoords.ReadPortal();
     for (vtkm::Id i = 0; i < numPoints; ++i)
     {
+      /*
       std::cout << i << ":   TEST: " << pcoordsPortal.Get(i)
                 << " should be: " << expPCoordsPortal.Get(i) << std::endl;
       std::cout << ":       wcoords= : " << points.ReadPortal().Get(i) << std::endl;
       std::cout << "        cellID: " << cellIdPortal.Get(i)
                 << " should be: " << expCellIdsPortal.Get(i) << std::endl;
+      */
       VTKM_TEST_ASSERT(cellIdPortal.Get(i) == expCellIdsPortal.Get(i), "Incorrect cell ids");
       VTKM_TEST_ASSERT(test_equal(pcoordsPortal.Get(i), expPCoordsPortal.Get(i), 1e-3),
                        "Incorrect parameteric coordinates");

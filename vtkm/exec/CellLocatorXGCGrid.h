@@ -56,8 +56,8 @@ public:
     , Coords(coords)
     , LocatorMux(locator)
     , NumPlanes(numPlanes)
-    , ThetaSpacing(vtkm::TwoPi() / numPlanes)
     , Periodic(true)
+    , ThetaSpacing(vtkm::TwoPi() / numPlanes)
     , UseCylindrical(false)
   {
     this->LastPlaneTheta = this->ThetaSpacing * static_cast<vtkm::FloatDefault>(numPlanes - 1);
@@ -73,10 +73,10 @@ public:
     : CellsPerPlane(cellsPerPlane)
     , Connectivity(conn)
     , Coords(coords)
-    , NumPlanes(numPlanes)
     , LocatorMux(locator)
-    , ThetaSpacing(vtkm::TwoPi() / numPlanes)
+    , NumPlanes(numPlanes)
     , Periodic(periodic)
+    , ThetaSpacing(vtkm::TwoPi() / numPlanes)
     , UseCylindrical(true)
   {
     this->LastPlaneTheta = this->ThetaSpacing * static_cast<vtkm::FloatDefault>(numPlanes - 1);
@@ -90,8 +90,6 @@ public:
                            vtkm::Id& cellId,
                            vtkm::Vec3f& parametric) const
   {
-    //    std::cout << std::endl;
-    //    std::cout << "***************** FindCell: " << point << std::endl;
     if (this->UseCylindrical)
       return this->FindCellCylindrical(point, cellId, parametric);
     else
@@ -109,18 +107,15 @@ private:
                                       vtkm::Id& cellId,
                                       vtkm::Vec3f& parametric) const
   {
-    std::cout << " LAST PLANE THETA= " << this->LastPlaneTheta << std::endl;
-    std::cout << "   pt= " << point << std::endl;
-
     using LocType = vtkm::exec::CellLocatorTwoLevel<ConnExtrudeType>;
     auto loc = this->LocatorMux.Locators.Get<LocType>();
 
-    //Normal case. Point is *NOT* in a wrap around cell.
-    if (point[1] > this->LastPlaneTheta)
+    //Case where point is *INSIDE* the wrap around cell.
+    if (this->Periodic && point[1] > this->LastPlaneTheta)
     {
       //Shift the point BACK to the cell that isn't a wrap around.
       vtkm::Vec3f shiftPt(point[0], point[1] - this->ThetaSpacing, point[2]);
-      std::cout << "****** SHIFT: " << point << " ---> " << shiftPt << std::endl;
+      //std::cout<<"****** SHIFT: "<<point<<" ---> "<<shiftPt<<std::endl;
       auto status = loc.FindCell(shiftPt, cellId, parametric);
 
       //Found the cell.  Now, the *RIGHT* cell will be offset by numCellsPerPlane
@@ -157,10 +152,12 @@ private:
     auto res = locator.FindCell(cylPtRZ, cid, parametric);
     if (res != vtkm::ErrorCode::Success)
     {
+      /*
       std::cout << "*******************************************************" << std::endl;
       std::cout << "  Pt NOT in 2D plane. " << std::endl;
       std::cout << "   cylPtRZ= " << cylPtRZ << std::endl;
       std::cout << "*******************************************************" << std::endl;
+      */
       return res;
     }
 
@@ -186,7 +183,7 @@ private:
   }
 
   template <typename PointsVecType>
-  vtkm::Bounds ComputeCellBounds(const PointsVecType& points) const
+  VTKM_EXEC vtkm::Bounds ComputeCellBounds(const PointsVecType& points) const
   {
     using CoordsType = typename vtkm::VecTraits<PointsVecType>::ComponentType;
     CoordsType minp = points[0], maxp = points[0];
@@ -200,27 +197,6 @@ private:
     return { FloatVec3(minp), FloatVec3(maxp) };
   }
 
-#if 0
-  VTKM_EXEC bool InBounds(const FloatVec3& point,
-                          const vtkm::Bounds& bounds,
-                          const vtkm::FloatDefault& eps) const
-  {
-    return bounds.Contains(point);
-    /*
-#define isBetween(A, B, C) (((A - B) > -eps) && ((A - C) < eps))
-
-    std::cout << "   InBounds: " << point << " " << bounds;
-    if (isBetween(point[0], bounds.X.Min, bounds.X.Max) &&
-        isBetween(point[1], bounds.Y.Min, bounds.Y.Max) &&
-        isBetween(point[2], bounds.Z.Min, bounds.Z.Max))
-    {
-      return true;
-    }
-    return false;
-    */
-  }
-#endif
-
   template <typename CoordsType>
   VTKM_EXEC vtkm::ErrorCode PointInsideCell(FloatVec3 point,
                                             CoordsType cellPoints,
@@ -230,13 +206,11 @@ private:
     vtkm::Bounds bounds = this->ComputeCellBounds(cellPoints);
 
     inside = false;
-    //    static constexpr vtkm::FloatDefault eps = 1e-6;
-    //    if (this->InBounds(point, bounds, eps))
     if (bounds.Contains(point))
     {
       VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
         cellPoints, point, vtkm::CellShapeTagWedge{}, parametricCoordinates));
-      std::cout << "   PARAMETRIC: " << parametricCoordinates << std::endl;
+      //      std::cout << "   PARAMETRIC: " << parametricCoordinates << std::endl;
       inside = vtkm::exec::CellInside(parametricCoordinates, vtkm::CellShapeTagWedge{});
     }
 
