@@ -46,8 +46,8 @@ void CellLocatorXGCGrid::Build()
   this->IsCylindrical = xgcCoordSys.GetUseCylindrical();
 
   auto xgcCellSet = cellSet.Cast<vtkm::cont::CellSetExtrude>();
-  this->NumPlanes = xgcCellSet.GetNumberOfPlanes();
-  this->CellsPerPlane = xgcCellSet.GetNumberOfCellsPerPlane();
+  this->NumPlanes = static_cast<vtkm::Id>(xgcCellSet.GetNumberOfPlanes());
+  this->CellsPerPlane = static_cast<vtkm::Id>(xgcCellSet.GetNumberOfCellsPerPlane());
 
   //If cylindrical, create a TwoLevelLocator on the 3D points.
   if (this->IsCylindrical)
