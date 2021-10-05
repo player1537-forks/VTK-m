@@ -109,7 +109,7 @@ add_subdirectory(filter)
 
 #-----------------------------------------------------------------------------
 # Build rendering
-#add_subdirectory(rendering)
+add_subdirectory(rendering)
 
 add_subdirectory(interop)
 
