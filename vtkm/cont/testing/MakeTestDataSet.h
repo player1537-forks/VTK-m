@@ -1593,7 +1593,7 @@ inline vtkm::cont::DataSet MakeTestDataSet::MakeXGCDataSet(bool useCylindrical,
 
   std::vector<vtkm::Int32> nextNode;
   for (std::size_t i = 0; i < rz.size() / 2; i++)
-    nextNode.push_back(i);
+    nextNode.push_back(static_cast<vtkm::Int32>(i));
 
   std::vector<vtkm::Int32> conn;
   conn.insert(conn.end(), { 0, 2, 1 }); //Tri0: {0,2,1}

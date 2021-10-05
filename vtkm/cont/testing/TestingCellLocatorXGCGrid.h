@@ -65,9 +65,9 @@ public:
     auto tmpPts = points;
     if (this->IsCylindrical && tmpPts[0][1] > tmpPts[3][1])
     {
-      tmpPts[3][1] = vtkm::TwoPi();
-      tmpPts[4][1] = vtkm::TwoPi();
-      tmpPts[5][1] = vtkm::TwoPi();
+      tmpPts[3][1] = static_cast<vtkm::FloatDefault>(vtkm::TwoPi());
+      tmpPts[4][1] = static_cast<vtkm::FloatDefault>(vtkm::TwoPi());
+      tmpPts[5][1] = static_cast<vtkm::FloatDefault>(vtkm::TwoPi());
     }
 
     auto status = vtkm::exec::CellInterpolate(tmpPts, pc, cellShape, wc);

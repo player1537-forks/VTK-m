@@ -56,7 +56,7 @@ public:
     , Coords(coords)
     , LocatorMux(locator)
     , Periodic(true)
-    , ThetaSpacing(vtkm::TwoPi() / numPlanes)
+    , ThetaSpacing(static_cast<vtkm::FloatDefault>(vtkm::TwoPi() / numPlanes))
     , UseCylindrical(false)
   {
     this->LastPlaneTheta = this->ThetaSpacing * static_cast<vtkm::FloatDefault>(numPlanes - 1);
@@ -74,7 +74,7 @@ public:
     , Coords(coords)
     , LocatorMux(locator)
     , Periodic(periodic)
-    , ThetaSpacing(vtkm::TwoPi() / numPlanes)
+    , ThetaSpacing(static_cast<vtkm::FloatDefault>(vtkm::TwoPi() / numPlanes))
     , UseCylindrical(true)
   {
     this->LastPlaneTheta = this->ThetaSpacing * static_cast<vtkm::FloatDefault>(numPlanes - 1);
@@ -143,7 +143,7 @@ private:
     //std::cout<<"  FindCellCart: "<<point<<" R= "<<r<<" Z= "<<z<<" theta= "<<theta<<" "<<(theta*57.2958)<<std::endl;
 
     if (theta < 0)
-      theta += vtkm::TwoPi();
+      theta += static_cast<vtkm::FloatDefault>(vtkm::TwoPi());
 
     //Point in cylindrical R,Z space for plane locator.
     vtkm::Vec3f cylPtRZ(r, z, 0);
@@ -161,7 +161,7 @@ private:
       return res;
     }
 
-    vtkm::Id planeIdx = vtkm::Floor(theta / this->ThetaSpacing);
+    vtkm::Id planeIdx = static_cast<vtkm::Id>(vtkm::Floor(theta / this->ThetaSpacing));
     if (planeIdx > 0)
       cid += (planeIdx * this->CellsPerPlane);
     auto indices = this->Connectivity.GetIndices(cid);
