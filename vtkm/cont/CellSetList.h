@@ -46,8 +46,8 @@ using CellSetListCommon = vtkm::List<vtkm::cont::CellSetStructured<2>,
 using CellSetListStructured =
   vtkm::List<vtkm::cont::CellSetStructured<2>, vtkm::cont::CellSetStructured<3>>;
 
-using CellSetListUnstructured =
-  vtkm::List<vtkm::cont::CellSetExplicit<>, vtkm::cont::CellSetSingleType<>>;
+using CellSetListUnstructured = vtkm::
+  List<vtkm::cont::CellSetExplicit<>, vtkm::cont::CellSetSingleType<>, vtkm::cont::CellSetExtrude>;
 }
 } // namespace vtkm::cont
 
