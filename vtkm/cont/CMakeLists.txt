@@ -321,6 +321,6 @@ if(TARGET vtkm_loguru)
 endif()
 
 #-----------------------------------------------------------------------------
-if (VTKm_ENABLE_TESTING)
+if(VTKm_ENABLE_TESTING_LIBRARY)
   add_subdirectory(testing)
-endif ()
+endif()
