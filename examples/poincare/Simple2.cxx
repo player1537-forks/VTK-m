@@ -688,6 +688,10 @@ Evaluate(const vtkm::cont::DataSet& ds,
 //    std::cout<<"pt= "<<pt<<std::endl;
 
     vtkm::FloatDefault phi = pt[1];
+//    vtkm::FloatDefault numRevs = vtkm::Floor(vtkm::Abs(phi / vtkm::TwoPi()));
+//    phi = phi - numRevs*vtkm::TwoPi();
+//    std::cout<<"******************** pt= "<<pt<<" numRevs = "<<numRevs<<" phi= "<<phi<<std::endl;
+
     if (phi < 0) phi += vtkm::TwoPi();
     vtkm::Vec3f ptRZ(pt[0], pt[2], 0);
 
@@ -743,10 +747,12 @@ Evaluate(const vtkm::cont::DataSet& ds,
     auto X = EvalVector(ds, locator, P2, "X", offsets);
 
     auto res = vtkm::Lerp(X[0], X[1], dist0i);
-//    std::cout<<"*************lerp "<<dist0i<<" *********RES= "<<res<<std::endl;
+    //std::cout<<"*************lerp "<<dist0i<<" *********RES= "<<res<<std::endl;
     res = res * XScale;
     res = res+B;
-//    std::cout<<"       res+B= "<<res<<std::endl;
+    res[0] *= XScale;
+    res[2] *= XScale;
+    //std::cout<<"       res+B= "<<res<<std::endl;
 
 
     //Just push the point in the B dir.
@@ -811,6 +817,8 @@ Poincare(const vtkm::cont::DataSet& ds,
 
 {
   const vtkm::FloatDefault planeVal = 2.0f;
+//  const vtkm::FloatDefault planeVal = vtkm::Pi();
+//  const vtkm::FloatDefault planeVal = 0; //vtkm::TwoPi();
 
   vtkm::cont::CellLocatorGeneral locator;
   locator.SetCellSet(ds.GetCellSet());
@@ -826,8 +834,8 @@ Poincare(const vtkm::cont::DataSet& ds,
       (*traces)[i].push_back(pts[i]);
 
   std::cout<<"Poincare: "<<pts<<std::endl;
-  int maxIter = numPunc*1000;
-  maxIter = 1000;
+  int maxIter = numPunc*10000;
+  //maxIter = 1000;
   for (int i = 0; i < maxIter; i++)
   {
     auto newPts = RK4(ds, locator, pts, pointMask, h);
@@ -835,9 +843,11 @@ Poincare(const vtkm::cont::DataSet& ds,
     for (std::size_t j = 0; j < pts.size(); j++)
     {
       //We puncture the plane if the points are on opposite sides of the plane.
-      if ((pts[j][1] < planeVal && newPts[j][1] >= planeVal) ||
-          (pts[j][1] >= planeVal && newPts[j][1] < planeVal))
+      if (((pts[j][1] < planeVal && newPts[j][1] >= planeVal) ||
+           (pts[j][1] >= planeVal && newPts[j][1] < planeVal)) &&
+          vtkm::Abs(pts[j][1]-newPts[j][1]) < 0.5)
       {
+        std::cout<<"PUNC: "<<pts[j]<<" --> "<<newPts[j]<<"  planeVal= "<<planeVal<<std::endl;
         punctures[j].push_back(newPts[j]);
         puncCount[j]++;
         std::cout<<j<<":    "<<newPts[j]<<" "<<puncCount[j]<<std::endl;
@@ -1021,9 +1031,14 @@ int main(int argc, char** argv)
   //pts = {{2.861759, 6.143427, 0.221794}};
 
   //midpoint
-  //pts = {{2.710551, 3.148580, -0.209959}};
+  pts = {{2.710551, 3.148580, -0.209959}};
 
 
+  /*
+  pts ={{3, 1.99, 0}};
+  pts ={{3, vtkm::Pi()-.001, 0}};
+  pts ={{3, 0.001, 0}};
+  */
 
 
   //std::vector<vtkm::Vec3f> output;
@@ -1044,14 +1059,29 @@ int main(int argc, char** argv)
       outPts<<i<<", "<<p[0]<<","<<p[2]<<","<<p[1]<<std::endl;
     }
 
+  vtkm::FloatDefault eq_axis_r = 2.8, eq_axis_z = 0.0;
+  vtkm::FloatDefault eq_x_psi = 0.0697345, eq_x_r = 2.8, eq_x_z = -0.99988;
 
-  std::ofstream outTraces;
-  outTraces.open("traces.txt");
+  std::ofstream outTraces, RZ, thetaPsi;
+  outTraces.open("traces.txt"), RZ.open("rz.txt"), thetaPsi.open("thetaPsi.txt");
   outTraces<<"ID,R,Z,T"<<std::endl;
+  RZ<<"ID,R,Z,T"<<std::endl;
+  thetaPsi<<"ID,theta,psi,Z"<<std::endl;
   for (int i = 0; i < (int)traces.size(); i++)
   {
+    int idx = 0;
     for (const auto& p : traces[i])
-      outTraces<<i<<", "<<p[0]<<", "<<p[2]<<", "<<p[1]<<std::endl;
+    {
+      outTraces<<idx<<", "<<p[0]<<", "<<p[2]<<", "<<p[1]<<std::endl;
+      RZ<<idx<<", "<<p[0]<<", "<<p[2]<<", 0"<<std::endl;
+      auto R = p[1];
+      auto Z = p[2];
+      auto theta = vtkm::ATan2(Z-eq_axis_z, R-eq_axis_r);
+      if (theta < 0) theta += vtkm::TwoPi();
+      auto psi = ((R-eq_x_r)*(R-eq_x_r) + Z*Z);
+      thetaPsi<<idx<<", "<<theta<<", "<<psi<<", 0"<<std::endl;
+      idx++;
+    }
   }
 
   return 0;
