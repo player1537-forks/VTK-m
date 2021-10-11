@@ -483,6 +483,7 @@ public:
     if (status != vtkm::ErrorCode::Success)
     {
       std::cout<<"Cell not found! "<<point<<std::endl;
+      std::cout<<"    ***** Try reducing the step size."<<std::endl;
       this->RaiseError(vtkm::ErrorString(status));
     }
     //ptIndices = cellSet.GetIndices(cellId);
@@ -659,70 +660,51 @@ InterpScalar(const vtkm::cont::DataSet& ds,
   }
 }
 
-//Evaluate the vector field at pts.
-//Return the vector values in output.
 void
 Evaluate(const vtkm::cont::DataSet& ds,
          const vtkm::cont::CellLocatorGeneral& locator,
          const std::vector<vtkm::Vec3f>& pts,
          std::vector<vtkm::Vec3f>& output)
 {
-  /*
-  for (std::size_t i = 0; i < pts.size(); i++)
-    output.push_back({.1, -1, .1});
-  return;
-  */
-
   vtkm::FloatDefault phiSpacing = vtkm::TwoPi() / (vtkm::FloatDefault)(numPlanes);
-  /*
-  std::cout<<"NumPlanes= "<<numPlanes<<" spacing= "<<phiSpacing<<std::endl;
-  std::cout<<"Plane, Phi"<<std::endl;
-  for (int i = 0; i < numPlanes; i++)
-    std::cout<<i<<", "<<((float)i * phiSpacing)<<"  deg= "<<(i*phiSpacing*57.92958)<<std::endl;
-  */
+  //std::cout<<"phiSpacing= "<<phiSpacing<<std::endl;
 
   for (const auto& x : pts)
   {
     auto pt = x;
-//    std::cout<<"\n\n********************************************************************"<<std::endl;
-//    std::cout<<"pt= "<<pt<<std::endl;
-
     vtkm::FloatDefault phi = pt[1];
-//    vtkm::FloatDefault numRevs = vtkm::Floor(vtkm::Abs(phi / vtkm::TwoPi()));
-//    phi = phi - numRevs*vtkm::TwoPi();
-//    std::cout<<"******************** pt= "<<pt<<" numRevs = "<<numRevs<<" phi= "<<phi<<std::endl;
+    int  numRevs = vtkm::Floor(vtkm::Abs(phi / vtkm::TwoPi()));
+    vtkm::FloatDefault rem = std::fmod(phi, vtkm::TwoPi());
 
-    if (phi < 0) phi += vtkm::TwoPi();
-    vtkm::Vec3f ptRZ(pt[0], pt[2], 0);
+    float phi0 = phi;
+    vtkm::Id planeIdx = static_cast<vtkm::Id>(vtkm::Floor(rem / phiSpacing));
+    //std::cout<<"   Evaluate("<<pt<<")  #rev= "<<numRevs<<" rem= "<<rem<<" planeIdx= "<<planeIdx<<" -->";
 
-    vtkm::Id planeIdx = static_cast<vtkm::Id>(vtkm::Floor(phi / phiSpacing));
-//    std::cout<<"***** phi= "<<phi<<" idx= "<<planeIdx<<std::endl;
-    vtkm::Id planeIdx0 = planeIdx;
-    vtkm::Id planeIdx1 = planeIdx0+1; //no //B is going in the NEGATIVE phi direction.
+    if (planeIdx < 0)
+      planeIdx += numPlanes;
+//    std::cout<<planeIdx<<std::endl;
 
+    vtkm::Id planeIdx0 = planeIdx, planeIdx1 = planeIdx+1;
     vtkm::FloatDefault Phi0 = static_cast<vtkm::FloatDefault>(planeIdx0) * phiSpacing;
     vtkm::FloatDefault Phi1 = static_cast<vtkm::FloatDefault>(planeIdx1) * phiSpacing;
-
     if (planeIdx == numPlanes-1)
     {
       planeIdx0 = 0;
-      Phi0 = vtkm::TwoPi();
       planeIdx1 = planeIdx;
+      Phi0 = vtkm::TwoPi();
       Phi1 = static_cast<vtkm::FloatDefault>(planeIdx1) * phiSpacing;
     }
 
+    vtkm::Vec3f ptRZ(pt[0], pt[2], 0);
 //    std::cout<<"POINT: "<<pt<<" --> "<<ptRZ<<" Planes: "<<Phi0<<" "<<Phi1<<" ("<<planeIdx0<<" "<<planeIdx1<<")"<<std::endl;
-
     std::vector<vtkm::Vec3f> P = {ptRZ};
     std::vector<vtkm::Vec3f> B0 = EvalVector(ds, locator, P, "B2D");
-    std::vector<vtkm::FloatDefault> As;
-    InterpScalar(ds, locator, P, "apars", As);
-
-//    std::cout<<"B0("<<ptRZ<<") = "<<B0<<" As= WRONG "<<As<<std::endl;
-
     auto B = B0[0];
-    Ray3f ray0(pt, -B), ray1(pt, B);
-//    std::cout<<"Ray: "<<pt<<" "<<B<<std::endl;
+//    std::cout<<"    B= "<<B<<std::endl;
+
+    vtkm::Vec3f rayPt(pt[0], rem, pt[2]);
+    Ray3f ray0(rayPt, -B), ray1(rayPt, B);
+//    std::cout<<"Ray: "<<rayPt<<" "<<B<<std::endl;
     vtkm::Plane<> Plane0({0,Phi0,0}, {0,-1,0}), Plane1({0,Phi1,0}, {0,-1,0});
 
     vtkm::Vec3f ptOnPlane0, ptOnPlane1;
@@ -744,14 +726,121 @@ Evaluate(const vtkm::cont::DataSet& ds,
     //Eval X(p0_rz, p1_rz)
     std::vector<vtkm::Vec3f> P2 = { {ptOnPlane0[0], ptOnPlane0[2], 0}, {ptOnPlane1[0], ptOnPlane1[2], 0} };
     std::vector<int> offsets = {planeIdx0 * numNodes, planeIdx1 * numNodes};
+//    std::cout<<"   Eval X @ "<<P2<<std::endl;
+    auto X = EvalVector(ds, locator, P2, "X", offsets);
+
+    auto res = vtkm::Lerp(X[0], X[1], dist0i);
+//    std::cout<<"*************lerp "<<dist0i<<" *********RES= "<<res<<std::endl;
+    //res = res * XScale;
+    res = res+B;
+    //std::cout<<"       res+B= "<<res<<std::endl;
+
+    res = B;
+    output.push_back(res);
+  }
+}
+
+//Evaluate the vector field at pts.
+//Return the vector values in output.
+void
+Evaluate2(const vtkm::cont::DataSet& ds,
+         const vtkm::cont::CellLocatorGeneral& locator,
+         const std::vector<vtkm::Vec3f>& pts,
+         std::vector<vtkm::Vec3f>& output)
+{
+  /*
+  for (std::size_t i = 0; i < pts.size(); i++)
+    output.push_back({.1, -1, .1});
+  return;
+  */
+
+  vtkm::FloatDefault phiSpacing = vtkm::TwoPi() / (vtkm::FloatDefault)(numPlanes);
+  /*
+  std::cout<<"NumPlanes= "<<numPlanes<<" spacing= "<<phiSpacing<<std::endl;
+  std::cout<<"Plane, Phi"<<std::endl;
+  for (int i = 0; i < numPlanes; i++)
+    std::cout<<i<<", "<<((float)i * phiSpacing)<<"  deg= "<<(i*phiSpacing*57.92958)<<std::endl;
+  */
+
+  for (const auto& x : pts)
+  {
+    auto pt = x;
+    std::cout<<"\n\n********************************************************************"<<std::endl;
+    std::cout<<"pt= "<<pt<<std::endl;
+
+    vtkm::FloatDefault phi = pt[1];
+    vtkm::FloatDefault numRevs = vtkm::Floor(vtkm::Abs(phi / vtkm::TwoPi()));
+    vtkm::FloatDefault rem = std::fmod(phi, vtkm::TwoPi());
+
+    std::cout<<"******************** pt= "<<pt<<" numRevs = "<<numRevs<<" phi= "<<phi<<" rem= "<<rem<<std::endl;
+
+    if (phi < 0) phi += vtkm::TwoPi();
+    vtkm::Vec3f ptRZ(pt[0], pt[2], 0);
+
+    vtkm::Id planeIdx = static_cast<vtkm::Id>(vtkm::Floor(phi / phiSpacing));
+    std::cout<<"***** phi= "<<phi<<" idx= "<<planeIdx<<std::endl;
+    auto planeIdx_ = static_cast<vtkm::Id>(vtkm::Floor(rem / phiSpacing));
+    std::cout<<"** 2 *** phi= "<<phi<<" idx= "<<planeIdx_<<std::endl;
+
+    vtkm::Id planeIdx0 = planeIdx;
+    vtkm::Id planeIdx1 = planeIdx0+1; //no //B is going in the NEGATIVE phi direction.
+
+    vtkm::FloatDefault Phi0 = static_cast<vtkm::FloatDefault>(planeIdx0) * phiSpacing;
+    vtkm::FloatDefault Phi1 = static_cast<vtkm::FloatDefault>(planeIdx1) * phiSpacing;
+
+    if (planeIdx == numPlanes-1)
+    {
+      planeIdx0 = 0;
+      Phi0 = vtkm::TwoPi();
+      planeIdx1 = planeIdx;
+      Phi1 = static_cast<vtkm::FloatDefault>(planeIdx1) * phiSpacing;
+    }
+
+    std::cout<<"POINT: "<<pt<<" --> "<<ptRZ<<" Planes: "<<Phi0<<" "<<Phi1<<" ("<<planeIdx0<<" "<<planeIdx1<<")"<<std::endl;
+
+    std::vector<vtkm::Vec3f> P = {ptRZ};
+    std::vector<vtkm::Vec3f> B0 = EvalVector(ds, locator, P, "B2D");
+    std::vector<vtkm::FloatDefault> As;
+    InterpScalar(ds, locator, P, "apars", As);
+
+    std::cout<<"B0("<<ptRZ<<") = "<<B0<<" As= WRONG "<<As<<std::endl;
+
+    auto B = B0[0];
+    output.push_back(B);
+    continue;
+
+
+    Ray3f ray0(pt, -B), ray1(pt, B);
+    std::cout<<"Ray: "<<pt<<" "<<B<<std::endl;
+    vtkm::Plane<> Plane0({0,Phi0,0}, {0,-1,0}), Plane1({0,Phi1,0}, {0,-1,0});
+
+    vtkm::Vec3f ptOnPlane0, ptOnPlane1;
+    vtkm::FloatDefault T0, T1;
+    bool tmp;
+    Plane0.Intersect(ray0, T0, ptOnPlane0, tmp);
+    Plane1.Intersect(ray1, T1, ptOnPlane1, tmp);
+
+    std::cout<<"PtOnPlane0: "<<ptOnPlane0<<" T0= "<<T0<<std::endl;
+    std::cout<<"PtOnPlane1: "<<ptOnPlane1<<" T1= "<<T1<<std::endl;
+    std::cout<<"pt: "<<pt<<std::endl;
+
+    auto dist01 = vtkm::Magnitude(ptOnPlane1-ptOnPlane0);
+    auto dist0i = vtkm::Magnitude(pt-ptOnPlane0) / dist01;
+    auto disti1 = vtkm::Magnitude(pt-ptOnPlane1) / dist01;
+
+    std::cout<<"dist01= "<<dist01<<" :: "<<dist0i<<" "<<disti1<<std::endl;
+
+    //Eval X(p0_rz, p1_rz)
+    std::vector<vtkm::Vec3f> P2 = { {ptOnPlane0[0], ptOnPlane0[2], 0}, {ptOnPlane1[0], ptOnPlane1[2], 0} };
+    std::vector<int> offsets = {planeIdx0 * numNodes, planeIdx1 * numNodes};
     auto X = EvalVector(ds, locator, P2, "X", offsets);
 
     auto res = vtkm::Lerp(X[0], X[1], dist0i);
     //std::cout<<"*************lerp "<<dist0i<<" *********RES= "<<res<<std::endl;
-    res = res * XScale;
+    //res = res * XScale;
     res = res+B;
-    res[0] *= XScale;
-    res[2] *= XScale;
+    //res[0] *= XScale;
+    //res[2] *= XScale;
     //std::cout<<"       res+B= "<<res<<std::endl;
 
 
@@ -797,12 +886,15 @@ RK4(const vtkm::cont::DataSet& ds,
   for (std::size_t i = 0; i < pts.size(); i++)
   {
     newPts[i] = pts[i] + h_6*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
+//    std::cout<<"*******************  RK4: "<<pts[i]<<" ==========> "<<newPts[i]<<std::endl;
 
+    /*
     //Wrap around.
     if (newPts[i][1] < 0)
       newPts[i][1] += vtkm::TwoPi();
     else if (newPts[i][1] > vtkm::TwoPi())
       newPts[i][1] -= vtkm::TwoPi();
+    */
   }
 
   return newPts;
@@ -816,9 +908,9 @@ Poincare(const vtkm::cont::DataSet& ds,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
-  const vtkm::FloatDefault planeVal = 2.0f;
+//  const vtkm::FloatDefault planeVal = 2.0f;
 //  const vtkm::FloatDefault planeVal = vtkm::Pi();
-//  const vtkm::FloatDefault planeVal = 0; //vtkm::TwoPi();
+  const vtkm::FloatDefault planeVal = 0; //vtkm::TwoPi();
 
   vtkm::cont::CellLocatorGeneral locator;
   locator.SetCellSet(ds.GetCellSet());
@@ -843,13 +935,14 @@ Poincare(const vtkm::cont::DataSet& ds,
     for (std::size_t j = 0; j < pts.size(); j++)
     {
       //We puncture the plane if the points are on opposite sides of the plane.
-      if (((pts[j][1] < planeVal && newPts[j][1] >= planeVal) ||
-           (pts[j][1] >= planeVal && newPts[j][1] < planeVal)) &&
-          vtkm::Abs(pts[j][1]-newPts[j][1]) < 0.5)
+      int nRevs0 = vtkm::Floor(vtkm::Abs(pts[j][1] / vtkm::TwoPi()));
+      int nRevs1 = vtkm::Floor(vtkm::Abs(newPts[j][1] / vtkm::TwoPi()));
+      //std::cout<<" PCHECK: "<<pts[j][1]<<" "<<newPts[j][1]<<" planeVal= "<<planeVal<<" nREVS0= "<<nRevs0<<" "<<nRevs1<<std::endl;
+      if (nRevs1 > nRevs0)
       {
-        std::cout<<"PUNC: "<<pts[j]<<" --> "<<newPts[j]<<"  planeVal= "<<planeVal<<std::endl;
         punctures[j].push_back(newPts[j]);
         puncCount[j]++;
+        std::cout<<"PUNC: "<<pts[j]<<" --> "<<newPts[j]<<"  planeVal= "<<planeVal<<" punc= "<<puncCount[j]<<std::endl;
         std::cout<<j<<":    "<<newPts[j]<<" "<<puncCount[j]<<std::endl;
         if (puncCount[j] == numPunc)
           pointMask[j] = false;
@@ -948,7 +1041,50 @@ CalcX(vtkm::cont::DataSet& ds)
 int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
-  std::cout<<std::endl<<std::endl;
+
+
+  /*
+  float phi = 0;
+  int cnt = 0;
+  numPlanes = 48;
+  float dPhi = vtkm::TwoPi()/static_cast<double>(numPlanes);
+  int idx = 0;
+  std::cout<<"dPhi= "<<dPhi<<std::endl;
+  int rev0 = 0;
+  while (cnt < 10)
+  {
+    float phi0 = phi;
+
+    int  numRevs = vtkm::Floor(vtkm::Abs(phi / vtkm::TwoPi()));
+    vtkm::FloatDefault rem = std::fmod(phi, vtkm::TwoPi());
+
+    vtkm::Id planeIdx = static_cast<vtkm::Id>(vtkm::Floor(rem / dPhi));
+    vtkm::Id planeIdx0, planeIdx1;
+    if (planeIdx < 0)
+      planeIdx += numPlanes;
+    if (planeIdx == numPlanes-1)
+    {
+      planeIdx0 = 0;
+      planeIdx1 = planeIdx;
+    }
+    else
+    {
+      planeIdx0 = planeIdx;
+      planeIdx1 = planeIdx0+1; //no //B is going in the NEGATIVE phi direction.
+    }
+    std::cout<<idx<<":  phi= "<<phi<<" #Rev= "<<numRevs<<" rem= "<<rem<<" planes: ("<<planeIdx0<<" "<<planeIdx1<<")"<<std::endl;
+
+    if (numRevs > rev0)
+    {
+      rev0 = numRevs;
+      cnt++;
+    }
+
+    phi -= 0.1;
+    idx++;
+  }
+//  return 0;
+*/
 
   auto opts = vtkm::cont::InitializeOptions::DefaultAnyDevice;
   auto config = vtkm::cont::Initialize(argc, argv, opts);
@@ -965,7 +1101,7 @@ int main(int argc, char** argv)
 
   std::map<std::string, std::string> adiosArgs;
   adiosArgs["--dir"] = args["--dir"][0];
-  XScale = std::stof(args["--xscale"][0].c_str());
+  //XScale = std::stof(args["--xscale"][0].c_str());
 
   adios = new adios2::ADIOS;
   adiosStuff["mesh"] = new adiosS(adios, "xgc.mesh.bp", "mesh", adiosArgs);
@@ -1034,12 +1170,11 @@ int main(int argc, char** argv)
   pts = {{2.710551, 3.148580, -0.209959}};
 
 
-  /*
+
   pts ={{3, 1.99, 0}};
   pts ={{3, vtkm::Pi()-.001, 0}};
   pts ={{3, 0.001, 0}};
-  */
-
+  pts ={{3, -.0001, 0}};
 
   //std::vector<vtkm::Vec3f> output;
   //Evaluate(ds, pts, output);
@@ -1060,11 +1195,11 @@ int main(int argc, char** argv)
     }
 
   vtkm::FloatDefault eq_axis_r = 2.8, eq_axis_z = 0.0;
-  vtkm::FloatDefault eq_x_psi = 0.0697345, eq_x_r = 2.8, eq_x_z = -0.99988;
+//  vtkm::FloatDefault eq_x_psi = 0.0697345, eq_x_r = 2.8, eq_x_z = -0.99988;
 
   std::ofstream outTraces, RZ, thetaPsi;
   outTraces.open("traces.txt"), RZ.open("rz.txt"), thetaPsi.open("thetaPsi.txt");
-  outTraces<<"ID,R,Z,T"<<std::endl;
+  outTraces<<"ID,R,Z,T,THETA,PSI"<<std::endl;
   RZ<<"ID,R,Z,T"<<std::endl;
   thetaPsi<<"ID,theta,psi,Z"<<std::endl;
   for (int i = 0; i < (int)traces.size(); i++)
@@ -1072,13 +1207,15 @@ int main(int argc, char** argv)
     int idx = 0;
     for (const auto& p : traces[i])
     {
-      outTraces<<idx<<", "<<p[0]<<", "<<p[2]<<", "<<p[1]<<std::endl;
-      RZ<<idx<<", "<<p[0]<<", "<<p[2]<<", 0"<<std::endl;
-      auto R = p[1];
+      auto R = p[0];
       auto Z = p[2];
+      auto PHI = std::fmod(p[1], vtkm::TwoPi());
       auto theta = vtkm::ATan2(Z-eq_axis_z, R-eq_axis_r);
       if (theta < 0) theta += vtkm::TwoPi();
-      auto psi = ((R-eq_x_r)*(R-eq_x_r) + Z*Z);
+      auto psi = vtkm::Sqrt(((R-eq_axis_r)*(R-eq_axis_r) + Z*Z));
+
+      outTraces<<idx<<", "<<R<<", "<<Z<<", "<<PHI<<", "<<theta<<", "<<psi<<std::endl;
+      RZ<<idx<<", "<<p[0]<<", "<<p[2]<<", 0"<<std::endl;
       thetaPsi<<idx<<", "<<theta<<", "<<psi<<", 0"<<std::endl;
       idx++;
     }
