@@ -803,7 +803,6 @@ Evaluate(const vtkm::cont::DataSet& ds,
   return;
   */
 
-
   vtkm::FloatDefault phiSpacing = vtkm::TwoPi() / (vtkm::FloatDefault)(numPlanes);
   /*
   std::cout<<"\n\n********************************************************"<<std::endl;
@@ -828,17 +827,36 @@ Evaluate(const vtkm::cont::DataSet& ds,
     std::vector<vtkm::Vec3f> P = {ptRZ};
     std::vector<vtkm::Vec3f> B0 = EvalVector(ds, locator, P, "B2D");
     auto B = B0[0];
-
-    std::cout<<"B= "<<B<<std::endl;
-    /*
-    B[0] = B[0] * 1000;
-    B[2] = B[2] * 1000;
-    B = vtkm::Vec3f(0,-.1,0);
-    */
-
     B[1] = B[1] / pt[0];
-    std::cout<<"  ****B= "<<B<<std::endl;
-    auto res = B;
+
+
+    //Calculate X
+    vtkm::Vec3f rayPt(pt[0], phiN, pt[2]);
+    Ray3f ray0(rayPt, -B), ray1(rayPt, B);
+
+    //std::cout<<"Ray: "<<rayPt<<" "<<B<<std::endl;
+    vtkm::Plane<> Plane0({0,Phi0,0}, {0,-1,0}), Plane1({0,Phi1,0}, {0,-1,0});
+
+    vtkm::Vec3f ptOnPlane0, ptOnPlane1;
+    vtkm::FloatDefault T0, T1;
+    bool tmp;
+    Plane0.Intersect(ray0, T0, ptOnPlane0, tmp);
+    Plane1.Intersect(ray1, T1, ptOnPlane1, tmp);
+
+    auto dist01 = vtkm::Magnitude(ptOnPlane1-ptOnPlane0);
+    auto dist0i = vtkm::Magnitude(pt-ptOnPlane0) / dist01;
+    auto disti1 = vtkm::Magnitude(pt-ptOnPlane1) / dist01;
+
+    //Eval X(p0_rz, p1_rz)
+    std::vector<vtkm::Vec3f> P2 = { {ptOnPlane0[0], ptOnPlane0[2], 0}, {ptOnPlane1[0], ptOnPlane1[2], 0} };
+    std::vector<int> offsets = {planeIdx0 * numNodes, planeIdx1 * numNodes};
+//    std::cout<<"   Eval X @ "<<P2<<std::endl;
+    auto X = EvalVector(ds, locator, P2, "X", offsets);
+
+    auto res = vtkm::Lerp(X[0], X[1], dist0i);
+    res[1] /= pt[0];
+
+    res = res+B;
     output.push_back(res);
     continue;
 
@@ -1061,7 +1079,7 @@ RK4(const vtkm::cont::DataSet& ds,
   for (std::size_t i = 0; i < pts.size(); i++)
   {
     newPts[i] = pts[i] + h_6*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
-    std::cout<<"*******************  RK4: "<<pts[i]<<" ==========> "<<newPts[i]<<std::endl;
+    //std::cout<<"*******************  RK4: "<<pts[i]<<" ==========> "<<newPts[i]<<std::endl;
 
     /*
     //Wrap around.
@@ -1118,7 +1136,7 @@ Poincare(const vtkm::cont::DataSet& ds,
   std::cout<<std::endl<<std::endl<<std::endl;
 
 
-  int maxIter = numPunc*10000;
+  int maxIter = numPunc*1000000;
   //maxIter = 1000;
   for (int i = 0; i < maxIter; i++)
   {
