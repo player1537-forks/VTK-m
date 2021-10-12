@@ -797,6 +797,13 @@ Evaluate(const vtkm::cont::DataSet& ds,
          const std::vector<vtkm::Vec3f>& pts,
          std::vector<vtkm::Vec3f>& output)
 {
+  /*
+  for (std::size_t i = 0; i < pts.size(); i++)
+    output.push_back({0, -.1, 0});
+  return;
+  */
+
+
   vtkm::FloatDefault phiSpacing = vtkm::TwoPi() / (vtkm::FloatDefault)(numPlanes);
   /*
   std::cout<<"\n\n********************************************************"<<std::endl;
@@ -822,8 +829,18 @@ Evaluate(const vtkm::cont::DataSet& ds,
     std::vector<vtkm::Vec3f> B0 = EvalVector(ds, locator, P, "B2D");
     auto B = B0[0];
 
+    std::cout<<"B= "<<B<<std::endl;
+    /*
+    B[0] = B[0] * 1000;
+    B[2] = B[2] * 1000;
+    B = vtkm::Vec3f(0,-.1,0);
+    */
+
+    B[1] = B[1] / pt[0];
+    std::cout<<"  ****B= "<<B<<std::endl;
     auto res = B;
     output.push_back(res);
+    continue;
 
 #if 0
 
@@ -905,11 +922,12 @@ Evaluate2(const vtkm::cont::DataSet& ds,
          const std::vector<vtkm::Vec3f>& pts,
          std::vector<vtkm::Vec3f>& output)
 {
-  /*
+/*
   for (std::size_t i = 0; i < pts.size(); i++)
     output.push_back({.1, -1, .1});
   return;
-  */
+*/
+
 
   vtkm::FloatDefault phiSpacing = vtkm::TwoPi() / (vtkm::FloatDefault)(numPlanes);
   /*
