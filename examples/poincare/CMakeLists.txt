@@ -18,10 +18,12 @@ find_package(Fides REQUIRED)
 add_executable(Poincare Poincare.cxx io.cxx io.h)
 add_executable(Simple Simple.cxx)
 add_executable(Simple2 Simple2.cxx)
+add_executable(Simple3 Simple3.cxx)
 add_executable(SimpleFides SimpleFides.cxx)
 target_link_libraries(Poincare PRIVATE vtkm_filter vtkm_io fides)
 target_link_libraries(Simple PRIVATE vtkm_filter vtkm_io vtkm_rendering fides)
 target_link_libraries(Simple2 PRIVATE vtkm_filter vtkm_io vtkm_rendering fides)
+target_link_libraries(Simple3 PRIVATE vtkm_filter vtkm_io vtkm_rendering fides)
 target_link_libraries(SimpleFides PRIVATE vtkm_filter vtkm_io fides)
 vtkm_add_target_information(Poincare
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
@@ -32,6 +34,9 @@ vtkm_add_target_information(Simple
 vtkm_add_target_information(Simple2
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
                             DEVICE_SOURCES Simple2.cxx)
+vtkm_add_target_information(Simple3
+                            DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
+                            DEVICE_SOURCES Simple3.cxx)
 vtkm_add_target_information(SimpleFides
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
                             DEVICE_SOURCES SimpleFides.cxx)

@@ -99,6 +99,8 @@ public:
   Particle(const vtkm::Particle& p)
     : Pos(p.Pos)
     , ID(p.ID)
+    , NumPunctures(p.NumPunctures)
+    , NumRevolutions(p.NumRevolutions)
     , NumSteps(p.NumSteps)
     , Status(p.Status)
     , Time(p.Time)
@@ -140,17 +142,18 @@ public:
   inline VTKM_CONT friend std::ostream& operator<<(std::ostream& out, const vtkm::Particle& p)
   {
     out << "v(" << p.Time << ") = " << p.Pos << ", ID: " << p.ID << ", NumSteps: " << p.NumSteps
+        << ", NumPunc: "<<p.NumPunctures<<", NumRev: "<<p.NumRevolutions
         << ", Status: " << p.Status;
     return out;
   }
 
   vtkm::Vec3f Pos;
   vtkm::Id ID = -1;
+  vtkm::Id NumPunctures = 0;   //Needs to go into a derived class.
+  vtkm::Id NumRevolutions = 0; //Needs to go into a derived class.
   vtkm::Id NumSteps = 0;
   vtkm::ParticleStatus Status;
   vtkm::FloatDefault Time = 0;
-
-  vtkm::Id NumPunctures = 0;  //Needs to go into a derived class.
 };
 
 class Electron

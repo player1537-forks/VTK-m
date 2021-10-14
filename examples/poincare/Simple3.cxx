@@ -45,6 +45,33 @@
 /*
 radius values: max range: 2.5 3.7
 for interesting psi: 3.5  3.7
+
+R --> psi
+R,Z: (2.80, 0.0) --> 0.00
+R,Z: (2.85, 0.0) --> 0.05
+R,Z: (2.90, 0.0) --> 0.10
+R,Z: (2.95, 0.0) --> 0.15
+R,Z: (3.00, 0.0) --> 0.20
+R,Z: (3.05, 0.0) --> 0.25
+R,Z: (3.10, 0.0) --> 0.30
+R,Z: (3.15, 0.0) --> 0.35
+R,Z: (3.20, 0.0) --> 0.40
+R,Z: (3.25, 0.0) --> 0.45
+R,Z: (3.30, 0.0) --> 0.50
+R,Z: (3.35, 0.0) --> 0.55
+R,Z: (3.40, 0.0) --> 0.60
+R,Z: (3.45, 0.0) --> 0.65
+R,Z: (3.50, 0.0) --> 0.70
+R,Z: (3.55, 0.0) --> 0.75
+R,Z: (3.60, 0.0) --> 0.80
+R,Z: (3.65, 0.0) --> 0.85
+R,Z: (3.70, 0.0) --> 0.90
+R,Z: (3.75, 0.0) --> 0.95
+R,Z: (3.80, 0.0) --> 1.00
+R,Z: (3.85, 0.0) --> 1.05
+R,Z: (3.90, 0.0) --> 1.10
+R,Z: (3.95, 0.0) --> 1.15
+R,Z: (4.00, 0.0) --> 1.20
 */
 
 /*
@@ -52,6 +79,7 @@ TODO:
 Make sure that wrap around works.
 Get the Bs in 3D working.
 */
+
 
 
 adios2::ADIOS *adios = NULL;
@@ -1424,6 +1452,7 @@ public:
         vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
         output.Set(i, particle.Pos);
         particle.NumPunctures++;
+        if (idx == 0 && particle.NumPunctures%10 == 0 ) std::cout<<" ***** PUNCTURE n= "<<particle.NumPunctures<<std::endl;
         //std::cout<<"************* PUNCTURE n= "<<particle.NumPunctures<<std::endl;
       }
 
@@ -1680,7 +1709,7 @@ Poinc(const vtkm::cont::DataSet& ds,
   std::ofstream ot("traces.txt"), punc("punc.txt"), puncTP("punc.theta_psi.txt");
   ot<<"ID,R,Z,T"<<std::endl;
   punc<<"ID,R,Z,T"<<std::endl;
-  puncTP<<"ID,R,Z,T"<<std::endl;
+  puncTP<<"ID,THETA,PSI,ZERO"<<std::endl;
   vtkm::Id n = traces.GetNumberOfValues();
   auto pt = traces.ReadPortal();
 #ifdef DO_TRACES
@@ -1712,6 +1741,7 @@ Poinc(const vtkm::cont::DataSet& ds,
     {
       auto psi = vtkm::Sqrt(((R-eq_axis_r)*(R-eq_axis_r) + Z*Z));
       auto theta = vtkm::ATan2(Z-eq_axis_z, R-eq_axis_r);
+      theta += vtkm::Pi();
       punc<<i<<", "<<R<<", "<<Z<<", 0"<<std::endl;
       puncTP<<i<<", "<<theta<<", "<<psi<<", 0"<<std::endl;
     }
