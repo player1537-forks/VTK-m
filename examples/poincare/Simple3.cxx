@@ -42,9 +42,20 @@
 #include <filesystem>
 #include <mpi.h>
 
+//#define PRINT_STUFF
+
+#ifdef PRINT_STUFF
+#define DBG(x) std::cout<<x
+#else
+#define DBG(x)
+#endif
+
+
 /*
 radius values: max range: 2.5 3.7
 for interesting psi: 3.5  3.7
+
+Using B and X, step size of 0.0001 seems to match the XGC result right on.
 
 R --> psi
 R,Z: (2.80, 0.0) --> 0.00
@@ -560,56 +571,6 @@ ReadMesh3D(adiosS* meshStuff, bool addExtra)
   return dsb.Create(coords, vtkm::CellShapeTagWedge(), 6, connIds, "coords");
 }
 
-class CalculateABhat : public vtkm::worklet::WorkletMapField
-{
-public:
-  using ControlSignature = void(FieldIn B,
-                                FieldIn apars,
-                                FieldOut output);
-  using ExecutionSignature = void(_1, _2, _3);
-
-  VTKM_EXEC void operator()(const vtkm::Vec3f& bvec,
-                            const vtkm::FloatDefault& apars,
-                            vtkm::Vec3f& output) const
-  {
-    output = vtkm::Normal(bvec) * apars;
-  }
-};
-
-class CalculateVecField : public vtkm::worklet::WorkletMapField
-{
-public:
-  using ControlSignature = void(FieldIn coords,
-                                FieldIn B,
-                                FieldIn apars,
-                                FieldIn gradient,
-                                FieldOut output);
-  using ExecutionSignature = void(_1, _2, _3, _4, _5);
-
-  template <typename GradientType>
-  VTKM_EXEC void operator()(const vtkm::Vec3f& point,
-                            const vtkm::Vec3f& bvec,
-                            const vtkm::Vec3f& a_bHat,
-                            const GradientType& grad,
-                            vtkm::Vec3f& output) const
-  {
-    const auto& R = point[0];
-    output = bvec;
-
-    //From: https://www.therightgate.com/deriving-curl-in-cylindrical-and-spherical/
-    //R: (1/R * dAz/dT  - dAT/dZ)
-    //T: dAr/dZ - dAz/dr
-    //Z: Az/R + dAt/dr - 1/R dAr/dT]
-    auto rv = 1/R * grad[2][1] - grad[1][2];
-    auto tv = grad[0][2] - grad[2][1];
-    auto zv = a_bHat[1]/R + grad[1][0] - 1/R*grad[0][1];
-
-    output[0] += rv;
-    output[1] += tv;
-    output[2] += zv;
-  }
-};
-
 //-----------------------------------------------------------------------------
 class FindCellWorklet : public vtkm::worklet::WorkletMapField
 {
@@ -953,121 +914,6 @@ Evaluate(const vtkm::cont::DataSet& ds,
   }
 }
 
-//Evaluate the vector field at pts.
-//Return the vector values in output.
-void
-Evaluate2(const vtkm::cont::DataSet& ds,
-         const vtkm::cont::CellLocatorGeneral& locator,
-         const std::vector<vtkm::Vec3f>& pts,
-         std::vector<vtkm::Vec3f>& output)
-{
-/*
-  for (std::size_t i = 0; i < pts.size(); i++)
-    output.push_back({.1, -1, .1});
-  return;
-*/
-
-
-  vtkm::FloatDefault phiSpacing = vtkm::TwoPi() / (vtkm::FloatDefault)(numPlanes);
-  /*
-  std::cout<<"NumPlanes= "<<numPlanes<<" spacing= "<<phiSpacing<<std::endl;
-  std::cout<<"Plane, Phi"<<std::endl;
-  for (int i = 0; i < numPlanes; i++)
-    std::cout<<i<<", "<<((float)i * phiSpacing)<<"  deg= "<<(i*phiSpacing*57.92958)<<std::endl;
-  */
-
-  for (const auto& x : pts)
-  {
-    auto pt = x;
-    std::cout<<"\n\n********************************************************************"<<std::endl;
-    std::cout<<"pt= "<<pt<<std::endl;
-
-    vtkm::FloatDefault phi = pt[1];
-    vtkm::FloatDefault numRevs = vtkm::Floor(vtkm::Abs(phi / vtkm::TwoPi()));
-    vtkm::FloatDefault rem = std::fmod(phi, vtkm::TwoPi());
-
-    std::cout<<"******************** pt= "<<pt<<" numRevs = "<<numRevs<<" phi= "<<phi<<" rem= "<<rem<<std::endl;
-
-    if (phi < 0) phi += vtkm::TwoPi();
-    vtkm::Vec3f ptRZ(pt[0], pt[2], 0);
-
-    vtkm::Id planeIdx = static_cast<vtkm::Id>(vtkm::Floor(phi / phiSpacing));
-    std::cout<<"***** phi= "<<phi<<" idx= "<<planeIdx<<std::endl;
-    auto planeIdx_ = static_cast<vtkm::Id>(vtkm::Floor(rem / phiSpacing));
-    std::cout<<"** 2 *** phi= "<<phi<<" idx= "<<planeIdx_<<std::endl;
-
-    vtkm::Id planeIdx0 = planeIdx;
-    vtkm::Id planeIdx1 = planeIdx0+1; //no //B is going in the NEGATIVE phi direction.
-
-    vtkm::FloatDefault Phi0 = static_cast<vtkm::FloatDefault>(planeIdx0) * phiSpacing;
-    vtkm::FloatDefault Phi1 = static_cast<vtkm::FloatDefault>(planeIdx1) * phiSpacing;
-
-    if (planeIdx == numPlanes-1)
-    {
-      planeIdx0 = 0;
-      Phi0 = vtkm::TwoPi();
-      planeIdx1 = planeIdx;
-      Phi1 = static_cast<vtkm::FloatDefault>(planeIdx1) * phiSpacing;
-    }
-
-    std::cout<<"POINT: "<<pt<<" --> "<<ptRZ<<" Planes: "<<Phi0<<" "<<Phi1<<" ("<<planeIdx0<<" "<<planeIdx1<<")"<<std::endl;
-
-    std::vector<vtkm::Vec3f> P = {ptRZ};
-    std::vector<vtkm::Vec3f> B0 = EvalVector(ds, locator, P, "B2D");
-    std::vector<vtkm::FloatDefault> As;
-    InterpScalar(ds, locator, P, "apars", As);
-
-    std::cout<<"B0("<<ptRZ<<") = "<<B0<<" As= WRONG "<<As<<std::endl;
-
-    auto B = B0[0];
-    output.push_back(B);
-    continue;
-
-
-    Ray3f ray0(pt, -B), ray1(pt, B);
-    std::cout<<"Ray: "<<pt<<" "<<B<<std::endl;
-    vtkm::Plane<> Plane0({0,Phi0,0}, {0,-1,0}), Plane1({0,Phi1,0}, {0,-1,0});
-
-    vtkm::Vec3f ptOnPlane0, ptOnPlane1;
-    vtkm::FloatDefault T0, T1;
-    bool tmp;
-    Plane0.Intersect(ray0, T0, ptOnPlane0, tmp);
-    Plane1.Intersect(ray1, T1, ptOnPlane1, tmp);
-
-    std::cout<<"PtOnPlane0: "<<ptOnPlane0<<" T0= "<<T0<<std::endl;
-    std::cout<<"PtOnPlane1: "<<ptOnPlane1<<" T1= "<<T1<<std::endl;
-    std::cout<<"pt: "<<pt<<std::endl;
-
-    auto dist01 = vtkm::Magnitude(ptOnPlane1-ptOnPlane0);
-    auto dist0i = vtkm::Magnitude(pt-ptOnPlane0) / dist01;
-    auto disti1 = vtkm::Magnitude(pt-ptOnPlane1) / dist01;
-
-    std::cout<<"dist01= "<<dist01<<" :: "<<dist0i<<" "<<disti1<<std::endl;
-
-    //Eval X(p0_rz, p1_rz)
-    std::vector<vtkm::Vec3f> P2 = { {ptOnPlane0[0], ptOnPlane0[2], 0}, {ptOnPlane1[0], ptOnPlane1[2], 0} };
-    std::vector<int> offsets = {planeIdx0 * numNodes, planeIdx1 * numNodes};
-    auto X = EvalVector(ds, locator, P2, "X", offsets);
-
-    auto res = vtkm::Lerp(X[0], X[1], dist0i);
-    //std::cout<<"*************lerp "<<dist0i<<" *********RES= "<<res<<std::endl;
-    //res = res * XScale;
-    res = res+B;
-    //res[0] *= XScale;
-    //res[2] *= XScale;
-    //std::cout<<"       res+B= "<<res<<std::endl;
-
-
-    //Just push the point in the B dir.
-    //std::cout<<"B= "<<B<<" X= "<<X[0]<<std::endl;
-    //res = X[0]+vtkm::Vec3f(0,-.2,0);
-
-    output.push_back(res);
-
-//    std::cout<<std::endl<<std::endl;
-  }
-}
-
 std::vector<vtkm::Vec3f>
 RK4(const vtkm::cont::DataSet& ds,
     const vtkm::cont::CellLocatorGeneral& locator,
@@ -1191,51 +1037,6 @@ Poincare(const vtkm::cont::DataSet& ds,
   }
 
   return punctures;
-}
-
-void TestLocator(const vtkm::cont::DataSet& ds)
-{
-  vtkm::cont::CellLocatorGeneral locator;
-  locator.SetCellSet(ds.GetCellSet());
-  locator.SetCoordinates(ds.GetCoordinateSystem());
-  locator.Update();
-
-  std::vector<vtkm::Vec3f> pts = {{2, 0, 0}, {3,.1,0}, {2.4, -.5, 0}};
-
-  auto points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
-
-  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
-  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Id, 3>> vertIds;
-  vtkm::cont::Invoker invoker;
-
-  invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
-  std::cout<<"Points:  "; vtkm::cont::printSummary_ArrayHandle(points, std::cout, true);
-  std::cout<<"CellIds: "; vtkm::cont::printSummary_ArrayHandle(cellIds, std::cout, true);
-  std::cout<<"Param:   "; vtkm::cont::printSummary_ArrayHandle(pcoords, std::cout, true);
-
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> B;
-  ds.GetField("B2D").GetData().AsArrayHandle(B);
-
-  auto cPortal = cellIds.ReadPortal();
-  auto pPortal = pcoords.ReadPortal();
-  auto bPortal = B.ReadPortal();
-  auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
-  for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
-  {
-    vtkm::Id vIds[3];
-    vtkm::Id cid = cPortal.Get(i);
-    cs.GetCellPointIds(cid, vIds);
-    vtkm::VecVariable<vtkm::Vec3f, 3> vals;
-    std::cout<<cid<<":: "<<vIds[0]<<" "<<vIds[1]<<" "<<vIds[2]<<std::endl;
-    for (vtkm::Id j = 0; j < 3; j++)
-      vals.Append(bPortal.Get(vIds[0]));
-
-    vtkm::Vec3f interp;
-    vtkm::exec::CellInterpolate(vals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), interp);
-    std::cout<<"    "<<vals[0]<<" "<<vals[1]<<" "<<vals[2]<<std::endl;
-    std::cout<<" -----> "<<interp<<std::endl;
-  }
 }
 
 void
@@ -1406,7 +1207,7 @@ public:
   using InputDomain = _1;
 
   PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefault stepSize)
-    : MaxIter(maxPunc * 100000)
+    : MaxIter(maxPunc * 1000000)
     , MaxPunc(maxPunc)
     , PlaneVal(planeVal)
     , StepSize(stepSize)
@@ -1422,20 +1223,25 @@ public:
                             vtkm::Particle& particle,
                             const LocatorType& locator,
                             const CellSetType& cellSet,
-                            const CoordsType& coords,
+                            const CoordsType& /*coords*/,
                             const BFieldType& B0Field,
                             const XFieldType& XField,
                             OutputType& output,
+#ifdef DO_TRACES
                             OutputType& traces) const
+#else
+                            OutputType&) const
+#endif
   {
-    //std::cout<<"Begin: "<<particle<<std::endl;
+    DBG("Begin: "<<particle<<std::endl);
     while (true)
     {
       vtkm::Vec3f newPos;
-      //std::cout<<"   "<<particle.Pos<<" #s= "<<particle.NumSteps<<std::endl;
-      if (!this->TakeRK4Step(particle, locator, cellSet, coords, B0Field, XField, newPos))
+      DBG("\n\n\n*********************************************"<<std::endl);
+      DBG("   "<<particle.Pos<<" #s= "<<particle.NumSteps<<std::endl);
+      if (!this->TakeRK4Step(particle, locator, cellSet, B0Field, XField, newPos))
         break;
-      //std::cout<<"     *** Step--> "<<newPos<<std::endl;
+      DBG("     *** Step--> "<<newPos<<std::endl);
       vtkm::Id numRevs0 = vtkm::Floor(vtkm::Abs(particle.Pos[1] / vtkm::TwoPi()));
       vtkm::Id numRevs1 = vtkm::Floor(vtkm::Abs(newPos[1] / vtkm::TwoPi()));
 
@@ -1453,7 +1259,7 @@ public:
         output.Set(i, particle.Pos);
         particle.NumPunctures++;
         if (idx == 0 && particle.NumPunctures%10 == 0 ) std::cout<<" ***** PUNCTURE n= "<<particle.NumPunctures<<std::endl;
-        //std::cout<<"************* PUNCTURE n= "<<particle.NumPunctures<<std::endl;
+        DBG("************* PUNCTURE n= "<<particle.NumPunctures<<std::endl);
       }
 
       if (particle.NumSteps >= this->MaxIter || particle.NumPunctures >= this->MaxPunc)
@@ -1461,43 +1267,57 @@ public:
     }
   }
 
-  template <typename LocatorType, typename CellSetType, typename CoordsType, typename BFieldType, typename XFieldType>
+  template <typename LocatorType, typename CellSetType, typename BFieldType, typename XFieldType>
   bool TakeRK4Step(vtkm::Particle& particle,
                    const LocatorType& locator,
                    const CellSetType& cellSet,
-                   const CoordsType& coords,
                    const BFieldType& B0Field,
                    const XFieldType& XField,
                    vtkm::Vec3f& res) const
   {
     vtkm::Vec3f tmp, k1, k2, k3, k4, p0;
 
-    p0 = particle.Pos;
-    if (!this->Evaluate(p0, locator, cellSet, coords, B0Field, XField, k1))
+    if (this->UseCylindrical)
+      p0 = particle.Pos;
+    else
+      p0 = this->ConvertCar2Cyl(particle.Pos);
+
+    DBG("    ****** K1"<<std::endl);
+    if (!this->Evaluate(p0, locator, cellSet, B0Field, XField, k1))
       return false;
     tmp = p0 + k1*this->StepSize_2;
 
-    if (!this->Evaluate(tmp, locator, cellSet, coords, B0Field, XField, k2))
+    DBG("    ****** K2"<<std::endl);
+    if (!this->Evaluate(tmp, locator, cellSet, B0Field, XField, k2))
       return false;
     tmp = p0 + k2*this->StepSize_2;
 
-    if (!this->Evaluate(tmp, locator, cellSet, coords, B0Field, XField, k3))
+    DBG("    ****** K3"<<std::endl);
+    if (!this->Evaluate(tmp, locator, cellSet, B0Field, XField, k3))
       return false;
     tmp = p0 + k3*this->StepSize_2;
 
-    if (!this->Evaluate(tmp, locator, cellSet, coords, B0Field, XField, k4))
+    DBG("    ****** K4"<<std::endl);
+    if (!this->Evaluate(tmp, locator, cellSet, B0Field, XField, k4))
       return false;
     tmp = p0 + k4*this->StepSize;
 
-    res = p0 + this->StepSize_6*(k1 + 2*k2 + 2*k3 + k4);
+    if (this->UseCylindrical)
+      res = p0 + this->StepSize_6*(k1 + 2*k2 + 2*k3 + k4);
+    else
+    {
+      auto vec = this->StepSize_6*(k1 + 2*k2 + 2*k3 + k4);
+      auto vecCar = this->ConvertCyl2Car(p0, vec);
+      res = particle.Pos + vecCar;
+    }
+
     return true;
   }
 
-  template <typename LocatorType, typename CellSetType, typename CoordsType, typename BFieldType, typename XFieldType>
+  template <typename LocatorType, typename CellSetType, typename BFieldType, typename XFieldType>
   bool Evaluate(const vtkm::Vec3f& pos,
                 const LocatorType& locator,
                 const CellSetType& cellSet,
-                const CoordsType& coords,
                 const BFieldType& B0Field,
                 const XFieldType& XField,
                 vtkm::Vec3f& res) const
@@ -1507,18 +1327,26 @@ public:
     if (!this->EvaluateVec(pos,
                            locator,
                            cellSet,
-                           coords,
                            B0Field,
                            offset,
                            B0))
     {
       return false;
     }
+    if (this->UseBOnly)
+    {
+      res = B0;
+      return true;
+    }
+
+    DBG("   Evaluate: "<<pos<<std::endl);
+    DBG("   B= "<<B0<<std::endl);
 
     vtkm::Id planeIdx0, planeIdx1, numRevs;
     vtkm::FloatDefault phiN, Phi0, Phi1, T;
     auto phi = pos[1];
     this->GetPlaneIdx(phi, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
+    DBG("   phiN="<<phiN<<" planes: ("<<planeIdx0<<" "<<planeIdx1<<") :: "<<Phi0<<" "<<Phi1<<" T= "<<T<<std::endl);
 
     //Calculate X
     vtkm::Vec3f X(0,0,0);
@@ -1526,41 +1354,108 @@ public:
     vtkm::Vec3f rayPt(pos[0], phiN, pos[2]);
     Ray3f ray0(rayPt, -B0), ray1(rayPt, B0);
     vtkm::Plane<> Plane0({0,Phi0,0}, {0,-1,0}), Plane1({0,Phi1,0}, {0,-1,0});
+    DBG("   Ray= "<<rayPt<<" --> "<<B0<<std::endl);
 
     vtkm::Vec3f ptOnPlane0, ptOnPlane1;
     vtkm::FloatDefault T0, T1;
     bool tmp;
     Plane0.Intersect(ray0, T0, ptOnPlane0, tmp);
     Plane1.Intersect(ray1, T1, ptOnPlane1, tmp);
+    DBG("     P0, P1= "<<ptOnPlane0<<" "<<ptOnPlane1<<std::endl);
 
     vtkm::Vec3f ptN(pos[0], phiN, pos[2]);
     auto dist01 = vtkm::Magnitude(ptOnPlane1-ptOnPlane0);
     auto dist0i = vtkm::Magnitude(ptN-ptOnPlane0) / dist01;
-    auto disti1 = vtkm::Magnitude(ptN-ptOnPlane1) / dist01;
+    //auto disti1 = vtkm::Magnitude(ptN-ptOnPlane1) / dist01;
+    DBG("     dist01= "<<dist01<<" 0i= "<<dist0i<<" 1i= "<<disti1<<std::endl);
 
     //Eval X(p0_rz, p1_rz)
     vtkm::Vec3f p0(ptOnPlane0[0], ptOnPlane0[2], 0), p1(ptOnPlane1[0], ptOnPlane1[2], 0);
     vtkm::Vec3f X0, X1;
     offset = planeIdx0 * numNodes;
-    if (!this->EvaluateVec(p0, locator, cellSet, coords, XField, offset, X0))
+    if (!this->EvaluateVec(p0, locator, cellSet, XField, offset, X0))
       return false;
     offset = planeIdx1 * numNodes;
-    if (!this->EvaluateVec(p1, locator, cellSet, coords, XField, offset, X1))
+    if (!this->EvaluateVec(p1, locator, cellSet, XField, offset, X1))
       return false;
 
     X = vtkm::Lerp(X0, X1, dist0i);
+    DBG("     X0,X1= "<<X0<<", "<<X1<<"  LERP= "<<X<<std::endl);
 
     res = B0 + X;
-
     return true;
   }
 
+  vtkm::Vec3f
+  ConvertCyl2Car(const vtkm::Vec3f& pCyl) const
+  {
+    auto r = pCyl[0];
+    auto t = pCyl[1];
+    auto z = pCyl[2];
 
-  template <typename LocatorType, typename CellSetType, typename CoordsType, typename VecFieldType>
+    return vtkm::Vec3f(r*vtkm::Cos(t),
+                       r*vtkm::Sin(t),
+                       z);
+  }
+  vtkm::Vec3f
+  ConvertCar2Cyl(const vtkm::Vec3f& pCar) const
+  {
+    auto x = pCar[0];
+    auto y = pCar[1];
+    auto z = pCar[2];
+    auto r = vtkm::Sqrt(x*x + y*y);
+    //VTK way...
+    //auto phi = vtkm::Pi() + vtkm::ATan2(-y, -x);
+    auto phi = vtkm::ATan2(y,x);
+    if (phi < 0)
+      phi += vtkm::TwoPi();
+
+    return vtkm::Vec3f(r,phi,z);
+  }
+
+  vtkm::Vec3f
+  ConvertCyl2Car(const vtkm::Vec3f& pCyl,
+                 const vtkm::Vec3f& vCyl) const
+  {
+    const vtkm::FloatDefault eps = 1.e-5;
+    const vtkm::FloatDefault epsInv = 1.e+5;
+
+    auto pCar = this->ConvertCyl2Car(pCyl);
+
+    auto mag = vtkm::Sqrt(vCyl);
+    auto vCylNorm = vCyl * 1.0/mag;
+
+    auto pCyl2 = pCyl + (vCylNorm*eps);
+    auto vCyl2 = this->ConvertCyl2Car(pCyl2);
+
+    auto vCar = (vCyl2 - pCyl2) * (epsInv*mag);
+
+    return vCar;
+  }
+
+  vtkm::Vec3f
+  ConvertCar2Cyl(const vtkm::Vec3f& pCar,
+                 const vtkm::Vec3f& vCar) const
+  {
+    const vtkm::FloatDefault eps = 1.e-5;
+    const vtkm::FloatDefault epsInv = 1.e+5;
+
+    auto pCyl = this->ConvertCar2Cyl(pCar);
+
+    auto mag = vtkm::Sqrt(vCar);
+    auto vCarNorm = vCar * 1.0/mag;
+
+    auto pCar2 = pCar + (vCarNorm*eps);
+    auto vCyl2 = this->ConvertCar2Cyl(pCar2);
+
+    auto vCyl = (vCyl2 - pCar2) * (epsInv*mag);
+    return vCyl;
+  }
+
+  template <typename LocatorType, typename CellSetType, typename VecFieldType>
   bool EvaluateVec(const vtkm::Vec3f& pos,
                    const LocatorType& locator,
                    const CellSetType& cellSet,
-                   const CoordsType& coords,
                    const VecFieldType& VecField,
                    const vtkm::Id& offset,
                    vtkm::Vec3f& out) const
@@ -1571,7 +1466,7 @@ public:
     auto status = locator.FindCell(posRZ, cellId, pcoords);
     if (status != vtkm::ErrorCode::Success)
     {
-      std::cout<<"FindCell FAILED: "<<posRZ<<std::endl;
+      DBG("FindCell FAILED: "<<posRZ<<std::endl);
       return false;
     }
 
@@ -1586,8 +1481,12 @@ public:
     vtkm::exec::CellInterpolate(vals, pcoords, vtkm::CellShapeTagTriangle(), vec);
 
     out[0] = vec[0];
-    out[1] = vec[2] / posRZ[0];
+    out[1] = vec[2];
+    if (this->UseCylindrical)
+      out[1] /= posRZ[0];
     out[2] = vec[1];
+
+    DBG("          EvaluateVec("<<pos<<") off= "<<offset<<" = "<<vec<<"  divByR= "<<out<<std::endl);
 
     return true;
 
@@ -1608,7 +1507,7 @@ public:
     auto status = locator.FindCell(posRZ, cellId, pcoords);
     if (status != vtkm::ErrorCode::Success)
     {
-      std::cout<<"FindCell FAILED: "<<posRZ<<std::endl;
+      DBG("FindCell FAILED: "<<posRZ<<std::endl);
       return false;
     }
 
@@ -1666,6 +1565,9 @@ public:
 
   vtkm::Id NumPlanes;
   vtkm::FloatDefault dPhi;
+
+  bool UseCylindrical = true;
+  bool UseBOnly = false;
 };
 
 
@@ -1685,6 +1587,7 @@ Poinc(const vtkm::cont::DataSet& ds,
   ds.GetField("X").GetData().AsArrayHandle(X);
 
   PoincareWorklet worklet(numPunc, 1.0, h);
+  //worklet.UseCylindrical = false;
 
   std::vector<vtkm::Particle> s;
   for (vtkm::Id i = 0; i < pts.size(); i++)
@@ -1708,8 +1611,8 @@ Poinc(const vtkm::cont::DataSet& ds,
 
   std::ofstream ot("traces.txt"), punc("punc.txt"), puncTP("punc.theta_psi.txt");
   ot<<"ID,R,Z,T"<<std::endl;
-  punc<<"ID,R,Z,T"<<std::endl;
-  puncTP<<"ID,THETA,PSI,ZERO"<<std::endl;
+  punc<<"ID,STEP,R,Z,T"<<std::endl;
+  puncTP<<"ID,STEP,THETA,PSI,ZERO"<<std::endl;
   vtkm::Id n = traces.GetNumberOfValues();
   auto pt = traces.ReadPortal();
 #ifdef DO_TRACES
@@ -1734,16 +1637,19 @@ Poinc(const vtkm::cont::DataSet& ds,
   {
     auto p = pt.Get(i);
     auto R = p[0];
-    auto PHI = p[1];
+    //auto PHI = p[1];
     auto Z = p[2];
+
+    int ID = i / numPunc;
+    int STEP = i - (ID * numPunc);
 
     if (p[0] > -50)
     {
       auto psi = vtkm::Sqrt(((R-eq_axis_r)*(R-eq_axis_r) + Z*Z));
       auto theta = vtkm::ATan2(Z-eq_axis_z, R-eq_axis_r);
       theta += vtkm::Pi();
-      punc<<i<<", "<<R<<", "<<Z<<", 0"<<std::endl;
-      puncTP<<i<<", "<<theta<<", "<<psi<<", 0"<<std::endl;
+      punc<<ID<<", "<<STEP<<", "<<R<<", "<<Z<<", 0"<<std::endl;
+      puncTP<<ID<<", "<<STEP<<", "<<theta<<", "<<psi<<", 0"<<std::endl;
     }
   }
 
@@ -1801,6 +1707,36 @@ int main(int argc, char** argv)
   {
     //first point in traces.v2
     seeds = {{3.029365, 6.183185, 0.020600}};
+
+    //seeds from jong.py
+    seeds = {
+      {3.351443, 0.0, -0.451649},
+      {3.187329, 0.0, -0.665018},
+      {1.992020, 0.0, -0.126203},
+      {3.018666, 0.0, 0.073864},
+      {3.176583, 0.0, -0.220557},
+      {2.179227, 0.0, 0.291539},
+
+/*
+      {2.473263, 0.025, -0.674298},
+      {2.673471, 0.025, 0.737984},
+      {2.106327, 0.025, -0.289231},
+      {3.431522, 0.025, 0.409619},
+      {2.053523, 0.025, 0.112043},
+      {3.236182, 0.025, -0.616033},
+      {2.219636, 0.025, 0.483819},
+      {2.437306, 0.025, -0.666023},
+      {2.698192, 0.025, 0.750648},
+      {2.088408, 0.025, -0.267564},
+      {3.457555, 0.025, 0.383602},
+      {2.048660, 0.025, 0.137690},
+      {3.207161, 0.025, -0.646182},
+      {2.228621, 0.025, 0.508000},
+      {2.402670, 0.025, -0.656483},
+      {2.724198, 0.025, 0.762668},
+      {2.071176, 0.025, -0.245765}
+*/
+    };
   }
 
   Poinc(ds, seeds, stepSize, numPunc);
