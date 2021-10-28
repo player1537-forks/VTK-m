@@ -403,6 +403,25 @@ ComputeV(vtkm::cont::DataSet& ds)
 }
 
 void
+ReadOther(adiosS* stuff,
+          vtkm::cont::DataSet& ds,
+          const std::string& vname,
+          std::string fileName="")
+{
+  if (fileName.empty())
+    fileName = vname;
+
+  auto v = stuff->io.InquireVariable<double>(fileName);
+  std::vector<double> tmp;
+  stuff->engine.Get(v, tmp, adios2::Mode::Sync);
+
+  ds.AddField(vtkm::cont::make_Field(vname,
+                                     vtkm::cont::Field::Association::WHOLE_MESH,
+                                     tmp,
+                                     vtkm::CopyFlag::On));
+}
+
+void
 ReadScalar(adiosS* stuff,
            vtkm::cont::DataSet& ds,
            const std::string& vname,
@@ -1147,7 +1166,8 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   adios = new adios2::ADIOS;
   adiosStuff["mesh"] = new adiosS(adios, "xgc.mesh.bp", "mesh", adiosArgs);
   adiosStuff["data"] = new adiosS(adios, "xgc.3d.bp", "3d", adiosArgs);
-  adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "/node_data[0]/values", adiosArgs);
+  adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "bfield", adiosArgs);
+  //adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "/node_data[0]/values", adiosArgs);
   adiosStuff["bfield-all"] = new adiosS(adios, "xgc.bfield-all.bp", "Bs", adiosArgs);
 
   auto meshStuff = adiosStuff["mesh"];
@@ -1167,9 +1187,13 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   auto ds = ReadMesh(meshStuff);
   ReadScalar(dataStuff, ds, "dpot");
   ReadScalar(dataStuff, ds, "apars", "apars", true);
+  ReadOther(bfieldStuff, ds, "As_phi_ff");
+  ReadOther(bfieldStuff, ds, "dAs_phi_ff");
   ReadVec(bfieldStuff, ds, "B", "/node_data[0]/values");
-  ReadVec(bfield_allStuff, ds, "Bs", "Bs", true);
-  CalcX(ds);
+
+  //ReadVec(bfieldStuff, ds, "B", "/node_data[0]/values");
+  //ReadVec(bfield_allStuff, ds, "Bs", "Bs", true);
+  //CalcX(ds);
 
   if (0)
   {
@@ -1277,11 +1301,7 @@ public:
   {
     vtkm::Vec3f tmp, k1, k2, k3, k4, p0;
 
-    if (this->UseCylindrical)
-      p0 = particle.Pos;
-    else
-      p0 = this->ConvertCar2Cyl(particle.Pos);
-
+    p0 = particle.Pos;
     DBG("    ****** K1"<<std::endl);
     if (!this->Evaluate(p0, locator, cellSet, B0Field, XField, k1))
       return false;
@@ -1302,14 +1322,7 @@ public:
       return false;
     tmp = p0 + k4*this->StepSize;
 
-    if (this->UseCylindrical)
-      res = p0 + this->StepSize_6*(k1 + 2*k2 + 2*k3 + k4);
-    else
-    {
-      auto vec = this->StepSize_6*(k1 + 2*k2 + 2*k3 + k4);
-      auto vecCar = this->ConvertCyl2Car(p0, vec);
-      res = particle.Pos + vecCar;
-    }
+    res = p0 + this->StepSize_6*(k1 + 2*k2 + 2*k3 + k4);
 
     return true;
   }
@@ -1572,6 +1585,91 @@ public:
 
 
 vtkm::cont::ArrayHandle<vtkm::Vec3f>
+PoincOLD(const vtkm::cont::DataSet& ds,
+         std::vector<vtkm::Vec3f>& pts,
+         vtkm::FloatDefault h,
+         int numPunc)
+{
+  vtkm::cont::CellLocatorGeneral locator;
+  locator.SetCellSet(ds.GetCellSet());
+  locator.SetCoordinates(ds.GetCoordinateSystem());
+  locator.Update();
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> B0, X;
+  ds.GetField("B2D").GetData().AsArrayHandle(B0);
+  ds.GetField("X").GetData().AsArrayHandle(X);
+
+  PoincareWorklet worklet(numPunc, 1.0, h);
+  //worklet.UseCylindrical = false;
+
+  std::vector<vtkm::Particle> s;
+  for (vtkm::Id i = 0; i < pts.size(); i++)
+    s.push_back(vtkm::Particle(pts[i], i));
+
+  auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
+
+  vtkm::cont::Invoker invoker;
+
+  std::vector<vtkm::Vec3f> o, t;
+  o.resize(numPunc*pts.size(), {-100, -100, -100});
+  auto output = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> traces;
+#ifdef DO_TRACES
+  t.resize(pts.size()*worklet.MaxIter, {-100, -100, -100});
+  traces = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
+#endif
+
+  invoker(worklet, seeds, locator, ds.GetCellSet(), ds.GetCoordinateSystem(), B0, X, output, traces);
+
+  std::ofstream ot("traces.txt"), punc("punc.txt"), puncTP("punc.theta_psi.txt");
+  ot<<"ID,R,Z,T"<<std::endl;
+  punc<<"ID,STEP,R,Z,T"<<std::endl;
+  puncTP<<"ID,STEP,THETA,PSI,ZERO"<<std::endl;
+  vtkm::Id n = traces.GetNumberOfValues();
+  auto pt = traces.ReadPortal();
+#ifdef DO_TRACES
+  for (vtkm::Id i = 0; i < n; i++)
+  {
+    auto p = pt.Get(i);
+    if (p[0] > -50)
+    {
+      auto R = pt.Get(i)[0];
+      auto Z = pt.Get(i)[2];
+      auto PHI_N = pt.Get(i)[1];
+      while (PHI_N < 0)
+        PHI_N += vtkm::TwoPi();
+      ot<<i<<", "<<R<<", "<<Z<<", "<<PHI_N<<std::endl;
+    }
+  }
+#endif
+
+  n = output.GetNumberOfValues();
+  pt = output.ReadPortal();
+  for (vtkm::Id i = 0; i < n; i++)
+  {
+    auto p = pt.Get(i);
+    auto R = p[0];
+    //auto PHI = p[1];
+    auto Z = p[2];
+
+    int ID = i / numPunc;
+    int STEP = i - (ID * numPunc);
+
+    if (p[0] > -50)
+    {
+      auto psi = vtkm::Sqrt(((R-eq_axis_r)*(R-eq_axis_r) + Z*Z));
+      auto theta = vtkm::ATan2(Z-eq_axis_z, R-eq_axis_r);
+      theta += vtkm::Pi();
+      punc<<ID<<", "<<STEP<<", "<<R<<", "<<Z<<", 0"<<std::endl;
+      puncTP<<ID<<", "<<STEP<<", "<<theta<<", "<<psi<<", 0"<<std::endl;
+    }
+  }
+
+  return output;
+}
+
+vtkm::cont::ArrayHandle<vtkm::Vec3f>
 Poinc(const vtkm::cont::DataSet& ds,
       std::vector<vtkm::Vec3f>& pts,
       vtkm::FloatDefault h,
@@ -1655,7 +1753,6 @@ Poinc(const vtkm::cont::DataSet& ds,
 
   return output;
 }
-
 
 
 int main(int argc, char** argv)
