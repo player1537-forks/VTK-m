@@ -880,7 +880,6 @@ Evaluate(const vtkm::cont::DataSet& ds,
   return;
   */
 
-
   /*
   vtkm::FloatDefault phiSpacing = vtkm::TwoPi() / (vtkm::FloatDefault)(numPlanes);
   std::cout<<"\n\n********************************************************"<<std::endl;
@@ -892,6 +891,10 @@ Evaluate(const vtkm::cont::DataSet& ds,
   std::cout<<"** pts= "<<pts<<std::endl;
   */
 
+  bool isB = vField == "B3D";
+  bool isV = vField == "V";
+  bool isX = vField == "X";
+
   for (const auto& x : pts)
   {
     auto pt = x;
@@ -901,45 +904,113 @@ Evaluate(const vtkm::cont::DataSet& ds,
     vtkm::FloatDefault phiN, Phi0, Phi1, T;
     GetPlaneIdx(phi, numPlanes, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
 
-    vtkm::Vec3f ptRZ(pt[0], pt[2], 0);
-    std::vector<vtkm::Vec3f> P = {ptRZ};
-    std::vector<vtkm::Vec3f> B0 = EvalVector(ds, locator, P, "B2D");
-    auto B = B0[0];
-    B[1] = B[1] / pt[0];
-    if (vField == "B3D")
+    //std::cout<<pt<<" : "<<phiN<<" Pln: "<<planeIdx0<<" "<<planeIdx1<<" Phi: "<<Phi0<<" "<<Phi1<<std::endl;
+    if (isX || isB)
     {
-      output.push_back(B);
-      continue;
+      vtkm::Vec3f ptRZ(pt[0], pt[2], 0);
+      std::vector<vtkm::Vec3f> P = {ptRZ};
+      std::vector<vtkm::Vec3f> B0 = EvalVector(ds, locator, P, "B2D");
+      auto B = B0[0];
+      B[1] = B[1] / pt[0];
+      if (isB)
+      {
+        output.push_back(B);
+        continue;
+      }
+
+      //Calculate X
+      vtkm::Vec3f rayPt(pt[0], phiN, pt[2]);
+      Ray3f ray0(rayPt, -B), ray1(rayPt, B);
+
+      //std::cout<<"Ray: "<<rayPt<<" "<<B<<std::endl;
+      vtkm::Plane<> Plane0({0,Phi0,0}, {0,-1,0}), Plane1({0,Phi1,0}, {0,-1,0});
+
+      vtkm::Vec3f ptOnPlane0, ptOnPlane1;
+      vtkm::FloatDefault T0, T1;
+      bool tmp;
+      Plane0.Intersect(ray0, T0, ptOnPlane0, tmp);
+      Plane1.Intersect(ray1, T1, ptOnPlane1, tmp);
+
+      auto dist01 = vtkm::Magnitude(ptOnPlane1-ptOnPlane0);
+      auto dist0i = vtkm::Magnitude(pt-ptOnPlane0) / dist01;
+      //auto disti1 = vtkm::Magnitude(pt-ptOnPlane1) / dist01;
+
+      //Eval X(p0_rz, p1_rz)
+      std::vector<vtkm::Vec3f> P2 = { {ptOnPlane0[0], ptOnPlane0[2], 0}, {ptOnPlane1[0], ptOnPlane1[2], 0} };
+      std::vector<int> offsets(2);
+      offsets[0] = (int)(planeIdx0 * numNodes);
+      offsets[1] = (int)(planeIdx1 * numNodes);
+
+      auto X = EvalVector(ds, locator, P2, vField, offsets);
+      //std::cout<<"     Eval X @ "<<P2<<" ---> "<<X<<std::endl;
+
+      auto res = vtkm::Lerp(X[0], X[1], dist0i);
+      res[1] /= pt[0];
+      res = res+B;
+      output.push_back(res);
     }
+    //For V
+    else
+    {
+      //Wrap around case....
+      if (planeIdx0 == numPlanes-1 && planeIdx1 == 0)
+      {
+        //std::cout<<"Wrap around: "<<planeIdx0<<" phi= "<<phiN<<std::endl;
+      }
 
-    //Calculate X
-    vtkm::Vec3f rayPt(pt[0], phiN, pt[2]);
-    Ray3f ray0(rayPt, -B), ray1(rayPt, B);
+      std::vector<vtkm::Vec3f> plist(1);
+      plist[0] = vtkm::Vec3f(pt[0], pt[2], 0);
+      vtkm::Vec3f B0 = EvalVector(ds, locator, plist, "B2D")[0];
 
-    //std::cout<<"Ray: "<<rayPt<<" "<<B<<std::endl;
-    vtkm::Plane<> Plane0({0,Phi0,0}, {0,-1,0}), Plane1({0,Phi1,0}, {0,-1,0});
+      B0[1] = B0[1] / pt[0];
 
-    vtkm::Vec3f ptOnPlane0, ptOnPlane1;
-    vtkm::FloatDefault T0, T1;
-    bool tmp;
-    Plane0.Intersect(ray0, T0, ptOnPlane0, tmp);
-    Plane1.Intersect(ray1, T1, ptOnPlane1, tmp);
+      vtkm::FloatDefault PhiMid = Phi0 + (Phi1-Phi0)/2.0;
+      vtkm::Plane<> midPlane({0, PhiMid, 0}, {0,1,0});
+      Ray3f ray({pt[0], phiN, pt[2]}, B0);
 
-    auto dist01 = vtkm::Magnitude(ptOnPlane1-ptOnPlane0);
-    auto dist0i = vtkm::Magnitude(pt-ptOnPlane0) / dist01;
-    //auto disti1 = vtkm::Magnitude(pt-ptOnPlane1) / dist01;
+      //Get point on mid plane.  Use the R,Z for this point for triangle finds.
+      vtkm::FloatDefault RP_T;
+      vtkm::Vec3f ptOnMidPlane, ptOnPlane0, ptOnPlane1;
+      bool tmp;
+      midPlane.Intersect(ray, RP_T, ptOnMidPlane, tmp);
 
-    //Eval X(p0_rz, p1_rz)
-    std::vector<vtkm::Vec3f> P2 = { {ptOnPlane0[0], ptOnPlane0[2], 0}, {ptOnPlane1[0], ptOnPlane1[2], 0} };
-    std::vector<int> offsets = {(int)(planeIdx0 * numNodes), (int)(planeIdx1 * numNodes)};
-    auto X = EvalVector(ds, locator, P2, vField, offsets);
-    //std::cout<<"     Eval X @ "<<P2<<" ---> "<<X<<std::endl;
+      //Now, interpolate between Phi_i and Phi_i+1
+      vtkm::FloatDefault T01 = (phiN - Phi0) / (Phi1-Phi0);
+      vtkm::FloatDefault T10 = 1.0f - T01;
 
-    auto res = vtkm::Lerp(X[0], X[1], dist0i);
-    res[1] /= pt[0];
+      //Get vec at Phi0 and Phi1.
+      vtkm::Vec3f x_ff(ptOnMidPlane[0], ptOnMidPlane[2], 0);
+      std::vector<int> offsets(2);
+      offsets[0] = planeIdx0*numNodes*2;
+      offsets[1] = planeIdx0*numNodes*2 + numNodes;
+      auto vecs = EvalVector(ds, locator, {x_ff, x_ff}, vField, offsets);
+      vtkm::Vec3f vec_phi0 = vecs[0];
+      vtkm::Vec3f vec_phi1 = vecs[1];
 
-    res = res+B;
-    output.push_back(res);
+      auto vec = vec_phi0 * T01 + vec_phi1 * T10;
+      //vec[1] = vec[1] / pt[0];
+      //std::cout<<"    ######################## "<<vec<<" "<<B0<<" "<<(vec+B0)<<std::endl;
+      vec = vec + B0;
+      output.push_back(B0);
+
+
+
+/*
+      //Get points on Phi_i and Phi_i+1
+      vtkm::Plane<> plane0({0,Phi0, 0}, {0, -1, 0}), plane1({0,Phi1, 0}, {0, -1, 0});
+      Ray3f ray0(ptOnMidPlane, -B0), ray1(ptOnMidPlane, B0);
+      vtkm::FloatDefault T0, T1;
+      plane0.Intersect(ray0, T0, ptOnPlane0, tmp);
+      plane1.Intersect(ray1, T1, ptOnPlane1, tmp);
+
+      vtkm::Vec3f ptN(pt[0], phiN, pt[2]);
+      auto dist01 = vtkm::Magnitude(ptOnPlane1-ptOnPlane0);
+      auto dist0i = vtkm::Magnitude(ptN-ptOnPlane0) / dist01;
+      auto T01 = dist0i;
+      auto T10 = 1-T01;
+*/
+
+    }
   }
 }
 
@@ -1093,9 +1164,9 @@ RK4(const vtkm::cont::DataSet& ds,
   std::vector<vtkm::Vec3f> newPts(pts.size());
   for (std::size_t i = 0; i < pts.size(); i++)
   {
-    auto rkv = h_6*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
     newPts[i] = pts[i] + h_6*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
-    std::cout<<"*******************  RK4_"<<rk4_counter<<" : "<<pts[i]<<" === "<<rkv<<" norm: "<<vtkm::Normal(rkv)<<" =======> "<<newPts[i]<<std::endl;
+    //auto rkv = h_6*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
+    //std::cout<<"*******************  RK4_"<<rk4_counter<<" : "<<pts[i]<<" === "<<rkv<<" norm: "<<vtkm::Normal(rkv)<<" =======> "<<newPts[i]<<std::endl;
 
     /*
     //Wrap around.
@@ -1166,6 +1237,10 @@ Poincare(const vtkm::cont::DataSet& ds,
       int nRevs0 = vtkm::Floor(vtkm::Abs(pts[j][1] / vtkm::TwoPi()));
       int nRevs1 = vtkm::Floor(vtkm::Abs(newPts[j][1] / vtkm::TwoPi()));
       //std::cout<<" PCHECK: "<<pts[j][1]<<" "<<newPts[j][1]<<" planeVal= "<<planeVal<<" nREVS0= "<<nRevs0<<" "<<nRevs1<<std::endl;
+
+      if (i % 500 == 0) std::cout<<"Poinc iter: "<<i<<" "<<pts[j]<<" nRevs: "<<nRevs0<<" "<<nRevs1<<std::endl;
+      //if (newPts[j][1] < 0) pointMask[j] = false;
+
       if (nRevs1 > nRevs0)
       {
         punctures[j].push_back(newPts[j]);
@@ -1248,7 +1323,7 @@ CalcV(vtkm::cont::DataSet& ds)
   ds.GetField("gradAs").GetData().AsArrayHandle(gradAs);
   ds.GetField("B2D").GetData().AsArrayHandle(B0);
 
-  std::vector<vtkm::Vec3f> vField((numPlanes * numNodes), vtkm::Vec3f(1,0,0));
+  std::vector<vtkm::Vec3f> vField((numPlanes * numNodes * 2), vtkm::Vec3f(1,0,0));
   auto B = vField;
   auto Bn = vField;
   auto acb = vField;
@@ -1268,6 +1343,12 @@ CalcV(vtkm::cont::DataSet& ds)
         auto b = b0Portal.Get(n);
         auto bn = vtkm::Normal(b);
 
+        auto v1 = acbPortal.Get(idx);
+        auto v2 = gasPortal.Get(idx);
+        auto val = v1 + vtkm::Cross(v2, bn);
+        vField[idx] = val;
+
+#if 0
         if (i == 0) //<-------------------- Only do this for ONE plane.
         {
           auto v1 = acbPortal.Get(idx);
@@ -1291,6 +1372,7 @@ CalcV(vtkm::cont::DataSet& ds)
 
           idx2++;
         }
+#endif
         idx++;
       }
     }
@@ -1569,13 +1651,16 @@ CalcGradAs(vtkm::cont::DataSet& ds)
                                      vtkm::CopyFlag::On));
 }
 
-static bool Exists(const std::string& fname)
+static bool Exists(const std::string& /*fname*/)
 {
+  return false;
+  /*
   std::ifstream ifile;
   ifile.open(fname);
   if (ifile)
     return true;
   return false;
+  */
 }
 
 void WriteHeader(const std::string& fname, const std::string& header)
@@ -1747,6 +1832,19 @@ int main(int argc, char** argv)
   {
     //first point in traces.v2
     seeds = {{3.029365, 6.183185, 0.020600}};
+
+    //traces.v2 pt near begining.
+    //seeds = {{3.024768, 6.070249, 0.049700}};
+
+    //seeds from jong.py
+    seeds = {
+      {3.351443, 0.0, -0.451649},
+      {3.187329, 0.0, -0.665018},
+      {1.992020, 0.0, -0.126203},
+      {3.018666, 0.0, 0.073864},
+      {3.176583, 0.0, -0.220557},
+      {2.179227, 0.0, 0.291539},
+    };
   }
 
 
