@@ -443,6 +443,75 @@ public:
   }
 };
 
+vtkm::cont::ArrayHandle<vtkm::Vec3f>
+ComputeCurl(const vtkm::cont::DataSet& ds)
+{
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B;
+  ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+  ds.GetField("B2D").GetData().AsArrayHandle(B);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm;
+
+  //wrong way...
+  /*
+    vtkm::filter::Gradient gradient;
+    gradient.SetComputePointGradient(true);
+    gradient.SetComputeVorticity(true);
+    gradient.SetActiveField("B2D_Norm");
+    auto tmpDS = gradient.Execute(ds);
+    tmpDS.GetField("Vorticity").GetData().AsArrayHandle(curlBNorm);
+   */
+
+  vtkm::filter::Gradient gradient;
+  gradient.SetComputePointGradient(true);
+  gradient.SetActiveField("B2D_Norm");
+  auto tmpDS = gradient.Execute(ds);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Vec3f, 3>> gradients;
+  tmpDS.GetField("Gradients").GetData().AsArrayHandle(gradients);
+
+  vtkm::Id numPts = coords.GetNumberOfValues();
+  curlBNorm.Allocate(numPts);
+
+  auto gPortal = gradients.ReadPortal();
+  auto cPortal = coords.ReadPortal();
+  auto bPortal = B.ReadPortal();
+  auto portal = curlBNorm.WritePortal();
+
+  for (vtkm::Id i = 0; i < numPts; i++)
+  {
+    vtkm::Vec3f ptRZ = cPortal.Get(i);
+    auto R = ptRZ[0];
+    auto invR = 1.0f / R;
+    auto BPhi = bPortal.Get(i)[1];
+
+    vtkm::Vec<vtkm::Vec3f, 3> grad = gPortal.Get(i);
+
+    auto dBz_dPhi = grad[1][2];
+    auto dBphi_dZ = grad[2][1];
+    auto dBr_dZ = grad[2][0];
+    auto dBz_dR = grad[0][2];
+    auto dPhi_dR = grad[0][1];
+    auto dBr_dPhi = grad[1][0];
+
+    vtkm::Vec3f curl;
+
+    //curl_R = 1/R * dBz/dPhi - dBphi/dZ
+    curl[0] = invR* dBz_dPhi - dBphi_dZ;
+
+    //curl_Phi = dBr/dZ - dBz/dR
+    curl[1] = dBr_dZ - dBz_dR;
+
+    //curl_Z = BPhi / R + dPhi_dR - dBr_dPhi *1/R
+    curl[2] = BPhi * invR  + dPhi_dR  - dBr_dPhi * invR;
+
+    portal.Set(i, curl);
+  }
+
+
+  return curlBNorm;
+}
+
 void
 ReadVec(adiosS* stuff,
         vtkm::cont::DataSet& ds,
@@ -496,14 +565,9 @@ ReadVec(adiosS* stuff,
       invoker(NormalizeWorklet{}, b, bhat);
       ds.AddField(vtkm::cont::make_FieldPoint("B2D_Norm",bhat));
 
-      vtkm::filter::Gradient gradient;
-      gradient.SetComputePointGradient(true);
-      gradient.SetComputeVorticity(true);
-      gradient.SetActiveField("B2D_Norm");
-      auto tmpDS = gradient.Execute(ds);
-
       vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm;
-      tmpDS.GetField("Vorticity").GetData().AsArrayHandle(curlBNorm);
+      curlBNorm = ComputeCurl(ds);
+
       ds.AddField(vtkm::cont::make_FieldPoint("Curl_B2D_Norm", curlBNorm));
 
       //Add B3D.
@@ -1781,6 +1845,48 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   return ds;
 }
 
+void
+GradientTest()
+{
+  std::vector<vtkm::Vec3f> coords;
+
+  coords.push_back(vtkm::Vec3f(0,0,0));
+  coords.push_back(vtkm::Vec3f(1,0,0));
+  coords.push_back(vtkm::Vec3f(0,1,0));
+  coords.push_back(vtkm::Vec3f(1,1,0));
+
+  std::vector<vtkm::Id> conn;
+
+  //tri 0
+  conn.push_back(0);
+  conn.push_back(2);
+  conn.push_back(1);
+
+  //tri1
+  conn.push_back(1);
+  conn.push_back(2);
+  conn.push_back(3);
+
+  vtkm::cont::DataSetBuilderExplicit dsb;
+  auto ds = dsb.Create(coords, vtkm::CellShapeTagTriangle(), 3, conn);
+
+  std::vector<vtkm::Vec3f> vecs;
+  vecs.push_back(vtkm::Vec3f(0,0,2));
+  vecs.push_back(vtkm::Vec3f(1,0,1));
+  vecs.push_back(vtkm::Vec3f(0,1,1));
+  vecs.push_back(vtkm::Vec3f(1,1,1));
+
+  ds.AddField(vtkm::cont::make_FieldPoint("V", vtkm::cont::make_ArrayHandle(vecs, vtkm::CopyFlag::On)));
+  ds.PrintSummary(std::cout);
+
+  vtkm::filter::Gradient gradient;
+  gradient.SetComputePointGradient(true);
+  gradient.SetActiveField("V");
+  gradient.SetOutputFieldName("gradV");
+  auto out = gradient.Execute(ds);
+  out.PrintSummary(std::cout);
+
+}
 
 int main(int argc, char** argv)
 {
@@ -1836,6 +1942,7 @@ int main(int argc, char** argv)
     //traces.v2 pt near begining.
     //seeds = {{3.024768, 6.070249, 0.049700}};
 
+    /*
     //seeds from jong.py
     seeds = {
       {3.351443, 0.0, -0.451649},
@@ -1845,6 +1952,7 @@ int main(int argc, char** argv)
       {3.176583, 0.0, -0.220557},
       {2.179227, 0.0, 0.291539},
     };
+    */
   }
 
 
