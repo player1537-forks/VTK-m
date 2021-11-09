@@ -36,7 +36,7 @@ set(headers
   FieldStatistics.h
   Gradient.h
   ImageDifference.h
-  KdTree3D.h
+  KdTree3D.h            # Deprecated
   KernelSplatter.h
   Keys.h
   LagrangianStructures.h
@@ -48,6 +48,7 @@ set(headers
   MaskPoints.h
   MaskSelect.h
   MeshQuality.h
+  MIR.h
   NDimsEntropy.h
   NDimsHistMarginalization.h
   NDimsHistogram.h
@@ -56,7 +57,6 @@ set(headers
   OrientNormals.h
   OrientPointNormals.h
   OrientPointAndCellNormals.h
-  OscillatorSource.h
   ParticleAdvection.h
   PointAverage.h
   PointElevation.h
@@ -136,6 +136,7 @@ add_subdirectory(cosmotools)
 add_subdirectory(gradient)
 add_subdirectory(histogram)
 add_subdirectory(lcs)
+add_subdirectory(mir)
 add_subdirectory(moments)
 add_subdirectory(splatkernels)
 add_subdirectory(spatialstructure)

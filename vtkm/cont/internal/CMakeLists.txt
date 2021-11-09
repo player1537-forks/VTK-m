@@ -9,6 +9,7 @@
 ##============================================================================
 
 set(headers
+  ArrayCopyUnknown.h
   ArrayHandleDeprecated.h
   ArrayHandleExecutionManager.h
   ArrayPortalFromIterators.h
@@ -19,6 +20,7 @@ set(headers
   CastInvalidValue.h
   CellLocatorBase.h
   ConnectivityExplicitInternals.h
+  ConvertNumComponentsToOffsetsTemplate.h
   DeviceAdapterAlgorithmGeneral.h
   DeviceAdapterMemoryManager.h
   DeviceAdapterMemoryManagerShared.h

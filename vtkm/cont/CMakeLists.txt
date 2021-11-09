@@ -73,6 +73,7 @@ set(headers
   ColorTable.h
   ColorTableMap.h
   ColorTableSamples.h
+  ConvertNumComponentsToOffsets.h
   CoordinateSystem.h
   DataSet.h
   DataSetBuilderCurvilinear.h
@@ -104,6 +105,7 @@ set(headers
   Initialize.h
   Invoker.h
   Logging.h
+  MergePartitionedDataSet.h
   ParticleArrayCopy.h
   PartitionedDataSet.h
   PointLocatorUniformGrid.h
@@ -161,6 +163,7 @@ set(sources
 # compiled with a device-specific compiler (like CUDA).
 set(device_sources
   ArrayCopy.cxx
+  ArrayGetValues.cxx
   ArrayRangeCompute.cxx
   AssignerPartitionedDataSet.cxx
   BoundsCompute.cxx
@@ -175,6 +178,7 @@ set(device_sources
   CellSetExtrude.cxx
   CellSetStructured.cxx
   ColorTable.cxx
+  ConvertNumComponentsToOffsets.cxx
   CoordinateSystem.cxx
   DataSet.cxx
   DataSetBuilderCurvilinear.cxx
@@ -184,6 +188,7 @@ set(device_sources
   Field.cxx
   FieldRangeCompute.cxx
   FieldRangeGlobalCompute.cxx
+  MergePartitionedDataSet.cxx
   PartitionedDataSet.cxx
   PointLocatorSparseGrid.cxx
   RuntimeDeviceInformation.cxx
@@ -316,6 +321,6 @@ if(TARGET vtkm_loguru)
 endif()
 
 #-----------------------------------------------------------------------------
-if (VTKm_ENABLE_TESTING)
+if(VTKm_ENABLE_TESTING_LIBRARY)
   add_subdirectory(testing)
-endif ()
+endif()

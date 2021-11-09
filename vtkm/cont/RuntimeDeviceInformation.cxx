@@ -80,7 +80,7 @@ public:
   }
 };
 
-class RuntimeDeviceConfigurationInvalid
+class RuntimeDeviceConfigurationInvalid final
   : public vtkm::cont::internal::RuntimeDeviceConfigurationBase
 {
 public:
@@ -92,20 +92,20 @@ public:
   }
 
   VTKM_CONT virtual vtkm::cont::internal::RuntimeDeviceConfigReturnCode SetThreads(
-    const vtkm::Id&) const override final
+    const vtkm::Id&) override final
   {
     throw vtkm::cont::ErrorBadDevice("Tried to set the number of threads on an invalid device");
   }
 
   VTKM_CONT virtual vtkm::cont::internal::RuntimeDeviceConfigReturnCode SetNumaRegions(
-    const vtkm::Id&) const override final
+    const vtkm::Id&) override final
   {
     throw vtkm::cont::ErrorBadDevice(
       "Tried to set the number of numa regions on an invalid device");
   }
 
   VTKM_CONT virtual vtkm::cont::internal::RuntimeDeviceConfigReturnCode SetDeviceInstance(
-    const vtkm::Id&) const override final
+    const vtkm::Id&) override final
   {
     throw vtkm::cont::ErrorBadDevice("Tried to set the device instance on an invalid device");
   }
@@ -127,6 +127,18 @@ public:
     vtkm::Id&) const override final
   {
     throw vtkm::cont::ErrorBadDevice("Tried to get the device instance on an invalid device");
+  }
+
+  VTKM_CONT virtual vtkm::cont::internal::RuntimeDeviceConfigReturnCode GetMaxThreads(
+    vtkm::Id&) const override final
+  {
+    throw vtkm::cont::ErrorBadDevice("Tried to get the max number of threads on an invalid device");
+  }
+
+  VTKM_CONT virtual vtkm::cont::internal::RuntimeDeviceConfigReturnCode GetMaxDevices(
+    vtkm::Id&) const override final
+  {
+    throw vtkm::cont::ErrorBadDevice("Tried to get the max number of devices on an invalid device");
   }
 };
 
@@ -379,7 +391,7 @@ private:
   }
 
   RuntimeDeviceConfigurations(
-    const vtkm::cont::internal::RuntimeDeviceConfigurationOptions configOptions,
+    const vtkm::cont::internal::RuntimeDeviceConfigurationOptions& configOptions,
     int& argc,
     char* argv[])
   {

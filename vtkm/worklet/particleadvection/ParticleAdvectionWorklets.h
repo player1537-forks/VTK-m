@@ -18,6 +18,7 @@
 #include <vtkm/cont/ArrayHandleCast.h>
 #include <vtkm/cont/ArrayHandleCounting.h>
 #include <vtkm/cont/CellSetExplicit.h>
+#include <vtkm/cont/ConvertNumComponentsToOffsets.h>
 #include <vtkm/cont/ExecutionObjectBase.h>
 
 #include <vtkm/Particle.h>
@@ -53,7 +54,6 @@ public:
                             const vtkm::Id& maxSteps) const
   {
     auto particle = integralCurve.GetParticle(idx);
-
     vtkm::FloatDefault time = particle.Time;
     bool tookAnySteps = false;
 
@@ -61,16 +61,15 @@ public:
     // 1. you could have success AND at temporal boundary.
     // 2. could you have success AND at spatial?
     // 3. all three?
-
     integralCurve.PreStepUpdate(idx);
     do
     {
+      particle = integralCurve.GetParticle(idx);
       vtkm::Vec3f outpos;
       auto status = integrator.Step(particle, time, outpos);
       if (status.CheckOk())
       {
-        integralCurve.StepUpdate(idx, time, outpos);
-        particle.Pos = outpos;
+        integralCurve.StepUpdate(idx, particle, time, outpos);
         tookAnySteps = true;
       }
 
@@ -81,8 +80,7 @@ public:
         status = integrator.SmallStep(particle, time, outpos);
         if (status.CheckOk())
         {
-          integralCurve.StepUpdate(idx, time, outpos);
-          particle.Pos = outpos;
+          integralCurve.StepUpdate(idx, particle, time, outpos);
           tookAnySteps = true;
         }
       }
@@ -118,6 +116,11 @@ public:
     vtkm::cont::ArrayHandleConstant<vtkm::Id> maxSteps(MaxSteps, numSeeds);
     vtkm::cont::ArrayHandleIndex idxArray(numSeeds);
 
+    // TODO: The particle advection sometimes behaves incorrectly on CUDA if the stack size
+    // is not changed thusly. This is concerning as the compiler should be able to determine
+    // staticly the required stack depth. What is even more concerning is that the runtime
+    // does not report a stack overflow. Rather, the worklet just silently reports the wrong
+    // value. Until we determine the root cause, other problems may pop up.
 #ifdef VTKM_CUDA
     // This worklet needs some extra space on CUDA.
     vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
@@ -193,10 +196,13 @@ public:
     vtkm::worklet::DispatcherMapField<detail::GetSteps> getStepDispatcher{ (detail::GetSteps{}) };
     getStepDispatcher.Invoke(particles, initialStepsTaken);
 
+    // This method uses the same workklet as ParticleAdvectionWorklet::Run (and more). Yet for
+    // some reason ParticleAdvectionWorklet::Run needs this adjustment while this method does
+    // not.
 #ifdef VTKM_CUDA
-    // This worklet needs some extra space on CUDA.
-    vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
-    (void)stack;
+    // // This worklet needs some extra space on CUDA.
+    // vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
+    // (void)stack;
 #endif // VTKM_CUDA
 
     //Run streamline worklet
@@ -225,7 +231,7 @@ public:
       vtkm::cont::make_ArrayHandleConstant<vtkm::UInt8>(vtkm::CELL_SHAPE_POLY_LINE, numSeeds);
     vtkm::cont::ArrayCopy(polyLineShape, cellTypes);
 
-    auto offsets = vtkm::cont::ConvertNumIndicesToOffsets(numPoints);
+    auto offsets = vtkm::cont::ConvertNumComponentsToOffsets(numPoints);
     polyLines.Fill(positions.GetNumberOfValues(), cellTypes, connectivity, offsets);
   }
 };

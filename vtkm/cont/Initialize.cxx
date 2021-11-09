@@ -15,10 +15,6 @@
 #include <vtkm/cont/internal/OptionParser.h>
 #include <vtkm/cont/internal/OptionParserArguments.h>
 
-#if defined(VTKM_ENABLE_KOKKOS)
-#include <vtkm/cont/kokkos/internal/Initialize.h>
-#endif
-
 #include <memory>
 #include <sstream>
 
@@ -128,12 +124,6 @@ InitializeResult Initialize(int& argc, char* argv[], InitializeOptions opts)
     vtkm::cont::InitLogging(argc, argv, loggingFlag);
   }
 
-
-#ifdef VTKM_ENABLE_KOKKOS
-  // TODO: remove this once runtime config updates are completely implemented
-  vtkm::cont::kokkos::internal::Initialize(argc, argv);
-#endif
-
   { // Parse VTKm options
     std::vector<opt::Descriptor> usage;
     if ((opts & InitializeOptions::AddHelp) != InitializeOptions::None)
@@ -214,6 +204,18 @@ InitializeResult Initialize(int& argc, char* argv[], InitializeOptions opts)
     {
       std::cerr << config.Usage;
       exit(0);
+    }
+
+    // The RuntimeDeviceConfiguration must be completed before calling GetRuntimeDeviceTracker()
+    // for all the devices. This is because GetRuntimeDeviceTracker will construct a given
+    // device's DeviceAdapterRuntimeDetector to determine if it exists and this constructor may
+    // call `GetRuntimeConfiguration` for the specific device in order to query things such as
+    // available threads/devices.
+    {
+      runtimeDeviceOptions.Initialize(options.get());
+      vtkm::cont::RuntimeDeviceInformation runtimeDevice;
+      runtimeDevice.GetRuntimeConfiguration(
+        vtkm::cont::DeviceAdapterTagAny{}, runtimeDeviceOptions, argc, argv);
     }
 
     if (options[opt::OptionIndex::DEPRECATED_LOGLEVEL])
@@ -350,12 +352,6 @@ InitializeResult Initialize(int& argc, char* argv[], InitializeOptions opts)
       }
     }
     argc = destArg;
-
-    {
-      runtimeDeviceOptions.Initialize(options.get());
-      vtkm::cont::RuntimeDeviceInformation runtimeDevice;
-      runtimeDevice.GetRuntimeConfiguration(config.Device, runtimeDeviceOptions, argc, argv);
-    }
   }
 
   return config;

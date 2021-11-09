@@ -23,6 +23,7 @@ set(unit_tests
   UnitTestKokkosDeviceAdapter.cxx
   UnitTestKokkosImplicitFunction.cxx
   UnitTestKokkosPointLocatorSparseGrid.cxx
+  UnitTestKokkosRuntimeDeviceConfiguration.cxx
   )
 
 if (NOT VTKm_NO_DEPRECATED_VIRTUAL)
@@ -37,4 +38,5 @@ if (TARGET vtkm::kokkos_cuda)
   set_source_files_properties(${unit_tests} PROPERTIES LANGUAGE CUDA)
 elseif(TARGET vtkm::kokkos_hip)
   set_source_files_properties(${unit_tests} PROPERTIES LANGUAGE HIP)
+  kokkos_compilation(SOURCE ${unit_tests})
 endif()

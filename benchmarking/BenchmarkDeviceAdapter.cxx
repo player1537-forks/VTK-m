@@ -33,9 +33,6 @@
 
 #include <vtkm/internal/Windows.h>
 
-#ifdef VTKM_ENABLE_TBB
-#include <tbb/tbb.h>
-#endif
 #ifdef VTKM_ENABLE_OPENMP
 #include <omp.h>
 #endif
@@ -97,6 +94,7 @@ static const std::pair<int64_t, int64_t> SmallRange{ SHORT_RANGE_LOWER_BOUNDARY,
                                                      SHORT_RANGE_UPPER_BOUNDARY };
 static constexpr int SmallRangeMultiplier = 1 << 21; // Ensure a sample at 2MiB
 
+#ifndef VTKM_ENABLE_KOKKOS
 using TypeList = vtkm::List<vtkm::UInt8,
                             vtkm::Float32,
                             vtkm::Int64,
@@ -105,6 +103,17 @@ using TypeList = vtkm::List<vtkm::UInt8,
                             vtkm::Pair<vtkm::Int32, vtkm::Float64>>;
 
 using SmallTypeList = vtkm::List<vtkm::UInt8, vtkm::Float32, vtkm::Int64>;
+#else
+// Kokkos requires 0 == (sizeof(Kokkos::MinMaxScalar<ValueType>) % sizeof(int)
+// so removing vtkm::UInt8
+using TypeList = vtkm::List<vtkm::Float32,
+                            vtkm::Int64,
+                            vtkm::Float64,
+                            vtkm::Vec3f_32,
+                            vtkm::Pair<vtkm::Int32, vtkm::Float64>>;
+
+using SmallTypeList = vtkm::List<vtkm::Float32, vtkm::Int64>;
+#endif
 
 // Only 32-bit words are currently supported atomically across devices:
 using AtomicWordTypes = vtkm::List<vtkm::UInt32>;
@@ -1241,41 +1250,6 @@ int main(int argc, char* argv[])
   {
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(Config.Device);
   }
-
-// Handle NumThreads command-line arg:
-// TODO: Use the VTK-m library to set the number of threads (when that becomes available).
-#ifdef VTKM_ENABLE_TBB
-#if TBB_VERSION_MAJOR >= 2020
-  int numThreads = tbb::task_arena{}.max_concurrency();
-#else
-  int numThreads = tbb::task_scheduler_init::automatic;
-#endif
-#endif // TBB
-
-  if (argc == 3)
-  {
-    if (std::string(argv[1]) == "NumThreads")
-    {
-#ifdef VTKM_ENABLE_TBB
-      std::istringstream parse(argv[2]);
-      parse >> numThreads;
-      std::cout << "Selected " << numThreads << " TBB threads." << std::endl;
-#else
-      std::cerr << "NumThreads valid only on TBB. Ignoring." << std::endl;
-#endif // TBB
-    }
-  }
-
-  // TODO: Use the VTK-m library to set the number of threads (when that becomes available).
-#ifdef VTKM_ENABLE_TBB
-#if TBB_VERSION_MAJOR >= 2020
-  // Must not be destroyed as long as benchmarks are running:
-  tbb::global_control tbbControl(tbb::global_control::max_allowed_parallelism, numThreads);
-#else
-  // Must not be destroyed as long as benchmarks are running:
-  tbb::task_scheduler_init init(numThreads);
-#endif
-#endif // TBB
 
   // handle benchmarking related args and run benchmarks:
   VTKM_EXECUTE_BENCHMARKS(argc, args.data());

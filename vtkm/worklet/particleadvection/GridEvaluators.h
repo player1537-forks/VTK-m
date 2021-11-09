@@ -62,9 +62,9 @@ public:
   }
 
   template <typename Point>
-  VTKM_EXEC bool IsWithinSpatialBoundary(const Point point) const
+  VTKM_EXEC bool IsWithinSpatialBoundary(const Point& point) const
   {
-    vtkm::Id cellId;
+    vtkm::Id cellId = -1;
     Point parametric;
 
     this->Locator.FindCell(point, cellId, parametric);
@@ -125,8 +125,17 @@ public:
       vtkm::IdComponent nVerts;
       vtkm::VecVariable<vtkm::Id, 8> ptIndices;
       vtkm::VecVariable<vtkm::Vec3f, 8> fieldValues;
-      this->InterpolationHelper.GetCellInfo(cellId, cellShape, nVerts, ptIndices);
-      this->Field.GetValue(ptIndices, nVerts, parametric, cellShape, out);
+
+      if (this->Field.GetAssociation() == vtkm::cont::Field::Association::POINTS)
+      {
+        this->InterpolationHelper.GetCellInfo(cellId, cellShape, nVerts, ptIndices);
+        this->Field.GetValue(ptIndices, nVerts, parametric, cellShape, out);
+      }
+      else if (this->Field.GetAssociation() == vtkm::cont::Field::Association::CELL_SET)
+      {
+        this->Field.GetValue(cellId, out);
+      }
+
       status.SetOk();
     }
 

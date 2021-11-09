@@ -22,6 +22,8 @@
 #include <vtkm/cont/ArrayHandleUniformPointCoordinates.h>
 #include <vtkm/cont/UncertainArrayHandle.h>
 
+#include <vtkm/cont/internal/ArrayCopyUnknown.h>
+
 #include <sstream>
 
 namespace
@@ -201,6 +203,19 @@ VTKM_CONT std::string UnknownArrayHandle::GetStorageTypeName() const
   }
 }
 
+VTKM_CONT std::string UnknownArrayHandle::GetArrayTypeName() const
+{
+  if (this->Container)
+  {
+    return "vtkm::cont::ArrayHandle<" + this->GetValueTypeName() + ", " +
+      this->GetStorageTypeName() + ">";
+  }
+  else
+  {
+    return "";
+  }
+}
+
 VTKM_CONT vtkm::Id UnknownArrayHandle::GetNumberOfValues() const
 {
   if (this->Container)
@@ -258,6 +273,48 @@ VTKM_CONT void UnknownArrayHandle::Allocate(vtkm::Id numValues, vtkm::CopyFlag p
   this->Allocate(numValues, preserve, token);
 }
 
+VTKM_CONT void UnknownArrayHandle::DeepCopyFrom(const vtkm::cont::UnknownArrayHandle& source)
+{
+  vtkm::cont::internal::ArrayCopyUnknown(source, *this);
+}
+
+VTKM_CONT void UnknownArrayHandle::DeepCopyFrom(const vtkm::cont::UnknownArrayHandle& source) const
+{
+  vtkm::cont::internal::ArrayCopyUnknown(source, *this);
+}
+
+VTKM_CONT
+void UnknownArrayHandle::CopyShallowIfPossible(const vtkm::cont::UnknownArrayHandle& source)
+{
+  if (!this->IsValid())
+  {
+    *this = source;
+  }
+
+  const_cast<const UnknownArrayHandle*>(this)->CopyShallowIfPossible(source);
+}
+
+VTKM_CONT
+void UnknownArrayHandle::CopyShallowIfPossible(const vtkm::cont::UnknownArrayHandle& source) const
+{
+  if (!this->IsValid())
+  {
+    throw vtkm::cont::ErrorBadValue(
+      "Attempty to copy to a constant UnknownArrayHandle with no valid array.");
+  }
+
+  if (source.IsValueTypeImpl(this->Container->ValueType) &&
+      source.IsStorageTypeImpl(this->Container->StorageType))
+  {
+    this->Container->ShallowCopy(source.Container->ArrayHandlePointer,
+                                 this->Container->ArrayHandlePointer);
+  }
+  else
+  {
+    this->DeepCopyFrom(source);
+  }
+}
+
 VTKM_CONT void UnknownArrayHandle::ReleaseResourcesExecution() const
 {
   if (this->Container)
@@ -286,7 +343,7 @@ VTKM_CONT void UnknownArrayHandle::PrintSummary(std::ostream& out, bool full) co
   }
 }
 
-namespace detail
+namespace internal
 {
 
 VTKM_CONT_EXPORT void ThrowCastAndCallException(const vtkm::cont::UnknownArrayHandle& ref,
@@ -297,10 +354,10 @@ VTKM_CONT_EXPORT void ThrowCastAndCallException(const vtkm::cont::UnknownArrayHa
          "Array: ";
   ref.PrintSummary(out);
   out << "TypeList: " << vtkm::cont::TypeToString(type) << "\n";
-  throw vtkm::cont::ErrorBadValue(out.str());
+  throw vtkm::cont::ErrorBadType(out.str());
 }
 
-} // namespace detail
+} // namespace internal
 }
 } // namespace vtkm::cont
 
