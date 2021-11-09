@@ -242,59 +242,10 @@ public:
   //Initialize ParticleAdvectorBase
   void SetStepSize(vtkm::FloatDefault stepSize) { this->StepSize = stepSize; }
   void SetNumberOfSteps(vtkm::Id numSteps) { this->NumberOfSteps = numSteps; }
-  void SetSeeds(const vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
-  {
-    this->ClearParticles();
-
-    vtkm::Id n = seeds.GetNumberOfValues();
-    auto portal = seeds.ReadPortal();
-
-    std::vector<std::vector<vtkm::Id>> blockIDs;
-    std::vector<vtkm::Particle> particles;
-    for (vtkm::Id i = 0; i < n; i++)
-    {
-      const vtkm::Particle p = portal.Get(i);
-      std::vector<vtkm::Id> ids = this->BoundsMap.FindBlocks(p.Pos);
-      if (!ids.empty() && this->BoundsMap.FindRank(ids[0]) == this->Rank)
-      {
-        particles.push_back(p);
-        blockIDs.push_back(ids);
-      }
-    }
-
-    this->SetSeedArray(particles, blockIDs);
-  }
+  virtual void SetSeeds(const vtkm::cont::ArrayHandle<vtkm::Particle>& seeds) = 0;
 
   //Advect all the particles.
-  virtual void Go()
-  {
-    vtkm::filter::particleadvection::ParticleMessenger messenger(
-      this->Comm, this->BoundsMap, 1, 128);
-
-    vtkm::Id nLocal = static_cast<vtkm::Id>(this->Active.size() + this->Inactive.size());
-    this->ComputeTotalNumParticles(nLocal);
-    this->TotalNumTerminatedParticles = 0;
-
-    while (this->TotalNumTerminatedParticles < this->TotalNumParticles)
-    {
-      std::vector<vtkm::Particle> v;
-      vtkm::Id numTerm = 0, blockId = -1;
-      if (GetActiveParticles(v, blockId))
-      {
-        const auto& block = this->GetDataSet(blockId);
-        ResultType r;
-        block.Advect(v, this->StepSize, this->NumberOfSteps, r);
-        numTerm = this->UpdateResult(r, blockId);
-      }
-
-      vtkm::Id numTermMessages = 0;
-      this->Communicate(messenger, numTerm, numTermMessages);
-
-      this->TotalNumTerminatedParticles += (numTerm + numTermMessages);
-      if (this->TotalNumTerminatedParticles > this->TotalNumParticles)
-        throw vtkm::cont::ErrorFilterExecution("Particle count error");
-    }
-  }
+  virtual void Go() = 0;
 
   vtkm::cont::PartitionedDataSet GetOutput() const
   {
@@ -550,6 +501,124 @@ protected:
   vtkm::FloatDefault StepSize;
   vtkm::Id TotalNumParticles;
   vtkm::Id TotalNumTerminatedParticles;
+};
+
+template <typename DataSetIntegratorType, typename ResultType>
+class VTKM_ALWAYS_EXPORT AdvectorParOverDataAlgorithm
+  : public AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType>
+{
+public:
+  AdvectorParOverDataAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
+                               const std::vector<DataSetIntegratorType>& blocks)
+    : AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType>(bm, blocks)
+  {
+  }
+
+  void SetSeeds(const vtkm::cont::ArrayHandle<vtkm::Particle>& seeds) override
+  {
+    this->ClearParticles();
+
+    vtkm::Id n = seeds.GetNumberOfValues();
+    auto portal = seeds.ReadPortal();
+
+    std::vector<std::vector<vtkm::Id>> blockIDs;
+    std::vector<vtkm::Particle> particles;
+    for (vtkm::Id i = 0; i < n; i++)
+    {
+      const vtkm::Particle p = portal.Get(i);
+      std::vector<vtkm::Id> ids = this->BoundsMap.FindBlocks(p.Pos);
+      if (!ids.empty() && this->BoundsMap.FindRank(ids[0]) == this->Rank)
+      {
+        particles.push_back(p);
+        blockIDs.push_back(ids);
+      }
+    }
+
+    this->SetSeedArray(particles, blockIDs);
+  }
+
+  //Advect all the particles.
+  void Go() override
+  {
+    vtkm::filter::particleadvection::ParticleMessenger messenger(
+      this->Comm, this->BoundsMap, 1, 128);
+
+    vtkm::Id nLocal = static_cast<vtkm::Id>(this->Active.size() + this->Inactive.size());
+    this->ComputeTotalNumParticles(nLocal);
+    this->TotalNumTerminatedParticles = 0;
+
+    while (this->TotalNumTerminatedParticles < this->TotalNumParticles)
+    {
+      std::vector<vtkm::Particle> v;
+      vtkm::Id numTerm = 0, blockId = -1;
+      if (GetActiveParticles(v, blockId))
+      {
+  https://github.com/Alpine-DAV/ascent/blob/develop/src/ascent/runtimes/flow_filters/ascent_runtime_adios2_filters.cpp      const auto& block = this->GetDataSet(blockId);
+        ResultType r;
+        block.Advect(v, this->StepSize, this->NumberOfSteps, r);
+        numTerm = this->UpdateResult(r, blockId);
+      }
+
+      vtkm::Id numTermMessages = 0;
+      this->Communicate(messenger, numTerm, numTermMessages);
+
+      this->TotalNumTerminatedParticles += (numTerm + numTermMessages);
+      if (this->TotalNumTerminatedParticles > this->TotalNumParticles)
+        throw vtkm::cont::ErrorFilterExecution("Particle count error");
+    }
+  }
+
+protected:
+private:
+};
+
+
+
+
+template <typename DataSetIntegratorType, typename ResultType>
+class VTKM_ALWAYS_EXPORT AdvectorParOverDataAlgorithm
+  : public AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType>
+{
+public:
+  AdvectorParOverParticlesAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
+                               const std::vector<DataSetIntegratorType>& blocks)
+    : AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType>(bm, blocks)
+  {
+  }
+
+  void SetSeeds(const vtkm::cont::ArrayHandle<vtkm::Particle>& seeds) override
+  {
+    this->ClearParticles();
+
+    vtkm::Id n = seeds.GetNumberOfValues();
+    vtkm::Id numPerRank = n / this->NumRanks;
+    vtkm::Id oneExtraUntil = n % this->NumRanks;
+    vtkm::Id i0, i1;
+
+    if (this->Rank < oneExtraUntil)
+    {
+      i0 = this->Rank * (numPerRank+1);
+      i1 = (this->Rank+1) * (numPerRank+1);
+    }
+    else
+    {
+      i0 = this->Rank * numPerRank + oneExtraUntil;
+      i1 = (this->Rank+1) * numPerRank + oneExtraUntil;
+    }
+
+    auto portal = seeds.ReadPortal();
+
+    std::vector<std::vector<vtkm::Id>> blockIDs;
+    std::vector<vtkm::Particle> particles;
+
+    for (vtkm::Id i = i0; i < i1; i++)
+    {
+      particles.push_back(portal.Get(i));
+      blockIDs.push_back(this->BoundsMap.FindBlocks(p.Pos));
+    }
+
+    this->SetSeedArray(particles, blockIDs);
+  }
 };
 
 }
