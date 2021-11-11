@@ -27,6 +27,7 @@ public:
   VTKM_CONT
   PathParticle();
 
+
   template <typename DerivedPolicy>
   vtkm::cont::PartitionedDataSet PrepareForExecution(
     const vtkm::cont::PartitionedDataSet& input,
