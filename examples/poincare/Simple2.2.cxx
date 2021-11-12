@@ -450,7 +450,7 @@ ComputeCurl(const vtkm::cont::DataSet& ds)
 {
   vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B;
   ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
-  ds.GetField("B2D").GetData().AsArrayHandle(B);
+  ds.GetField("B_RZP_2D").GetData().AsArrayHandle(B);
 
   vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm;
 
@@ -466,7 +466,7 @@ ComputeCurl(const vtkm::cont::DataSet& ds)
 
   vtkm::filter::Gradient gradient;
   gradient.SetComputePointGradient(true);
-  gradient.SetActiveField("B2D_Norm");
+  gradient.SetActiveField("BRZP_Norm");
   auto tmpDS = gradient.Execute(ds);
 
   vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Vec3f, 3>> gradients;
@@ -485,21 +485,32 @@ ComputeCurl(const vtkm::cont::DataSet& ds)
     vtkm::Vec3f ptRZ = cPortal.Get(i);
     auto R = ptRZ[0];
     auto invR = 1.0f / R;
-    auto BPhi = bPortal.Get(i)[1];
+    auto BPhi = bPortal.Get(i)[2]; //This needs to be the BPhi at the position ?
+    //std::cout<<__LINE__<<" fix bPhi!"<<std::endl;
 
     vtkm::Vec<vtkm::Vec3f, 3> grad = gPortal.Get(i);
+    // mesh is in R,Z space.
+    auto _dBr = grad[0];
+    auto _dBz = grad[1];
+    auto _dBphi = grad[2];
 
-    auto dBz_dPhi = grad[1][2];
-    auto dBphi_dZ = grad[2][1];
-    auto dBr_dZ = grad[2][0];
-    auto dBz_dR = grad[0][2];
-    auto dBPhi_dR = grad[0][1];
-    auto dBr_dPhi = grad[1][0];
-    //By definition, dR/dPhi is 0
-    //dBr_dPhi = 0;
+//    if (R > 3.0 && R < 3.1)
+//      std::cout<<"B= "<<bPortal.Get(i)<<" GRAD: "<<_dBr<<" "<<_dBz<<" "<<_dBphi<<std::endl;
+
+    //((dBr/dR, dBz/dR, dBphi/dR) (dBr/dz, dBz/dz, dBphi/dz) (dBr/dPhi, dBz/dPhi, dBphi/dPhi))
+    auto dBr_dR     = grad[0][0];
+    auto dBz_dR     = grad[0][1];
+    auto dBphi_dR   = grad[0][2];
+
+    auto dBr_dZ     = grad[1][0];
+    auto dBz_dZ     = grad[1][1];
+    auto dBphi_dZ   = grad[1][2];
+
+    auto dBr_dPhi   = grad[2][0];
+    auto dBz_dPhi   = grad[2][1];
+    auto dBphi_dPhi = grad[2][2];
 
     vtkm::Vec3f curl;
-
     //curl_R = 1/R * dBz/dPhi - dBphi/dZ
     curl[0] = invR* dBz_dPhi - dBphi_dZ;
 
@@ -507,15 +518,118 @@ ComputeCurl(const vtkm::cont::DataSet& ds)
     curl[1] = dBr_dZ - dBz_dR;
 
     //curl_Z = BPhi / R + dPhi_dR - dBr_dPhi *1/R
-    curl[2] = BPhi * invR  + dBPhi_dR  - dBr_dPhi * invR;
+    //curl_B(2)  = fld%bphi*inv_r + fld%dbpdr-fld%dbrdp*inv_r
+    //curl_B.Z = BPhi * invR + dBphi_dR - dBr_dphi*invR
+    curl[2] = BPhi * invR  + dBphi_dR  - dBr_dPhi * invR;
 
-    std::cout<<"dBr/dPhi= "<<dBr_dPhi<<std::endl;
-
-    curl[2] = invR*(BPhi + R*dBPhi_dR - dBr_dPhi);
+    //std::cout<<"dBr/dPhi= "<<dBr_dPhi<<std::endl;
+    //curl[2] = invR*(BPhi + R*dBphi_dR - dBr_dPhi);
     //curl(2) = 1/r*(B_phi + dB_phi_dR * R - dB_r/dPhi);
 
     //std::cout<<"********CURL: "<<curl<<" "<<vtkm::Magnitude(curl)<<std::endl;
     portal.Set(i, curl);
+  }
+
+  return curlBNorm;
+}
+
+//This uses the curl_b
+vtkm::cont::ArrayHandle<vtkm::Vec3f>
+ComputeCurl2(const vtkm::cont::DataSet& ds)
+{
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, Brzp;
+  ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+  ds.GetField("B_RZP_2D").GetData().AsArrayHandle(Brzp);
+
+  vtkm::filter::Gradient gradient;
+  gradient.SetComputePointGradient(true);
+  gradient.SetActiveField("B_RZP_2D");
+  auto tmpDS = gradient.Execute(ds);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Vec3f, 3>> gradients;
+  tmpDS.GetField("Gradients").GetData().AsArrayHandle(gradients);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm;
+  vtkm::Id numPts = coords.GetNumberOfValues();
+  curlBNorm.Allocate(numPts);
+
+  auto gPortal = gradients.ReadPortal();
+  auto cPortal = coords.ReadPortal();
+  auto bPortal = Brzp.ReadPortal();
+  auto portal = curlBNorm.WritePortal();
+
+  for (vtkm::Id i = 0; i < numPts; i++)
+  {
+    vtkm::Vec3f ptRZ = cPortal.Get(i);
+    auto R = ptRZ[0];
+    auto invR = 1.0f / R;
+    auto B = bPortal.Get(i);
+    auto BR = B[0];
+    auto BZ = B[1];
+    auto BPhi = B[2];
+    auto BMag = vtkm::Magnitude(B);
+    auto over_B = 1.0/BMag;
+    auto over_B2 = over_B * over_B;
+
+    vtkm::Vec<vtkm::Vec3f, 3> grad = gPortal.Get(i);
+    if (R > 3.0 && R < 3.1)
+      std::cout<<"B= "<<bPortal.Get(i)<<" GRAD: "<<grad[0]<<" "<<grad[1]<<" "<<grad[2]<<std::endl;
+
+    //((dBr/dR, dBz/dR, dBphi/dR) (dBr/dz, dBz/dz, dBphi/dz) (dBr/dPhi, dBz/dPhi, dBphi/dPhi))
+    auto dBr_dR   = grad[0][0];
+    auto dBz_dR   = grad[0][1];
+    auto dBphi_dR = grad[0][2];
+
+    auto dBr_dZ   = grad[1][0];
+    auto dBz_dZ   = grad[1][1];
+    auto dBphi_dZ = grad[1][2];
+
+    auto dBr_dPhi = grad[2][0];
+    auto dBz_dPhi = grad[2][1];
+    auto dBphi_dPhi = grad[2][2];
+
+
+    //dbdr = ( fld%br*fld%dbrdr + fld%bphi*fld%dbpdr + fld%bz*fld%dbzdr) *over_B
+    auto db_dr = (BR*dBr_dR + BPhi*dBphi_dR + BZ*dBz_dR) * over_B;
+
+    //dbdz = ( fld%br*fld%dbrdz + fld%bphi*fld%dbpdz + fld%bz*fld%dbzdz) *over_B
+    auto db_dz = (BR*dBr_dZ + BPhi*dBphi_dZ + BZ*dBz_dZ) * over_B;
+
+    //dbdphi=0D0  ! no B perturbation
+    auto db_dphi = 0;
+
+    vtkm::Vec3f curl_B;
+
+    //Setting curl in R,Phi,Z
+
+    //curl_B.R = 1/R * dBz/dPhi - dBphi/dZ
+    curl_B[0] = invR* dBz_dPhi - dBphi_dZ;
+
+    //curl_B.Phi = dBr/dZ - dBz/dR
+    curl_B[1] = dBr_dZ - dBz_dR;
+
+    //curl_Z = BPhi / R + dPhi_dR - dBr_dPhi *1/R
+    //curl_B(2)  = fld%bphi*inv_r + fld%dbpdr-fld%dbrdp*inv_r
+    //curl_B.Z = BPhi * invR + dBphi_dR - dBr_dphi*invR
+    curl_B[2] = BPhi * invR  + dBphi_dR  - dBr_dPhi * invR;
+
+
+    vtkm::Vec3f curl_nb;
+
+    //curl_nb.R
+    //curl_nb(1) = curl_B(1)*over_B + (fld%bphi * dbdz                  ) * over_B2
+    curl_nb[0] = curl_B[0]*over_B + (BPhi * db_dz) * over_B2;
+
+    //curl_nb.Phi
+    //curl_nb(3) = curl_B(3)*over_B + (fld%bz   * dbdr - fld%br   * dbdz) * over_B2
+    curl_nb[1] = curl_B[1]*over_B + (BZ * db_dr - BR * db_dz) * over_B2;
+
+
+    //curl_nb.Z
+    //curl_nb(2) = curl_B(2)*over_B + (                - fld%bphi * dbdr) * over_B2
+    curl_nb[2] = curl_B[1]*over_B + (BPhi * db_dr) * over_B2;
+
+    portal.Set(i, curl_nb);
   }
 
   return curlBNorm;
@@ -538,7 +652,7 @@ ReadVec(adiosS* stuff,
   std::vector<double> tmp;
   stuff->engine.Get(var, tmp, adios2::Mode::Sync);
 
-  std::vector<vtkm::Vec3f> vec, vec2d;
+  std::vector<vtkm::Vec3f> vec, vecRZP, vec2d;
   for (int p = 0; p < numPlanes; p++)
   {
     for (int i = 0; i < numNodes; i++)
@@ -550,7 +664,10 @@ ReadVec(adiosS* stuff,
       //vtkm::Vec3f v(tmp[vidx*3+0], tmp[vidx*3+1], tmp[vidx*3+2]);
       vec.push_back(v);
       if (p == 0)
+      {
         vec2d.push_back(v);
+        vecRZP.push_back(vtkm::Vec3f(tmp[vidx*3+0], tmp[vidx*3+1], tmp[vidx*3+2]));
+      }
     }
   }
 
@@ -565,17 +682,24 @@ ReadVec(adiosS* stuff,
   else
   {
     ds.AddField(vtkm::cont::make_FieldPoint(vname+"2D",vtkm::cont::make_ArrayHandle(vec2d, vtkm::CopyFlag::On)));
+    ds.AddField(vtkm::cont::make_FieldPoint("B_RZP_2D",vtkm::cont::make_ArrayHandle(vecRZP, vtkm::CopyFlag::On)));
 
     if (isB)
     {
-      vtkm::cont::ArrayHandle<vtkm::Vec3f> b, bhat;
+      vtkm::cont::ArrayHandle<vtkm::Vec3f> b, brzp, bhat, brzphat;
       vtkm::cont::Invoker invoker;
       ds.GetField("B2D").GetData().AsArrayHandle(b);
       invoker(NormalizeWorklet{}, b, bhat);
       ds.AddField(vtkm::cont::make_FieldPoint("B2D_Norm",bhat));
 
+      ds.GetField("B_RZP_2D").GetData().AsArrayHandle(brzp);
+      invoker(NormalizeWorklet{}, brzp, brzphat);
+      ds.AddField(vtkm::cont::make_FieldPoint("BRZP_Norm", brzphat));
+
+
       vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm;
       curlBNorm = ComputeCurl(ds);
+
 
       ds.AddField(vtkm::cont::make_FieldPoint("Curl_B2D_Norm", curlBNorm));
 
@@ -835,6 +959,63 @@ InterpVector(const vtkm::cont::DataSet& ds,
   }
 }
 
+std::vector<std::vector<vtkm::Vec3f>>
+EvalTensor(const vtkm::cont::DataSet& ds,
+           const vtkm::cont::CellLocatorGeneral& locator,
+           const std::vector<vtkm::Vec3f>& pts,
+           const std::string& vName,
+           const std::vector<int>& offset)
+{
+  for (std::size_t i = 0; i < pts.size(); i++)
+    if (pts[i][2] != 0)
+      std::cout<<"********************************************************** FIX ME: "<<__LINE__<<std::endl;
+
+  auto points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::Off);
+  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
+  vtkm::cont::Invoker invoker;
+
+  //std::cout<<"EvalVector("<<vName<<"): "<<pts<<" offset= "<<offset<<std::endl;
+  //Find the cell on the RZ plane.
+  invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Vec3f,3>> V;
+  ds.GetField(vName).GetData().AsArrayHandle(V);
+
+  auto cPortal = cellIds.ReadPortal();
+  auto pPortal = pcoords.ReadPortal();
+  auto vPortal = V.ReadPortal();
+  auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
+
+  std::vector<std::vector<vtkm::Vec3f>> out;
+  for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
+  {
+    vtkm::Id vIds[3];
+    vtkm::Id cid = cPortal.Get(i);
+    cs.GetCellPointIds(cid, vIds);
+
+    auto v0 = vPortal.Get(vIds[0]+offset[i]);
+    auto v1 = vPortal.Get(vIds[1]+offset[i]);
+    auto v2 = vPortal.Get(vIds[2]+offset[i]);
+
+    std::vector<vtkm::Vec3f> grads(3);
+    for (int j = 0; j < 3; j++)
+    {
+      vtkm::VecVariable<vtkm::Vec3f, 3> vals;
+      vals.Append(v0[j]);
+      vals.Append(v1[j]);
+      vals.Append(v2[j]);
+
+      vtkm::Vec3f v;
+      vtkm::exec::CellInterpolate(vals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), v);
+      grads[j] = v;
+    }
+    out.push_back(grads);
+  }
+
+  return out;
+}
+
 std::vector<vtkm::Vec3f>
 EvalVector(const vtkm::cont::DataSet& ds,
            const vtkm::cont::CellLocatorGeneral& locator,
@@ -851,7 +1032,7 @@ EvalVector(const vtkm::cont::DataSet& ds,
   vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
   vtkm::cont::Invoker invoker;
 
-//  std::cout<<"EvalVector("<<vName<<"): "<<pts<<" offset= "<<offset<<std::endl;
+  //std::cout<<"EvalVector("<<vName<<"): "<<pts<<" offset= "<<offset<<std::endl;
   //Find the cell on the RZ plane.
   invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
 
@@ -874,7 +1055,8 @@ EvalVector(const vtkm::cont::DataSet& ds,
     vals.Append(vPortal.Get(vIds[1]+offset[i]));
     vals.Append(vPortal.Get(vIds[2]+offset[i]));
 
-//    std::cout<<"CID: "<<cid<<":: "<<vIds[0]<<" "<<vIds[1]<<" "<<vIds[2]<<std::endl;
+    //std::cout<<"CID: "<<cid<<":: "<<vIds[0]<<" "<<vIds[1]<<" "<<vIds[2]<<std::endl;
+    //std::cout<<"     p= "<<pPortal.Get(i)<<std::endl;
 
     vtkm::Vec3f v;
     vtkm::exec::CellInterpolate(vals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), v);
@@ -1033,9 +1215,8 @@ Evaluate(const vtkm::cont::DataSet& ds,
         //std::cout<<"Wrap around: "<<planeIdx0<<" phi= "<<phiN<<std::endl;
       }
 
-      std::vector<vtkm::Vec3f> plist(1);
-      plist[0] = vtkm::Vec3f(pt[0], pt[2], 0);
-      vtkm::Vec3f B0 = EvalVector(ds, locator, plist, "B2D")[0];
+      vtkm::Vec3f particleRZ(pt[0], pt[2], 0);
+      vtkm::Vec3f B0 = EvalVector(ds, locator, {particleRZ}, "B2D")[0];
 
       vtkm::FloatDefault PhiMid = Phi0 + (Phi1-Phi0)/2.0;
       vtkm::Plane<> midPlane({0, PhiMid, 0}, {0,1,0});
@@ -1111,7 +1292,7 @@ Evaluate(const vtkm::cont::DataSet& ds,
         std::vector<int> off = {planeIdx0*numNodes};
         vtkm::Vec3f AsCurl_bhat = EvalVector(ds, locator, {x_ff}, "AsCurlBHat", off)[0];
 
-        vtkm::Vec3f curl_bhat = EvalVector(ds, locator, {x_ff}, "Curl_B2D_Norm")[0];
+        vtkm::Vec3f curl_bhat = EvalVector(ds, locator, {particleRZ}, "Curl_B2D_Norm")[0];
         auto As_ff = InterpScalar(ds, locator, {x_ff, x_ff}, "As_ff", offsets);
         vtkm::FloatDefault As_ff0 = As_ff[0];
         vtkm::FloatDefault As_ff1 = As_ff[1];
@@ -1120,17 +1301,25 @@ Evaluate(const vtkm::cont::DataSet& ds,
         AsCurl_bhat = As * curl_bhat;
 
         //std::cout<<"As*Curl(Bhat):: "<<AsCurl_bhat<<" "<<vtkm::Magnitude(AsCurl_bhat)<<std::endl;
-        vtkm::Vec3f bhat = EvalVector(ds, locator, {x_ff}, "B2D_Norm")[0];
+        vtkm::Vec3f bhat = EvalVector(ds, locator, {particleRZ}, "B2D_Norm")[0];
         //std::cout<<"bhat= "<<bhat<<" "<<vtkm::Magnitude(bhat)<<std::endl;
 
         vtkm::Vec3f deltaB = AsCurl_bhat + vtkm::Cross(gradAs, bhat);
 
         vec = deltaB;
         //std::cout<<"deltaB: "<<deltaB<<" :: "<<vtkm::Magnitude(deltaB)<<std::endl;
+
+        std::cout<<"Meow: pt= "<<pt<<" "<<particleRZ<<" x= "<<x_ff<<" "<<phiN<<" "<<Phi0<<" "<<Phi1<<" wphi=("<<wphi[0]<<", "<<wphi[1]<<")"<<std::endl;
+        std::cout<<"           B0= "<<B0<<"  /R= "<<vtkm::Vec3f(B0[0], B0[1]/particleRZ[0], B0[2])<<std::endl;
+        std::cout<<"    curl_bhat= "<<curl_bhat<<std::endl;
+        std::cout<<"           As= "<<As<<std::endl;
+        std::cout<<"Bsa (As*curl_nb)= "<<AsCurl_bhat<<std::endl;
+        std::cout<<"          dAs= "<<dAs_ff0<<" "<<dAs_ff1<<" --> "<<gradAs<<std::endl;
+        std::cout<<"\n\n"<<std::endl;
       }
 
-      B0[1] = B0[1] / pt[0];
-      vec[1] = vec[1] / pt[0];
+      B0[1] = B0[1] / particleRZ[0];
+      vec[1] = vec[1] / particleRZ[0];
       auto result = vec + B0;
       output.push_back(result);
     }
@@ -1594,6 +1783,26 @@ CalcGradAs(vtkm::cont::DataSet& ds)
       }
     }
   }
+
+  //do some testing..
+  for (int p = 0; p < numPlanes; p++)
+  {
+    int off0 = p*numNodes*2;
+    int off1 = p*numNodes*2 + numNodes;
+    for (int n = 0; n < numNodes; n++)
+    {
+      auto V0 = dAs_ff[p][0][n];
+      auto V1 = dAs_ff[p][1][n];
+
+      auto X0 = arr_ff[off0 + n];
+      auto X1 = arr_ff[off1 + n];
+      auto diff = vtkm::Magnitude(V0-X0) + vtkm::Magnitude(V1-X1);
+      if (diff > 0)
+        std::cout<<"ERROR: "<<V0<<" : "<<V1<<"  diff0= "<<(V0-X0)<<" diff1= "<<(V1-X1)<<std::endl;
+
+    }
+  }
+
   ds.AddField(vtkm::cont::make_Field("dAs_ff",
                                      vtkm::cont::Field::Association::WHOLE_MESH,
                                      arr_ff,
@@ -1878,7 +2087,227 @@ GradientTest()
 
 }
 
-int main(int argc, char** argv)
+void
+Debug(const vtkm::cont::DataSet& inDS)
+{
+
+  auto ds = inDS;
+
+  /*
+  vtkm::filter::Gradient gradient;
+  gradient.SetComputePointGradient(true);
+  gradient.SetComputeVorticity(true);
+  gradient.SetActiveField("B_RZP_2D");
+  auto ds = gradient.Execute(inDS);
+  */
+
+  vtkm::cont::CellLocatorGeneral locator;
+  locator.SetCellSet(ds.GetCellSet());
+  locator.SetCoordinates(ds.GetCoordinateSystem());
+  locator.Update();
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> coords;
+  ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+  auto cPortal = coords.ReadPortal();
+
+  vtkm::Vec3f pt(3.029365, 0.020600, 0);
+
+  //Use node position.
+  //pt = cPortal.Get(1521);
+
+
+  vtkm::Vec3f B0 = EvalVector(ds, locator, {pt}, "B_RZP_2D")[0];
+  vtkm::Vec3f curlBh = EvalVector(ds, locator, {pt}, "Curl_B2D_Norm")[0];
+  std::cout<<"B0_rzp("<<pt<<")= "<<B0<<std::endl;
+  std::cout<<"curlBhat("<<pt<<")= "<<curlBh<<std::endl;
+  std::cout<<"**************** DO Z,Phi need to swap????? ***************"<<std::endl;
+
+  vtkm::filter::Gradient gradient;
+  gradient.SetComputePointGradient(true);
+  //gradient.SetActiveField("BRZP_Norm");
+  gradient.SetActiveField("B_RZP_2D");
+  auto tmpDS = gradient.Execute(ds);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Vec3f, 3>> gradients;
+  tmpDS.GetField("Gradients").GetData().AsArrayHandle(gradients);
+  auto GRAD = EvalTensor(tmpDS, locator, {pt}, "Gradients", {0})[0];
+/*
+  std::cout<<"dBr/dr= "<<GRAD[0][0]<<std::endl;
+  std::cout<<"dBz/dr= "<<GRAD[0][1]<<std::endl;
+  std::cout<<"dBp/dr= "<<GRAD[0][2]<<std::endl;
+
+  std::cout<<"dBr/dz= "<<GRAD[1][0]<<std::endl;
+  std::cout<<"dBz/dz= "<<GRAD[1][1]<<std::endl;
+  std::cout<<"dBp/dz= "<<GRAD[1][2]<<std::endl;
+
+  std::cout<<"dBr/dp= "<<GRAD[2][0]<<std::endl;
+  std::cout<<"dBz/dp= "<<GRAD[2][1]<<std::endl;
+  std::cout<<"dBp/dp= "<<GRAD[2][2]<<std::endl;
+*/
+
+  auto R = pt[0];
+  auto Z = pt[1];
+  auto inv_r = 1.0/R;
+  auto Bmag = vtkm::Magnitude(B0);
+  auto over_Bmag = 1.0/Bmag;
+  auto over_Bmag2 = over_Bmag * over_Bmag;
+
+  auto br = B0[0];
+  auto bz = B0[1];
+  auto bphi = B0[2];
+
+  auto dbrdr = GRAD[0][0];
+  auto dbzdr = GRAD[0][1];
+  auto dbpdr = GRAD[0][2];
+
+  auto dbrdz = GRAD[1][0];
+  auto dbzdz = GRAD[1][1];
+  auto dbpdz = GRAD[1][2];
+
+  auto dbrdp = GRAD[2][0];
+  auto dbzdp = GRAD[2][1];
+  auto dbpdp = GRAD[2][2];
+
+  std::cout<<"dbrdr= "<<dbrdr<<std::endl;
+  std::cout<<"dbrdz= "<<dbrdz<<std::endl;
+  std::cout<<"dbrdp= "<<dbrdp<<std::endl;
+
+  std::cout<<"dbzdr= "<<dbzdr<<std::endl;
+  std::cout<<"dbzdz= "<<dbzdz<<std::endl;
+  std::cout<<"dbzdp= "<<dbzdp<<std::endl;
+
+  std::cout<<"dbpdr= "<<dbpdr<<std::endl;
+  std::cout<<"dbpdz= "<<dbpdz<<std::endl;
+  std::cout<<"dbpdp= "<<dbpdp<<std::endl;
+
+
+  //dbdr = ( fld%br*fld%dbrdr + fld%bphi*fld%dbpdr + fld%bz*fld%dbzdr) *over_B
+  //dbdz = ( fld%br*fld%dbrdz + fld%bphi*fld%dbpdz + fld%bz*fld%dbzdz) *over_B
+  //dbdphi=0D0  ! no B perturbation
+  auto dbdr = (br*dbrdr + bphi*dbpdr + bz*dbzdr) * over_Bmag;
+  auto dbdz = (br*dbrdz + bphi*dbpdz + bz*dbzdz) * over_Bmag;
+  auto dbdphi = 0;
+
+  auto div = dbrdr + br/R + dbzdz;
+  std::cout<<"Check divervgence: "<<div<<std::endl;
+
+  vtkm::Vec3f curl_B;
+  //R curl_B(1)  = fld%dbzdp*inv_r - fld%dbpdz
+  curl_B[0] =          dbzdp*inv_r - dbpdz;
+  //Z curl_B(2)  = fld%bphi*inv_r + fld%dbpdr - fld%dbrdp*inv_r
+  curl_B[1] =          bphi*inv_r +     dbpdr -     dbrdp*inv_r;
+  std::cout<<"    curl_b.z: "<<(bphi*inv_r)<<" + "<<dbpdr<<" - "<<(dbrdp*inv_r)<<std::endl;
+  //phi curl_B(3)  = fld%dbrdz - fld%dbzdr
+  curl_B[2] =            dbrdz -     dbzdr;
+
+  std::cout<<"curl_B= "<<curl_B<<std::endl;
+
+
+  vtkm::Vec3f curl_nb;
+
+  //R,Z,Phi
+  //curl_nb(1) = curl_B(1)*over_B + (fld%bphi * dbdz                  ) * over_B2
+  //curl_nb(2) = curl_B(2)*over_B + (                - fld%bphi * dbdr) * over_B2
+  //curl_nb(3) = curl_B(3)*over_B + (fld%bz   * dbdr - fld%br   * dbdz) * over_B2
+
+  curl_nb[0] = curl_B[0]*over_Bmag + (bphi * dbdz) * over_Bmag2;
+  curl_nb[1] = curl_B[1]*over_Bmag + (-bphi * dbdr) * over_Bmag2;
+  curl_nb[2] = curl_B[2]*over_Bmag + (bz * dbdr - br * dbdz) * over_Bmag2;
+
+  std::cout<<"curl_nb= "<<curl_nb<<std::endl;
+
+#if 0
+  vtkm::Id offset = 2673266;
+  std::vector<vtkm::Id> vids = {1521, 1612, 1613};
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> b, coords, curl_bhat;
+  ds.GetField("B_RZP_2D").GetData().AsArrayHandle(b);
+  ds.GetField("Curl_B2D_Norm").GetData().AsArrayHandle(curl_bhat);
+  ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+  std::vector<vtkm::Vec3f> B_vals, curl_nb;
+  for (const auto& id : vids)
+  {
+    B_vals.push_back(b.ReadPortal().Get(id));
+    curl_nb.push_back(curl_bhat.ReadPortal().Get(id));
+  }
+
+  std::vector<vtkm::Vec<vtkm::Vec3f, 3>> grad;
+  std::vector<vtkm::Vec3f> pts;
+  for (const auto& id : vids)
+  {
+    grad.push_back(gradients.ReadPortal().Get(id));
+    pts.push_back(coords.ReadPortal().Get(id));
+  }
+
+  for (int i = 0; i < 3; i++)
+  {
+    auto c = pts[i];
+    auto g = grad[i];
+
+    auto dBr_dR     = g[0][0];
+    auto dBz_dR     = g[0][1];
+    auto dBphi_dR   = g[0][2];
+
+    auto dBr_dZ     = g[1][0];
+    auto dBz_dZ     = g[1][1];
+    auto dBphi_dZ   = g[1][2];
+
+    auto dBr_dPhi   = g[2][0];
+    auto dBz_dPhi   = g[2][1];
+    auto dBphi_dPhi = g[2][2];
+
+    std::cout<<i<<": "<<c<<std::endl;
+    std::cout<<"    B= "<<B_vals[i]<<std::endl;
+    std::cout<<"    Curl_bhat= "<<curl_nb[i]<<std::endl;
+    std::cout<<"    dB*_dR= "<<g[0]<<std::endl;
+    std::cout<<"    dB*_dZ= "<<g[1]<<std::endl;
+    std::cout<<"    dB*_dP= "<<g[2]<<std::endl;
+
+    std::cout<<"   dBp_dr= "<<dBphi_dR<<std::endl;
+    std::cout<<"   dBr_dp= "<<dBr_dPhi<<std::endl;
+    std::cout<<"   dBp_dz= "<<dBphi_dZ<<std::endl;
+    std::cout<<"   dBz_dr= "<<dBz_dR<<std::endl;
+    std::cout<<"   dBr_dz= "<<dBr_dZ<<std::endl;
+    std::cout<<"\n\n";
+  }
+#endif
+}
+
+void
+SaveStuff(const vtkm::cont::DataSet& inDS)
+{
+  vtkm::cont::DataSet ds;
+  ds.AddCoordinateSystem(inDS.GetCoordinateSystem());
+  ds.SetCellSet(inDS.GetCellSet());
+
+  ds.AddField(inDS.GetField("B2D_Norm"));
+  ds.AddField(inDS.GetField("Curl_B2D_Norm"));
+  ds.AddField(inDS.GetField("B2D"));
+
+  //Add gradPsi
+  vtkm::Id nPts = ds.GetNumberOfPoints();
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B0;
+  ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+  inDS.GetField("B2D").GetData().AsArrayHandle(B0);
+  auto cPortal = coords.ReadPortal();
+  auto b0Portal = B0.ReadPortal();
+
+  std::vector<vtkm::Vec3f> gradPsi(nPts);
+  for (vtkm::Id i = 0; i < nPts; i++)
+  {
+    gradPsi[i][0] = b0Portal.Get(i)[2] * cPortal.Get(i)[0];
+    gradPsi[i][1] = -b0Portal.Get(i)[0] * cPortal.Get(i)[0];
+    gradPsi[i][2] = 0;
+  }
+
+  ds.AddField(vtkm::cont::make_FieldPoint("gradPsi", vtkm::cont::make_ArrayHandle(gradPsi, vtkm::CopyFlag::On)));
+
+  vtkm::io::VTKDataSetWriter writer("stuff.vtk");
+  writer.WriteDataSet(ds);
+}
+
+int
+main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
 
@@ -1896,6 +2325,10 @@ int main(int argc, char** argv)
   }
 
   auto ds = ReadData(args);
+
+  SaveStuff(ds);
+  Debug(ds);
+  return 0;
 
   vtkm::FloatDefault stepSize = std::atof(args["--stepSize"][0].c_str());
   int numPunc = std::atoi(args["--numPunc"][0].c_str());
