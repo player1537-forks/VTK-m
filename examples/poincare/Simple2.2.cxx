@@ -445,9 +445,100 @@ public:
   }
 };
 
+//Sets it as RZP
 vtkm::cont::ArrayHandle<vtkm::Vec3f>
-ComputeCurl(const vtkm::cont::DataSet& ds)
+ComputeCurl(const vtkm::cont::DataSet& inDS)
 {
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm;
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B;
+  inDS.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+  inDS.GetField("B_RZP_2D").GetData().AsArrayHandle(B);
+
+  //Get the gradients.
+  vtkm::filter::Gradient gradient;
+  gradient.SetComputePointGradient(true);
+  //gradient.SetActiveField("BRZP_Norm");
+  gradient.SetActiveField("B_RZP_2D");
+  auto ds = gradient.Execute(inDS);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Vec3f, 3>> gradients;
+  ds.GetField("Gradients").GetData().AsArrayHandle(gradients);
+
+  vtkm::Id numPts = coords.GetNumberOfValues();
+  curlBNorm.Allocate(numPts);
+
+  auto gPortal = gradients.ReadPortal();
+  auto cPortal = coords.ReadPortal();
+  auto bPortal = B.ReadPortal();
+  auto portal = curlBNorm.WritePortal();
+
+  for (vtkm::Id i = 0; i < numPts; i++)
+  {
+    auto B0 = bPortal.Get(i);
+    auto ptRPZ = cPortal.Get(i);
+    auto R = ptRPZ[0];
+    auto Z = ptRPZ[2];
+
+    auto inv_r = 1.0/R;
+    auto Bmag = vtkm::Magnitude(B0);
+    auto over_Bmag = 1.0/Bmag;
+    auto over_Bmag2 = over_Bmag * over_Bmag;
+
+    auto br = B0[0];
+    auto bz = B0[1];
+    auto bphi = B0[2];
+
+    auto GRAD = gPortal.Get(i);
+
+    auto dbrdr = GRAD[0][0];
+    auto dbzdr = GRAD[0][1];
+    auto dbpdr = GRAD[0][2];
+
+    auto dbrdz = GRAD[1][0];
+    auto dbzdz = GRAD[1][1];
+    auto dbpdz = GRAD[1][2];
+
+    auto dbrdp = GRAD[2][0];
+    auto dbzdp = GRAD[2][1];
+    auto dbpdp = GRAD[2][2];
+
+    //dbdr = ( fld%br*fld%dbrdr + fld%bphi*fld%dbpdr + fld%bz*fld%dbzdr) *over_B
+    //dbdz = ( fld%br*fld%dbrdz + fld%bphi*fld%dbpdz + fld%bz*fld%dbzdz) *over_B
+    //dbdphi=0D0  ! no B perturbation
+    auto dbdr = (br*dbrdr + bphi*dbpdr + bz*dbzdr) * over_Bmag;
+    auto dbdz = (br*dbrdz + bphi*dbpdz + bz*dbzdz) * over_Bmag;
+    auto dbdphi = 0;
+
+
+    vtkm::Vec3f curl_B;
+    //R curl_B(1)  = fld%dbzdp*inv_r - fld%dbpdz
+    curl_B[0] =          dbzdp*inv_r - dbpdz;
+    //Z curl_B(2)  = fld%bphi*inv_r + fld%dbpdr - fld%dbrdp*inv_r
+    curl_B[1] =          bphi*inv_r +     dbpdr -     dbrdp*inv_r;
+    //phi curl_B(3)  = fld%dbrdz - fld%dbzdr
+    curl_B[2] =            dbrdz -     dbzdr;
+
+    vtkm::Vec3f curl_nb;
+
+    //R,Z,Phi
+    //curl_nb(1) = curl_B(1)*over_B + (fld%bphi * dbdz                  ) * over_B2
+    //curl_nb(2) = curl_B(2)*over_B + (                - fld%bphi * dbdr) * over_B2
+    //curl_nb(3) = curl_B(3)*over_B + (fld%bz   * dbdr - fld%br   * dbdz) * over_B2
+
+    curl_nb[0] = curl_B[0]*over_Bmag + (bphi * dbdz) * over_Bmag2;
+    curl_nb[1] = curl_B[1]*over_Bmag + (-bphi * dbdr) * over_Bmag2;
+    curl_nb[2] = curl_B[2]*over_Bmag + (bz * dbdr - br * dbdz) * over_Bmag2;
+
+    portal.Set(i, curl_nb);
+  }
+
+  return curlBNorm;
+
+
+  //old way...
+#if 0
   vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B;
   ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
   ds.GetField("B_RZP_2D").GetData().AsArrayHandle(B);
@@ -531,6 +622,7 @@ ComputeCurl(const vtkm::cont::DataSet& ds)
   }
 
   return curlBNorm;
+#endif
 }
 
 //This uses the curl_b
@@ -1422,7 +1514,7 @@ Poincare(const vtkm::cont::DataSet& ds,
 
 
   int maxIter = numPunc*1000000;
-  //maxIter = 100;
+  maxIter = 15000;
   for (int i = 0; i < maxIter; i++)
   {
     auto newPts = RK4(ds, locator, pts, vField, pointMask, h);
@@ -2330,8 +2422,8 @@ main(int argc, char** argv)
   auto ds = ReadData(args);
 
   SaveStuff(ds);
-  Debug(ds);
-  return 0;
+  //Debug(ds);
+  //return 0;
 
   vtkm::FloatDefault stepSize = std::atof(args["--stepSize"][0].c_str());
   int numPunc = std::atoi(args["--numPunc"][0].c_str());
