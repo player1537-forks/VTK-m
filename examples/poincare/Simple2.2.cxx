@@ -2201,6 +2201,9 @@ Debug(const vtkm::cont::DataSet& inDS)
   curl_B[2] =            dbrdz -     dbzdr;
 
   std::cout<<"curl_B= "<<curl_B<<std::endl;
+  std::cout<<"  dbdr= "<<dbdr<<std::endl;
+  std::cout<<"  dbdz= "<<dbdz<<std::endl;
+  std::cout<<"  dbdphi= "<<dbdphi<<std::endl;
 
 
   vtkm::Vec3f curl_nb;
