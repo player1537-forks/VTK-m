@@ -1140,6 +1140,75 @@ EvalTensor(const vtkm::cont::DataSet& ds,
   return out;
 }
 
+bool
+PtLoc(const vtkm::cont::DataSet& ds,
+      const vtkm::cont::CellLocatorGeneral& locator,
+      const vtkm::Vec3f& pt,
+      vtkm::Vec3f& param,
+      vtkm::Vec<vtkm::Id, 3>& vIds)
+{
+  if (pt[2] != 0)
+    std::cout<<"********************************************************** FIX ME: "<<__LINE__<<std::endl;
+
+  std::vector<vtkm::Vec3f> pts = {pt};
+
+  auto points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::Off);
+  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
+  vtkm::cont::Invoker invoker;
+
+  invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
+
+  auto cPortal = cellIds.ReadPortal();
+  auto pPortal = pcoords.ReadPortal();
+  auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
+
+  vtkm::Id ids[3];
+  vtkm::Id cid = cPortal.Get(0);
+  cs.GetCellPointIds(cid, ids);
+  vIds[0] = ids[0];
+  vIds[1] = ids[1];
+  vIds[2] = ids[2];
+
+  param = pPortal.Get(0);
+
+  return true;
+}
+
+template <typename PortalType>
+vtkm::Vec3f
+EvalV(const PortalType& vPortal,
+      const vtkm::Id& offset,
+      const vtkm::Vec<vtkm::Id, 3>& vId,
+      const vtkm::Vec3f& param)
+{
+  vtkm::VecVariable<vtkm::Vec3f, 3> vals;
+  vals.Append(vPortal.Get(vId[0]+offset));
+  vals.Append(vPortal.Get(vId[1]+offset));
+  vals.Append(vPortal.Get(vId[2]+offset));
+
+  vtkm::Vec3f v;
+  vtkm::exec::CellInterpolate(vals, param, vtkm::CellShapeTagTriangle(), v);
+  return v;
+}
+
+template <typename PortalType>
+vtkm::FloatDefault
+EvalS(const PortalType& sPortal,
+      const vtkm::Id& offset,
+      const vtkm::Vec<vtkm::Id, 3>& vId,
+      const vtkm::Vec3f& param)
+{
+  vtkm::VecVariable<vtkm::FloatDefault, 3> vals;
+  vals.Append(sPortal.Get(vId[0]+offset));
+  vals.Append(sPortal.Get(vId[1]+offset));
+  vals.Append(sPortal.Get(vId[2]+offset));
+
+  vtkm::FloatDefault s;
+  vtkm::exec::CellInterpolate(vals, param, vtkm::CellShapeTagTriangle(), s);
+  return s;
+}
+
 std::vector<vtkm::Vec3f>
 EvalVector(const vtkm::cont::DataSet& ds,
            const vtkm::cont::CellLocatorGeneral& locator,
@@ -1151,42 +1220,19 @@ EvalVector(const vtkm::cont::DataSet& ds,
     if (pts[i][2] != 0)
       std::cout<<"********************************************************** FIX ME: "<<__LINE__<<std::endl;
 
-  auto points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::Off);
-  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
-  vtkm::cont::Invoker invoker;
-
-  //std::cout<<"EvalVector("<<vName<<"): "<<pts<<" offset= "<<offset<<std::endl;
-  //Find the cell on the RZ plane.
-  invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
-
   vtkm::cont::ArrayHandle<vtkm::Vec3f> V;
   ds.GetField(vName).GetData().AsArrayHandle(V);
-
-  auto cPortal = cellIds.ReadPortal();
-  auto pPortal = pcoords.ReadPortal();
   auto vPortal = V.ReadPortal();
-  auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
 
   std::vector<vtkm::Vec3f> out;
   for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
   {
-    vtkm::Id vIds[3];
-    vtkm::Id cid = cPortal.Get(i);
-    cs.GetCellPointIds(cid, vIds);
-    vtkm::VecVariable<vtkm::Vec3f, 3> vals;
-    vals.Append(vPortal.Get(vIds[0]+offset[i]));
-    vals.Append(vPortal.Get(vIds[1]+offset[i]));
-    vals.Append(vPortal.Get(vIds[2]+offset[i]));
+    vtkm::Vec3f param;
+    vtkm::Vec<vtkm::Id, 3> vIds;
+    PtLoc(ds, locator, pts[i], param, vIds);
 
-    //std::cout<<"CID: "<<cid<<":: "<<vIds[0]<<" "<<vIds[1]<<" "<<vIds[2]<<std::endl;
-    //std::cout<<"     p= "<<pPortal.Get(i)<<std::endl;
-
-    vtkm::Vec3f v;
-    vtkm::exec::CellInterpolate(vals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), v);
-    //v = vtkm::Vec3f(v[0], v[2], v[1]);
+    vtkm::Vec3f v = EvalV(vPortal, (vtkm::Id)offset[i], vIds, param);
     out.push_back(v);
-//    std::cout<<"    "<<vals[0]<<" "<<vals[1]<<" "<<vals[2]<<" --- ("<<pPortal.Get(i)<<") ---> "<<v<<std::endl;
   }
   return out;
 }
@@ -1210,39 +1256,22 @@ InterpScalar(const vtkm::cont::DataSet& ds,
              const std::vector<int>& offsets)
 {
   vtkm::cont::ArrayHandle<vtkm::Vec3f> points;
-
   points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
-
-  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
-  vtkm::cont::Invoker invoker;
-
-  invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> V;
   ds.GetField(vName).GetData().AsArrayHandle(V);
-
-  auto cPortal = cellIds.ReadPortal();
-  auto pPortal = pcoords.ReadPortal();
   auto vPortal = V.ReadPortal();
-  auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
+
 
   std::vector<vtkm::FloatDefault> out;
   for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
   {
-    vtkm::Id vIds[3];
-    vtkm::Id cid = cPortal.Get(i);
-    cs.GetCellPointIds(cid, vIds);
-    vtkm::VecVariable<vtkm::FloatDefault, 3> vals;
-    //std::cout<<cid<<":: "<<vIds[0]<<" "<<vIds[1]<<" "<<vIds[2]<<std::endl;
-    for (vtkm::Id j = 0; j < 3; j++)
-      vals.Append(vPortal.Get(vIds[0]+offsets[i]));
+    vtkm::Vec3f param;
+    vtkm::Vec<vtkm::Id, 3> vIds;
+    PtLoc(ds, locator, pts[i], param, vIds);
 
-    vtkm::FloatDefault v;
-    vtkm::exec::CellInterpolate(vals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), v);
+    vtkm::FloatDefault v = EvalS(vPortal, (vtkm::Id)offsets[i], vIds, param);
     out.push_back(v);
-    //std::cout<<"    "<<vals[0]<<" "<<vals[1]<<" "<<vals[2]<<std::endl;
-    //std::cout<<" -----> "<<interp<<std::endl;
   }
   return out;
 }
@@ -1257,6 +1286,22 @@ Evaluate(const vtkm::cont::DataSet& ds,
 {
   bool isB = vField == "B";
 
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp, AsCurlBHat_rzp, Curl_nb_rzp;
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff;
+  ds.GetField("B_RZP").GetData().AsArrayHandle(B_rzp);
+  ds.GetField("As_ff").GetData().AsArrayHandle(As_ff);
+  ds.GetField("B_RZP_Norm").GetData().AsArrayHandle(B_Norm_rzp);
+  ds.GetField("dAs_ff_rzp").GetData().AsArrayHandle(dAs_ff_rzp);
+  ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
+  ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(Curl_nb_rzp);
+
+  auto pB_rzp = B_rzp.ReadPortal();
+  auto pAs_ff = As_ff.ReadPortal();
+  auto pB_Norm_rzp = B_Norm_rzp.ReadPortal();
+  auto pdAs_ff_rzp = dAs_ff_rzp.ReadPortal();
+  auto pAsCurlBHat_rzp = AsCurlBHat_rzp.ReadPortal();
+  auto pCurl_nb_rzp = Curl_nb_rzp.ReadPortal();
+
   for (const auto& x : pts)
   {
     auto ptRPZ = x;
@@ -1270,8 +1315,10 @@ Evaluate(const vtkm::cont::DataSet& ds,
 
     vtkm::Vec3f ptRZ(R, Z, 0);
 
-    std::vector<vtkm::Vec3f> P = {ptRZ};
-    auto B0_rzp = EvalVector(ds, locator, P, "B_RZP")[0];
+    vtkm::Vec3f particlePos_param;
+    vtkm::Vec<vtkm::Id,3> particlePos_vids;
+    PtLoc(ds, locator, ptRZ, particlePos_param, particlePos_vids);
+    auto B0_rzp = EvalV(pB_rzp, 0, particlePos_vids, particlePos_param);
 
     if (isB)
     {
@@ -1323,9 +1370,15 @@ Evaluate(const vtkm::cont::DataSet& ds,
     zvec[1] = basis + (1.0-basis) * gammaPsi *   gradPsi_rzp[0];
 
     //Get the vectors in the ff coordinates.
-    auto dAs_ff_rzp = EvalVector(ds, locator, {x_ff_rzp, x_ff_rzp}, "dAs_ff_rzp", offsets);
-    auto dAs_ff0_rzp = dAs_ff_rzp[0];
-    auto dAs_ff1_rzp = dAs_ff_rzp[1];
+    //auto dAs_ff_rzp = EvalVector(ds, locator, {x_ff_rzp, x_ff_rzp}, "dAs_ff_rzp", offsets);
+    //auto dAs_ff0_rzp = dAs_ff_rzp[0];
+    //auto dAs_ff1_rzp = dAs_ff_rzp[1];
+
+    vtkm::Vec3f x_ff_param;
+    vtkm::Vec<vtkm::Id,3> x_ff_vids;
+    PtLoc(ds, locator, x_ff_rzp, x_ff_param, x_ff_vids);
+    auto dAs_ff0_rzp = EvalV(pdAs_ff_rzp, offsets[0], x_ff_vids, x_ff_param);
+    auto dAs_ff1_rzp = EvalV(pdAs_ff_rzp, offsets[1], x_ff_vids, x_ff_param);
 
     vtkm::FloatDefault wphi[2] = {T10, T01}; //{T01, T10};
     vtkm::Vec3f gradAs_rpz;
@@ -1349,18 +1402,24 @@ Evaluate(const vtkm::cont::DataSet& ds,
     gradAs_rpz[1] = (gradAs_rpz[1]*BMag -gradAs_rpz[0]*B0_rzp[0] - gradAs_rpz[2]*B0_rzp[1]) / B0_rzp[2];
 
     //deltaB = AsCurl(bhat) + gradAs x bhat.
-    std::vector<int> off = {planeIdx0*numNodes};
-    vtkm::Vec3f AsCurl_bhat_rzp = EvalVector(ds, locator, {x_ff_rzp}, "AsCurlBHat_RZP", off)[0];
+    //std::vector<int> off = {planeIdx0*numNodes};
+    //vtkm::Vec3f AsCurl_bhat_rzp = EvalVector(ds, locator, {x_ff_rzp}, "AsCurlBHat_RZP", off)[0];
+    auto AsCurl_bhat_rzp = EvalV(pAsCurlBHat_rzp, 0, x_ff_vids, x_ff_param);
 
-    vtkm::Vec3f curl_nb_rzp = EvalVector(ds, locator, {ptRZ}, "curl_nb_rzp")[0];
-    auto As_ff = InterpScalar(ds, locator, {x_ff_rzp, x_ff_rzp}, "As_ff", offsets);
-    vtkm::FloatDefault As_ff0 = As_ff[0];
-    vtkm::FloatDefault As_ff1 = As_ff[1];
+    //vtkm::Vec3f curl_nb_rzp = EvalVector(ds, locator, {ptRZ}, "curl_nb_rzp")[0];
+    auto curl_nb_rzp = EvalV(pCurl_nb_rzp, 0, particlePos_vids, particlePos_param);
+
+    //auto As_ff = InterpScalar(ds, locator, {x_ff_rzp, x_ff_rzp}, "As_ff", offsets);
+    //vtkm::FloatDefault As_ff0 = As_ff[0];
+    //vtkm::FloatDefault As_ff1 = As_ff[1];
+    auto As_ff0 = EvalS(pAs_ff, offsets[0], x_ff_vids, x_ff_param);
+    auto As_ff1 = EvalS(pAs_ff, offsets[1], x_ff_vids, x_ff_param);
 
     vtkm::FloatDefault As = wphi[0]*As_ff0 + wphi[1]*As_ff1;
     AsCurl_bhat_rzp = As * curl_nb_rzp;
 
-    vtkm::Vec3f bhat_rzp = EvalVector(ds, locator, {ptRZ}, "B_RZP_Norm")[0];
+    //vtkm::Vec3f bhat_rzp = EvalVector(ds, locator, {ptRZ}, "B_RZP_Norm")[0];
+    auto bhat_rzp = EvalV(pB_Norm_rzp, 0, particlePos_vids, particlePos_param);
 
     vtkm::Vec3f gradAs_rzp(gradAs_rpz[0], gradAs_rpz[2], gradAs_rpz[1]);
     vtkm::Vec3f deltaB_rzp = AsCurl_bhat_rzp + vtkm::Cross(gradAs_rzp, bhat_rzp);
@@ -2688,6 +2747,7 @@ main(int argc, char** argv)
     //seeds = {{3.024768, 6.070249, 0.049700}};
 
     //seeds from data/sku_8000/jong.py
+    /*
     seeds = {
       {3.351443, 0.0, -0.451649},
       {3.187329, 0.0, -0.665018},
@@ -2696,12 +2756,11 @@ main(int argc, char** argv)
       {3.176583, 0.0, -0.220557},
       {2.179227, 0.0, 0.291539},
     };
+    */
   }
 
-
-
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
-  auto punctures = Poincare(ds, seeds, vField, stepSize, numPunc, nullptr); //&traces);
+  auto punctures = Poincare(ds, seeds, vField, stepSize, numPunc, &traces);
 
   SaveOutput(traces, punctures);
 
