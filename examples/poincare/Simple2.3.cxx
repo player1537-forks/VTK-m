@@ -82,6 +82,8 @@ vtkm::FloatDefault eq_axis_r = 2.8, eq_axis_z = 0.0;
 
 using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 
+#include "Poincare.h"
+
 template <typename T>
 std::ostream& operator<< (std::ostream& out, const std::vector<T>& v)
 {
@@ -1646,6 +1648,33 @@ Poincare(const vtkm::cont::DataSet& ds,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
+
+#if 0
+  if (1)
+  {
+    vtkm::cont::CellLocatorGeneral locator;
+    locator.SetCellSet(ds.GetCellSet());
+    locator.SetCoordinates(ds.GetCoordinateSystem());
+    locator.Update();
+
+    PoincareWorklet worklet(numPunc, 0.0f, h);
+
+    vtkm::cont::Invoker invoker;
+    std::vector<vtkm::Particle> s;
+    for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
+      s.push_back(vtkm::Particle(pts[i], i));
+    auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
+
+    invoker(worklet, seeds, locator, ds.GetCellSet(), ds.GetCoordinateSystem(), B0, As_phi_ff, dAs_phi_ff, output, traces);
+    std::vector<std::vector<vtkm::Vec3f>> res;
+    o.resize(numPunc*pts.size(), {-100, -100, -100});
+    auto output = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
+
+    return res;
+  }
+#endif
+
+
 //  const vtkm::FloatDefault planeVal = 2.0f;
 //  const vtkm::FloatDefault planeVal = vtkm::Pi();
   const vtkm::FloatDefault planeVal = 0; //vtkm::TwoPi();
@@ -2204,7 +2233,7 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
            const std::vector<std::vector<vtkm::Vec3f>>& punctures,
            const std::string& tracesNm="./traces.txt",
            const std::string& puncNm="./punctures.txt",
-           const std::string& puncThetaPsiNm="./punctures.theta_psi.txt")
+           const std::string& puncThetaPsiNm="./punctures.theta_psi2.txt")
 {
   bool tExists = Exists(tracesNm);
   bool pExists = Exists(puncNm);
@@ -2655,7 +2684,7 @@ main(int argc, char** argv)
 
 
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
-  auto punctures = Poincare(ds, seeds, vField, stepSize, numPunc, &traces);
+  auto punctures = Poincare(ds, seeds, vField, stepSize, numPunc, nullptr); //&traces);
 
   SaveOutput(traces, punctures);
 
