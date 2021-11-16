@@ -54,6 +54,7 @@ public:
                             const BFieldType& Curl_NB_RZP,
                             const AsFieldType& AsPhiFF_RZP,
                             const DAsFieldType& DAsPhiFF_RZP,
+                            const BFieldType& AsCurlBHat_RZP,
                             OutputType& output,
                             OutputType& traces) const
   {

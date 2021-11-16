@@ -1665,11 +1665,28 @@ Poincare(const vtkm::cont::DataSet& ds,
       s.push_back(vtkm::Particle(pts[i], i));
     auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
 
-    invoker(worklet, seeds, locator, ds.GetCellSet(), ds.GetCoordinateSystem(), B0, As_phi_ff, dAs_phi_ff, output, traces);
-    std::vector<std::vector<vtkm::Vec3f>> res;
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff;
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp, AsCurlBHat_rzp, curl_nb_rzp;
+    ds.GetField("As_ff").GetData().AsArrayHandle(As_ff);
+    ds.GetField("B_RZP").GetData().AsArrayHandle(B_rzp);
+    ds.GetField("B_RZP_Norm").GetData().AsArrayHandle(B_Norm_rzp);
+    ds.GetField("dAs_ff_rzp").GetData().AsArrayHandle(dAs_ff_rzp);
+    ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
+    ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(curl_nb_rzp);
+
+
+    std::vector<vtkm::Vec3f> o, t;
     o.resize(numPunc*pts.size(), {-100, -100, -100});
     auto output = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
+    t.resize(pts.size()*worklet.MaxIter, {-100, -100, -100});
+    auto traces = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
 
+    invoker(worklet, seeds, locator, ds.GetCellSet(), ds.GetCoordinateSystem(),
+            B_rzp, B_Norm_rzp, curl_nb_rzp, As_ff, dAs_ff_rzp, AsCurlBHat_rzp,
+            output, traces);
+
+
+    std::vector<std::vector<vtkm::Vec3f>> res;
     return res;
   }
 #endif
