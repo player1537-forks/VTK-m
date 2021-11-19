@@ -23,9 +23,9 @@ public:
                                 WholeArrayIn Curl_NB_RZP,
                                 WholeArrayIn As_phi_ff,
                                 WholeArrayIn dAs_phi_ff_RZP,
-                                WholeArrayIn AsCurlBHat_RZP,
                                 WholeArrayInOut traces,
-                                WholeArrayInOut output);
+                                WholeArrayInOut output,
+                                WholeArrayInOut punctureID);
   using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12);
   using InputDomain = _1;
 
@@ -43,7 +43,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     this->StepSize_6 = this->StepSize / 6.0;
   }
 
-  template <typename LocatorType, typename CellSetType, typename CoordsType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename OutputType>
+  template <typename LocatorType, typename CellSetType, typename CoordsType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename OutputType, typename IdType>
   VTKM_EXEC void operator()(const vtkm::Id& idx,
                             vtkm::Particle& particle,
                             const LocatorType& locator,
@@ -54,9 +54,9 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                             const BFieldType& Curl_NB_RZP,
                             const AsFieldType& AsPhiFF,
                             const DAsFieldType& DAsPhiFF_RZP,
-                            const BFieldType& AsCurlBHat_RZP,
                             OutputType& traces,
-                            OutputType& output) const
+                            OutputType& output,
+                            IdType punctureID) const
   {
     DBG("Begin: "<<particle<<std::endl);
     while (true)
@@ -66,7 +66,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
       DBG("   "<<particle.Pos<<" #s= "<<particle.NumSteps<<std::endl);
       if (!this->TakeRK4Step(particle, locator, cellSet,
                              B_RZP, B_Norm_RZP, Curl_NB_RZP,
-                             AsPhiFF, DAsPhiFF_RZP, AsCurlBHat_RZP, newPos))
+                             AsPhiFF, DAsPhiFF_RZP, newPos))
       {
         break;
       }
@@ -79,15 +79,13 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
       particle.NumSteps++;
 
       if (this->SaveTraces)
-      {
-        vtkm::Id XX = idx*this->MaxIter + particle.NumSteps;
         traces.Set(idx*this->MaxIter + particle.NumSteps, particle.Pos);
-      }
 
       if (numRevs1 > numRevs0)
       {
         vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
         output.Set(i, particle.Pos);
+        punctureID.Set(i, idx);
         particle.NumPunctures++;
         if (idx == 0 && particle.NumPunctures%10 == 0 ) std::cout<<" ***** PUNCTURE n= "<<particle.NumPunctures<<std::endl;
         DBG("************* PUNCTURE n= "<<particle.NumPunctures<<std::endl);
@@ -107,29 +105,28 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                    const BFieldType& Curl_NB_RZP,
                    const AsFieldType& AsPhiFF,
                    const DAsFieldType& DAsPhiFF_RZP,
-                   const BFieldType& AsCurlBHat_RZP,
                    vtkm::Vec3f& res) const
   {
     vtkm::Vec3f tmp, k1, k2, k3, k4, p0;
 
     p0 = particle.Pos;
     DBG("    ****** K1"<<std::endl);
-    if (!this->Evaluate(p0, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, AsCurlBHat_RZP, k1))
+    if (!this->Evaluate(p0, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k1))
       return false;
     tmp = p0 + k1*this->StepSize_2;
 
     DBG("    ****** K2"<<std::endl);
-    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, AsCurlBHat_RZP, k2))
+    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k2))
       return false;
     tmp = p0 + k2*this->StepSize_2;
 
     DBG("    ****** K3"<<std::endl);
-    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, AsCurlBHat_RZP, k3))
+    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k3))
       return false;
     tmp = p0 + k3*this->StepSize_2;
 
     DBG("    ****** K4"<<std::endl);
-    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, AsCurlBHat_RZP, k4))
+    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k4))
       return false;
 
     res = p0 + this->StepSize_6*(k1 + 2*k2 + 2*k3 + k4);
@@ -207,7 +204,6 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                 const BFieldType& Curl_NB_RZP,
                 const AsFieldType& AsPhiFF,
                 const DAsFieldType& DAsPhiFF_RZP,
-                const BFieldType& AsCurlBHat_RZP,
                 vtkm::Vec3f& res) const
   {
     auto R = ptRPZ[0];

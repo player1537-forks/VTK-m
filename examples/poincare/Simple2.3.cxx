@@ -480,7 +480,7 @@ ComputeCurl(const vtkm::cont::DataSet& inDS)
     auto B0 = bPortal.Get(i);
     auto ptRPZ = cPortal.Get(i);
     auto R = ptRPZ[0];
-    auto Z = ptRPZ[2];
+    //auto Z = ptRPZ[2];
 
     auto inv_r = 1.0/R;
     auto Bmag = vtkm::Magnitude(B0);
@@ -503,14 +503,14 @@ ComputeCurl(const vtkm::cont::DataSet& inDS)
 
     auto dbrdp = GRAD[2][0];
     auto dbzdp = GRAD[2][1];
-    auto dbpdp = GRAD[2][2];
+    //auto dbpdp = GRAD[2][2];
 
     //dbdr = ( fld%br*fld%dbrdr + fld%bphi*fld%dbpdr + fld%bz*fld%dbzdr) *over_B
     //dbdz = ( fld%br*fld%dbrdz + fld%bphi*fld%dbpdz + fld%bz*fld%dbzdz) *over_B
     //dbdphi=0D0  ! no B perturbation
     auto dbdr = (br*dbrdr + bphi*dbpdr + bz*dbzdr) * over_Bmag;
     auto dbdz = (br*dbrdz + bphi*dbpdz + bz*dbzdz) * over_Bmag;
-    auto dbdphi = 0;
+    //auto dbdphi = 0;
 
 
     vtkm::Vec3f curl_B;
@@ -679,7 +679,7 @@ ComputeCurl2(const vtkm::cont::DataSet& ds)
 
     auto dBr_dPhi = grad[2][0];
     auto dBz_dPhi = grad[2][1];
-    auto dBphi_dPhi = grad[2][2];
+    //auto dBphi_dPhi = grad[2][2];
 
 
     //dbdr = ( fld%br*fld%dbrdr + fld%bphi*fld%dbpdr + fld%bz*fld%dbzdr) *over_B
@@ -689,7 +689,7 @@ ComputeCurl2(const vtkm::cont::DataSet& ds)
     auto db_dz = (BR*dBr_dZ + BPhi*dBphi_dZ + BZ*dBz_dZ) * over_B;
 
     //dbdphi=0D0  ! no B perturbation
-    auto db_dphi = 0;
+    //auto db_dphi = 0;
 
     vtkm::Vec3f curl_B;
 
@@ -1034,7 +1034,7 @@ ConvertPuncturesToThetaPsi(const std::vector<std::vector<vtkm::Vec3f>>& puncture
   locator.Update();
 
   std::vector<std::vector<vtkm::Vec3f>> puncturesTP(puncturesRZ.size());
-  for (int p = 0; p < puncturesRZ.size(); p++)
+  for (int p = 0; p < (int)puncturesRZ.size(); p++)
   {
     auto pts = puncturesRZ[p];
     for (auto& pt : pts)
@@ -1356,20 +1356,20 @@ Evaluate(const vtkm::cont::DataSet& ds,
 {
   bool isB = vField == "B";
 
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp, AsCurlBHat_rzp, Curl_nb_rzp;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp, Curl_nb_rzp;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff;
   ds.GetField("B_RZP").GetData().AsArrayHandle(B_rzp);
   ds.GetField("As_ff").GetData().AsArrayHandle(As_ff);
   ds.GetField("B_RZP_Norm").GetData().AsArrayHandle(B_Norm_rzp);
   ds.GetField("dAs_ff_rzp").GetData().AsArrayHandle(dAs_ff_rzp);
-  ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
+  //ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
   ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(Curl_nb_rzp);
 
   auto pB_rzp = B_rzp.ReadPortal();
   auto pAs_ff = As_ff.ReadPortal();
   auto pB_Norm_rzp = B_Norm_rzp.ReadPortal();
   auto pdAs_ff_rzp = dAs_ff_rzp.ReadPortal();
-  auto pAsCurlBHat_rzp = AsCurlBHat_rzp.ReadPortal();
+  //auto pAsCurlBHat_rzp = AsCurlBHat_rzp.ReadPortal();
   auto pCurl_nb_rzp = Curl_nb_rzp.ReadPortal();
 
   for (const auto& x : pts)
@@ -1428,7 +1428,7 @@ Evaluate(const vtkm::cont::DataSet& ds,
     auto B0_R = B0_rzp[0];
     auto B0_Z = B0_rzp[1];
     auto x_ff_R = x_ff_rzp[0];
-    auto x_ff_Z = x_ff_rzp[1];
+    //auto x_ff_Z = x_ff_rzp[1];
 
     //gradPsi: pt on mid plane?  (question)
     //dPsi/dR = B0_Z * R
@@ -1822,7 +1822,6 @@ Poincare(const vtkm::cont::DataSet& ds,
     ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
     ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(curl_nb_rzp);
 
-
     vtkm::cont::ArrayHandle<vtkm::Vec3f> tracesArr;
     std::vector<vtkm::Vec3f> o, t;
     o.resize(numPunc*pts.size(), {-100, -100, -100});
@@ -1834,9 +1833,12 @@ Poincare(const vtkm::cont::DataSet& ds,
       tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
 
+    std::vector<vtkm::Id> puncID(o.size(), -1);
+    vtkm::cont::ArrayHandle<vtkm::Id> punctureID = vtkm::cont::make_ArrayHandle(puncID, vtkm::CopyFlag::On);
+
     invoker(worklet, seeds, locator, ds.GetCellSet(), ds.GetCoordinateSystem(),
-            B_rzp, B_Norm_rzp, curl_nb_rzp, As_ff, dAs_ff_rzp, AsCurlBHat_rzp,
-            tracesArr, output);
+            B_rzp, B_Norm_rzp, curl_nb_rzp, As_ff, dAs_ff_rzp,
+            tracesArr, output, punctureID);
 
     std::vector<std::vector<vtkm::Vec3f>> res;
     if (traces)
@@ -1856,12 +1858,13 @@ Poincare(const vtkm::cont::DataSet& ds,
     res.resize(pts.size());
     for (vtkm::Id i = 0; i < n; i++)
     {
-      auto p = portal.Get(i);
-      if (p[2] > -1)
-        res[0].push_back(p);
+      vtkm::Id id = punctureID.ReadPortal().Get(i);
+      if (id >= 0)
+      {
+        auto p = portal.Get(i);
+        res[id].push_back(p);
+      }
     }
-
-    //res.push_back(pts);
     return res;
   }
 
@@ -2423,10 +2426,22 @@ void
 SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
            const std::vector<std::vector<vtkm::Vec3f>>& punctures,
            const std::vector<std::vector<vtkm::Vec3f>>& puncturesTP,
-           const std::string& tracesNm="./traces.txt",
-           const std::string& puncNm="./punctures.txt",
-           const std::string& puncThetaPsiNm="./punctures.theta_psi.txt")
+           const std::string& outFileName = "")
 {
+  std::string tracesNm, puncNm, puncThetaPsiNm;
+  if (outFileName.empty())
+  {
+    tracesNm = "./traces.txt";
+    puncNm = "./punctures.txt";
+    puncThetaPsiNm = "./punctures.theta_psi.txt";
+  }
+  else
+  {
+    tracesNm = outFileName + ".traces.txt";
+    puncNm = outFileName + ".punc.txt";
+    puncThetaPsiNm = outFileName + ".punc.theta_psi.txt";
+  }
+
   bool tExists = Exists(tracesNm);
   bool pExists = Exists(puncNm);
   bool ptpExists = Exists(puncThetaPsiNm);
@@ -2599,7 +2614,7 @@ Debug(const vtkm::cont::DataSet& inDS)
 
   vtkm::cont::ArrayHandle<vtkm::Vec3f> coords;
   ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
-  auto cPortal = coords.ReadPortal();
+  //auto cPortal = coords.ReadPortal();
 
   vtkm::Vec3f pt(3.029365, 0.020600, 0);
 
@@ -2637,7 +2652,7 @@ Debug(const vtkm::cont::DataSet& inDS)
 */
 
   auto R = pt[0];
-  auto Z = pt[1];
+  //auto Z = pt[1];
   auto inv_r = 1.0/R;
   auto Bmag = vtkm::Magnitude(B0);
   auto over_Bmag = 1.0/Bmag;
@@ -2835,6 +2850,8 @@ main(int argc, char** argv)
   std::vector<vtkm::Vec3f> seeds;
   bool useWorklet = std::atoi(args["--worklet"][0].c_str());
   bool useTraces = std::atoi(args["--traces"][0].c_str());
+  std::string outFileName = args["--output"][0];
+
   if (args.find("--range") != args.end())
   {
     vtkm::Id numSeeds = std::stoi(args["--numSeeds"][0]);
@@ -2848,6 +2865,7 @@ main(int argc, char** argv)
 
     for (vtkm::Id id = 0; id < numSeeds; id++, r+=dr)
       seeds.push_back({r, .1, 0});
+    std::cout<<"SEEDS= "<<seeds<<std::endl;
   }
   else if (args.find("--seed") != args.end())
   {
@@ -2885,7 +2903,7 @@ main(int argc, char** argv)
 
   std::cout<<"TRACES: "<<traces.size()<<std::endl;
 
-  SaveOutput(traces, punctures, puncturesTP);
+  SaveOutput(traces, punctures, puncturesTP, outFileName);
 
 #if 0
   std::ofstream outPts, outPtsPsiTheta;
