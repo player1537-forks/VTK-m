@@ -30,7 +30,7 @@ public:
   using InputDomain = _1;
 
 PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefault stepSize, bool saveTraces)
-    : MaxIter(maxPunc * 1000000)
+    : MaxIter(maxPunc * 100000000)
     , MaxPunc(maxPunc)
     , PlaneVal(planeVal)
     , StepSize(stepSize)
@@ -59,6 +59,12 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                             IdType punctureID) const
   {
     DBG("Begin: "<<particle<<std::endl);
+
+    //values for dopri
+    vtkm::FloatDefault facold = 1e-4;
+    vtkm::FloatDefault hlamb = 0.0;
+    vtkm::FloatDefault h = this->StepSize;
+
     while (true)
     {
       vtkm::Vec3f newPos;
@@ -68,6 +74,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                              B_RZP, B_Norm_RZP, Curl_NB_RZP,
                              AsPhiFF, DAsPhiFF_RZP, newPos))
       {
+        std::cout<<"*****************       All done: RK step failed."<<std::endl;
         break;
       }
 
@@ -92,8 +99,196 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
       }
 
       if (particle.NumSteps >= this->MaxIter || particle.NumPunctures >= this->MaxPunc)
+      {
+        std::cout<<"************************************* All done: "<<particle<<std::endl;
         break;
+      }
     }
+    std::cout<<"Particle done: "<<idx<<std::endl;
+  }
+
+  template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType>
+  bool TakeDoPriStep(vtkm::Particle& particle,
+                     const LocatorType& locator,
+                     const CellSetType& cellSet,
+                     const BFieldType& B_RZP,
+                     const BFieldType& B_Norm_RZP,
+                     const BFieldType& Curl_NB_RZP,
+                     const AsFieldType& AsPhiFF,
+                     const DAsFieldType& DAsPhiFF_RZP,
+                     vtkm::FloatDefault& h,
+                     vtkm::FloatDefault& facold,
+                     vtkm::FloatDefault& hlamb,
+                     vtkm::Vec3f& res) const
+  {
+    int n_accepted = 0, n_rejected = 0, n_steps = 0, n_eval = 0;
+    static const double safe = 0.9;
+    static const double epsilon = std::numeric_limits<double>::epsilon();
+    static const double facl = 0.2;
+    static const double facr = 10.0;
+    static const double beta = 0.04;
+    static const unsigned int nstiff = 100;
+    static const double a21=0.2, a31=3.0/40.0, a32=9.0/40.0, a41=44.0/45.0,
+                    a42=-56.0/15.0, a43=32.0/9.0, a51=19372.0/6561.0,
+                    a52=-25360.0/2187.0,
+                    a53=64448.0/6561.0, a54=-212.0/729.0, a61=9017.0/3168.0,
+                    a62=-355.0/33.0, a63=46732.0/5247.0, a64=49.0/176.0,
+                    a65=-5103.0/18656.0,
+                    a71=35.0/384.0, a73=500.0/1113.0, a74=125.0/192.0,
+                    a75=-2187.0/6784.0, a76=11.0/84.0;
+
+    static const double e1=71.0/57600.0, e3=-71.0/16695.0, e4=71.0/1920.0,
+      e5=-17253.0/339200.0, e6=22.0/525.0, e7=-1.0/40.0;
+
+    auto t_local = particle.Time;
+
+    // stepsize underflow??
+    if (0.1*h <= t_local*epsilon)
+      return false;
+
+    auto p0 = particle.Pos;
+    auto t = particle.Time;
+    vtkm::Vec3f yCur = p0;
+    vtkm::Vec3f vCur;
+    if (!this->Evaluate(p0, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, vCur))
+      return false;
+
+    bool reject = false;
+    int iasti = 0, nonsti = 0;
+    vtkm::Vec3f y_stiff;
+    vtkm::FloatDefault direction = 1.0;
+
+    vtkm::Vec3f k1 = vCur;
+
+    vtkm::Vec3f k2 = a21*k1;
+    auto y_new = yCur + h*k2;
+
+    vtkm::Vec3f k3 = a31*k1 + a32*k2;
+    y_new = yCur + h*k3;
+
+    vtkm::Vec3f k4 = a41*k1 + a42*k2 + a43*k3;
+    y_new = yCur + h*k4;
+
+    vtkm::Vec3f k5 = a51*k1 + a52*k2 + a53*k3 + a54*k4;
+    y_new = yCur + h*k5;
+
+    vtkm::Vec3f k6 = a61*k1 + a62*k2 + a63*k3 + a64*k4 + a65*k5;
+    y_new = yCur + h * k6;
+
+    vtkm::Vec3f k7 = a71*k1 + a73*k3 + a74*k4 + a75*k5 + a76*k6;
+    y_new = yCur + h * k7;
+
+
+    vtkm::Vec3f ee = h * ( e1*k1 + e3*k3 + e4*k4 + e5*k5 + e6*k6 + e7*k7 );
+    double sk, sqr;
+
+    vtkm::FloatDefault err = 0.0, h_new, fac11;
+    for( size_t i=0; i<3; i++ )
+    {
+      sk = abstol + reltol * std::max(std::abs(yCur[i]), std::abs(y_new[i]));
+      sqr = ee[i]/sk;
+      err += sqr*sqr;
+    }
+
+    err = vtkm::Sqrt(err / 3.0);
+
+    // compute next potential stepsize
+    fac11 = pow( err, 0.2 - beta*0.75 );
+
+    // Lund-stabilization
+    double fac = fac11 / pow( facold, beta );
+
+    // we require facl <= h_new/h <= facr
+    fac = std::max( 1.0/facr, std::min( 1.0/facl, fac/safe ) );
+
+    h_new = h / fac;
+    std::cout<<"h_new= "<<h_new<<" was "<<h<<" fac= "<<fac<<std::endl;
+
+    if( h_new > std::numeric_limits<double>::max() )
+      h_new = std::numeric_limits<double>::max();
+
+    if( h_new < -std::numeric_limits<double>::max() )
+      h_new = std::numeric_limits<double>::max();
+
+    if( err <= 1.0 )
+    {
+      // step accepted
+      facold = std::max( err, 1.0e-4 );
+      n_accepted++;
+
+      // stiffness detection
+      if( !(n_accepted % nstiff) || (iasti > 0) )
+      {
+        double stnum = 0.0, stden = 0.0, sqr_;
+
+        for( size_t i=0; i < 3; i++ )
+        {
+          sqr_ = k7[i] - k6[i];
+          stnum += sqr_ * sqr_;
+          sqr_ = y_new[i] - y_stiff[i];
+          stden += sqr_ * sqr_;
+        }
+
+        if( stden > 0.0 )
+          hlamb = h * sqrt( stnum/stden );
+
+        if( fabs(hlamb) > 3.25 )
+        {
+          nonsti = 0;
+          iasti++;
+
+          if( iasti == 15 )
+          {
+            return false;
+            /*
+            if (DebugStream::Level5())
+            {
+              debug5 << "\tavtIVPDopri5::Step(): exiting at t = "
+                     << t << ", problem seems stiff (y = " << yCur
+                     << ")\n";
+            }
+            return avtIVPSolver::STIFFNESS_DETECTED;
+            */
+          }
+        }
+        else
+        {
+          nonsti++;
+          if( nonsti == 6 )
+            iasti = 0;
+        }
+
+        // --- step looks ok - prepare for return
+        if( reject )
+          h_new = direction * std::min( std::abs(h_new), std::abs(h) );
+
+        yCur = y_new;
+        vCur = k7;
+        t = t+h;
+
+//        if( period && last )
+//          t += epsilon;
+
+        // Set the step size on sucessful step.
+        h = h_new;
+        return true;
+      }
+      else
+      {
+        // step rejected
+        h_new = h / std::min( 1.0/facl, fac11/safe );
+        reject = true;
+
+        if( n_accepted >= 1 )
+          n_rejected++;
+
+        // Update the step size to the new step size.
+        h = h_new;
+      }
+    }
+
+    res = y_new;
+    return true;
   }
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType>
@@ -109,6 +304,65 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   {
     vtkm::Vec3f tmp, k1, k2, k3, k4, p0;
 
+    //k1 = F(p)
+    //k2 = F(p+hk1/2)
+    //k3 = F(p+hk2/2)
+    //k4 = F(p+hk3)
+    //Yn+1 = Yn + 1/6 h (k1+2k2+2k3+k4)
+
+    /*
+    //k1
+    p0 = particle.Pos;
+    tmp = p0;
+
+    //k1 = F(p, t)
+    this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k1);
+
+    //k2 = F(p+ h/2 * k1)
+    tmp = p0 + k1*this->StepSize_2;
+    this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k2);
+
+    //k3 = F(p+hk2/2)
+    tmp = p0 + k2*this->StepSize_2;
+    this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k3);
+
+    //k4 = F(p+hk3)
+    tmp = p0 + k3*this->StepSize;
+    this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k4);
+
+    vtkm::Vec3f vec = (k1 + 2.0*k2 + 2.0*k3 + k4) / 6.0;
+    res = p0 + vec;
+    */
+
+    //this should be correct...
+#if 1
+    p0 = particle.Pos;
+    DBG("    ****** K1"<<std::endl);
+    if (!this->Evaluate(p0, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k1))
+      return false;
+    tmp = p0 + k1*this->StepSize_2;
+
+    DBG("    ****** K2"<<std::endl);
+    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k2))
+      return false;
+    tmp = p0 + k2*this->StepSize_2;
+
+    DBG("    ****** K3"<<std::endl);
+    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k3))
+      return false;
+    tmp = p0 + k3*this->StepSize;
+
+    DBG("    ****** K4"<<std::endl);
+    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k4))
+      return false;
+
+    vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
+    res = p0 + this->StepSize * vec;
+#endif
+
+
+
+#if 0
     p0 = particle.Pos;
     DBG("    ****** K1"<<std::endl);
     if (!this->Evaluate(p0, locator, cellSet, B_RZP, B_Norm_RZP, Curl_NB_RZP, AsPhiFF, DAsPhiFF_RZP, k1))
@@ -130,6 +384,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
       return false;
 
     res = p0 + this->StepSize_6*(k1 + 2*k2 + 2*k3 + k4);
+#endif
 
     return true;
   }
@@ -353,85 +608,6 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     return true;
   }
 
-  template <typename LocatorType, typename CellSetType, typename VecFieldType>
-  bool EvaluateVec(const vtkm::Vec3f& pos_rpz,
-                   const LocatorType& locator,
-                   const CellSetType& cellSet,
-                   const VecFieldType& VecField,
-                   const vtkm::Id& offset,
-                   vtkm::Vec3f& out) const
-  {
-    vtkm::Id cellId;
-    vtkm::Vec3f pcoords;
-    vtkm::Vec3f posRZ(pos_rpz[0], pos_rpz[2], 0);
-    auto status = locator.FindCell(posRZ, cellId, pcoords);
-    if (status != vtkm::ErrorCode::Success)
-    {
-      DBG("FindCell FAILED: "<<posRZ<<std::endl);
-      return false;
-    }
-
-    auto indices = cellSet.GetIndices(cellId);
-    //auto pts = vtkm::make_VecFromPortalPermute(&indices, coords);
-
-    vtkm::VecVariable<vtkm::Vec3f, 3> vals;
-    vals.Append(VecField.Get(indices[0]+offset));
-    vals.Append(VecField.Get(indices[1]+offset));
-    vals.Append(VecField.Get(indices[2]+offset));
-    vtkm::Vec3f vec;
-    vtkm::exec::CellInterpolate(vals, pcoords, vtkm::CellShapeTagTriangle(), vec);
-    std::cout<<"   EvaluateVec: "<<vec<<std::endl;
-
-    out[0] = vec[0];
-    out[1] = vec[2];
-    /*
-    if (this->UseCylindrical)
-      out[1] /= posRZ[0];
-    */
-    out[2] = vec[1];
-
-    DBG("          EvaluateVec("<<pos_rpz<<") off= "<<offset<<" = "<<vec<<"  divByR= "<<out<<std::endl);
-
-    return true;
-
-  }
-
-
-  template <typename LocatorType, typename CellSetType, typename CoordsType, typename BFieldType>
-  bool EvaluateB(const vtkm::Vec3f& pos,
-                 const LocatorType& locator,
-                 const CellSetType& cellSet,
-                 const CoordsType& coords,
-                 const BFieldType& B0Field,
-                 vtkm::Vec3f& B0) const
-  {
-    vtkm::Id cellId;
-    vtkm::Vec3f pcoords;
-    vtkm::Vec3f posRZ(pos[0], pos[2], 0);
-    auto status = locator.FindCell(posRZ, cellId, pcoords);
-    if (status != vtkm::ErrorCode::Success)
-    {
-      DBG("FindCell FAILED: "<<posRZ<<std::endl);
-      return false;
-    }
-
-    auto indices = cellSet.GetIndices(cellId);
-    //auto pts = vtkm::make_VecFromPortalPermute(&indices, coords);
-
-    vtkm::VecVariable<vtkm::Vec3f, 3> vals;
-    vals.Append(B0Field.Get(indices[0]));
-    vals.Append(B0Field.Get(indices[1]));
-    vals.Append(B0Field.Get(indices[2]));
-    vtkm::Vec3f vec;
-    vtkm::exec::CellInterpolate(vals, pcoords, vtkm::CellShapeTagTriangle(), vec);
-
-    B0[0] = vec[0];
-    B0[1] = vec[2] / posRZ[0];
-    B0[2] = vec[1];
-
-    return true;
-  }
-
   void
   GetPlaneIdx(const vtkm::FloatDefault& phi,
               vtkm::FloatDefault& phiN,
@@ -469,6 +645,11 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   vtkm::FloatDefault StepSize;
   vtkm::FloatDefault StepSize_2;
   vtkm::FloatDefault StepSize_6;
+
+  //dopri
+  vtkm::FloatDefault h_init = 0.0;
+  vtkm::FloatDefault reltol = 1e-4;
+  vtkm::FloatDefault abstol = 1e-6;
 
   vtkm::Id NumPlanes;
   vtkm::Id NumNodes;

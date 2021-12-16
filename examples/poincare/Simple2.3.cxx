@@ -1043,14 +1043,14 @@ ConvertPuncturesToThetaPsi(const std::vector<std::vector<vtkm::Vec3f>>& puncture
       auto Z = pt[2];
       pt = vtkm::Vec3f(R,Z,0);
     }
-    std::cout<<"RZ_pts= "<<pts<<std::endl;
-    auto points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
+    std::cout<<"RZ_pts.size()= "<<pts.size()<<std::endl;
+    auto RZpoints = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
 
     vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
     vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
     vtkm::cont::Invoker invoker;
 
-    invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
+    invoker(FindCellWorklet{}, RZpoints, ds.GetCellSet(), locator, cellIds, pcoords);
 
     vtkm::cont::ArrayHandle<vtkm::FloatDefault> psi, theta;
     ds.GetField("psi2D").GetData().AsArrayHandle(psi);
@@ -1062,10 +1062,13 @@ ConvertPuncturesToThetaPsi(const std::vector<std::vector<vtkm::Vec3f>>& puncture
     auto thetaPortal = theta.ReadPortal();
     auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
 
-    vtkm::Id numPts = points.GetNumberOfValues();
+    auto pRZpoints = RZpoints.ReadPortal();
+    vtkm::Id numPts = RZpoints.GetNumberOfValues();
     puncturesTP[p].resize(numPts);
     for (vtkm::Id i = 0; i < numPts; i++)
     {
+      auto R = pRZpoints.Get(i)[0];
+      auto Z = pRZpoints.Get(i)[1];
       vtkm::Id vIds[3];
       vtkm::Id cid = cPortal.Get(i);
       cs.GetCellPointIds(cid, vIds);
@@ -1082,7 +1085,12 @@ ConvertPuncturesToThetaPsi(const std::vector<std::vector<vtkm::Vec3f>>& puncture
       vtkm::exec::CellInterpolate(tVals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), thetaI);
       thetaI += vtkm::Pi();
 
-      puncturesTP[p][i][0] = thetaI;
+      auto thetaVal = vtkm::ATan2(Z-eq_axis_z, R-eq_axis_r);
+      if (thetaVal < 0)
+        thetaVal += vtkm::TwoPi();
+
+      //puncturesTP[p][i][0] = thetaI;
+      puncturesTP[p][i][0] = thetaVal;
       puncturesTP[p][i][1] = psiI / eq_x_psi;
     }
   }
@@ -2480,10 +2488,10 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
   for (int i = 0; i < (int)punctures.size(); i++)
   {
     for (const auto& p : punctures[i])
-      outPunc<<i<<", "<<p[0]<<", "<<p[2]<<std::endl;
+      outPunc<<std::setprecision(12)<<i<<", "<<p[0]<<", "<<p[2]<<std::endl;
 
     for (const auto& p : puncturesTP[i])
-      outPuncThetaPsi<<i<<", "<<p[0]<<", "<<p[1]<<std::endl;
+      outPuncThetaPsi<<std::setprecision(12)<<i<<", "<<p[0]<<", "<<p[1]<<std::endl;
   }
 }
 
@@ -2498,15 +2506,23 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   adiosStuff["data"] = new adiosS(adios, "xgc.3d.bp", "3d", adiosArgs);
   adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "/node_data[0]/values", adiosArgs);
   adiosStuff["bfield-all"] = new adiosS(adios, "xgc.bfield-all.bp", "Bs", adiosArgs);
+  //adiosStuff["psi_bicub_acoef"] = new adiosS(adios, "xgc.bfield_with_coeff.bp", "psi_bicub_acoef", adiosArgs);
+  //adiosStuff["one_d_cub_psi_acoef"] = new adiosS(adios, "xgc.bfield_with_coeff.bp", "one_d_cub_acoef", adiosArgs);
+  adiosStuff["interp_coeff"] = new adiosS(adios, "xgc.bfield_with_coeff.bp", "interp_coeff", adiosArgs);
 
   auto meshStuff = adiosStuff["mesh"];
   auto dataStuff = adiosStuff["data"];
   auto bfieldStuff = adiosStuff["bfield"];
   auto bfield_allStuff = adiosStuff["bfield-all"];
+  auto interp_coeffStuff = adiosStuff["interp_coeff"];
+  //auto one_dcub_acoefStuff = adiosStuff["one_d_cub_psi_acoef"];
+
   meshStuff->engine.BeginStep();
   dataStuff->engine.BeginStep();
   bfieldStuff->engine.BeginStep();
   bfield_allStuff->engine.BeginStep();
+  interp_coeffStuff->engine.BeginStep();
+  //one_dcub_acoefStuff->engine.BeginStep();
 
   dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &numPlanes, adios2::Mode::Sync);
   meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_n"), &numNodes, adios2::Mode::Sync);
@@ -2526,9 +2542,12 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   */
   ReadOther(bfieldStuff, ds, "As_phi_ff");
   ReadOther(bfieldStuff, ds, "dAs_phi_ff");
+  ReadOther(interp_coeffStuff, ds, "psi_bicub_acoef");
+  ReadOther(interp_coeffStuff, ds, "one_d_cub_psi_acoef");
   //CalcX(ds);
 
   std::cout<<"FIX ME:: "<<__LINE__<<std::endl;
+  ds.PrintSummary(std::cout);
   CalcAsCurlBHat(ds);
   CalcGradAs(ds);
   //CalcV(ds);
@@ -2887,12 +2906,35 @@ main(int argc, char** argv)
 
     //seeds from data/sku_8000/jong.py
     seeds = {
-      {3.351443, 0.0, -0.451649},
-      {3.187329, 0.0, -0.665018},
-      {1.992020, 0.0, -0.126203},
-      {3.018666, 0.0, 0.073864},
-      {3.176583, 0.0, -0.220557},
-      {2.179227, 0.0, 0.291539},
+      //{3.351443, 0.0, -0.451649},
+      {3.351443028564415449, 0.0, -0.451648806402756176},
+      //{3.187329, 0.0, -0.665018},
+      {3.187329423521033878, 0.0, -0.665017624967372267},
+      //{1.992020, 0.0, -0.126203},
+      {1.992020349316277139, 0.0, -0.126203396421661285},
+      //{3.018666, 0.0, 0.073864},
+      {3.018666196722858963, 0.0, 0.073864239629065770},
+      //{3.176583, 0.0, -0.220557},
+      {3.176582679765305173, 0.0, -0.220557108925872658},
+      //{2.179227, 0.0, 0.291539},
+      {2.179226604128697176, 0.0, 0.291539359807166554},
+    };
+  }
+  else if (args.find("--jongrz") != args.end())
+  {
+    //Seed from the blue island.
+    //seeds = {{3.351443,             0, -0.451649}};
+    seeds = {{3.351443028564415449, 0, -0.45164880640275617552}};
+  }
+  else if (args.find("--afterN") != args.end())
+  {
+    seeds = {
+      {3.321888620239255019, 0.0, 0.478933972623594384},
+      {2.568934684085571352, 0.0, 0.731290913908178353},
+      {3.493628202658771720, 0.0, 0.433951677589735296},
+      {2.862485694515508605, 0.0, 0.208737305948038576},
+      {2.905837753215041008, 0.0, -0.397811882628356817},
+      {3.391834939600261389, 0.0, -0.350011953142094434},
     };
   }
 
