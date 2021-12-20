@@ -76,6 +76,9 @@ int numNodes = -1;
 int numTri = -1;
 float XScale = 1;
 vtkm::FloatDefault eq_axis_r = 2.8, eq_axis_z = 0.0, eq_x_psi = 0.0697345;
+vtkm::FloatDefault eq_min_r = 1.60014, eq_max_r = 3.99986;
+vtkm::FloatDefault eq_min_z = -1.19986, eq_max_z = 1.19986;
+int eq_mr = -1, eq_mz = -1;
 //  vtkm::FloatDefault eq_x_psi = 0.0697345, eq_x_r = 2.8, eq_x_z = -0.99988;
 
 
@@ -429,6 +432,174 @@ ReadScalar(adiosS* stuff,
   ds.AddField(vtkm::cont::make_FieldPoint(vname+"2D", vtkm::cont::make_ArrayHandle(tmpPlane, vtkm::CopyFlag::On)));
   if (add3D)
     ds.AddField(vtkm::cont::make_FieldPoint(vname, vtkm::cont::make_ArrayHandle(tmp, vtkm::CopyFlag::On)));
+}
+
+void
+ReadPsiInterp(adiosS* eqStuff,
+              adiosS* interpStuff,
+              vtkm::cont::DataSet& ds)
+{
+  eqStuff->engine.Get(eqStuff->io.InquireVariable<int>("eq_mr"), &eq_mr, adios2::Mode::Sync);
+  eqStuff->engine.Get(eqStuff->io.InquireVariable<int>("eq_mz"), &eq_mz, adios2::Mode::Sync);
+  eqStuff->engine.Get(eqStuff->io.InquireVariable<double>("eq_axis_r"), &eq_axis_r, adios2::Mode::Sync);
+  eqStuff->engine.Get(eqStuff->io.InquireVariable<double>("eq_axis_z"), &eq_axis_z, adios2::Mode::Sync);
+  eqStuff->engine.Get(eqStuff->io.InquireVariable<double>("eq_min_r"), &eq_min_r, adios2::Mode::Sync);
+  eqStuff->engine.Get(eqStuff->io.InquireVariable<double>("eq_max_r"), &eq_max_r, adios2::Mode::Sync);
+  eqStuff->engine.Get(eqStuff->io.InquireVariable<double>("eq_min_z"), &eq_min_z, adios2::Mode::Sync);
+  eqStuff->engine.Get(eqStuff->io.InquireVariable<double>("eq_max_z"), &eq_max_z, adios2::Mode::Sync);
+
+  ReadOther(eqStuff, ds, "eq_I");
+  ReadOther(eqStuff, ds, "eq_psi_grid");
+  ReadOther(eqStuff, ds, "eq_psi_rz");
+  ReadOther(interpStuff, ds, "coeff_1D", "one_d_cub_psi_acoef");
+
+  std::vector<double> tmp2D;
+//  interpStuff->engine.Get(interpStuff->io.InquireVariable<double>("one_d_cub_psi_acoef"),
+//                          tmp1D, adios2::Mode::Sync);
+  interpStuff->engine.Get(interpStuff->io.InquireVariable<double>("psi_bicub_acoef"),
+                          tmp2D, adios2::Mode::Sync);
+
+  /*
+  vtkm::Id n = ds.GetField("eq_psi_grid").GetData().GetNumberOfValues();
+  std::vector<std::vector<double>> coef1D;
+  coef1D.resize(n);
+  for (int i = 0; i < n; i++)
+    coef1D[i].resize(4);
+
+  int idx = 0;
+  for (int i = 0; i < n; i++)
+    for (int j = 0; j < 4; j++)
+    {
+      coef1D[i][j] = tmp1D[idx];
+      idx++;
+    }
+  */
+
+  std::cout<<"****** READ: "<<tmp2D[0]<<" "<<tmp2D[16]<<" "<<tmp2D[32]<<std::endl;
+  std::cout<<"          :: "<<tmp2D[1]<<" "<<tmp2D[17]<<std::endl;
+
+  int idx = 0;
+  int nr = eq_mr-1, nz = eq_mz-1;
+  //int ni = 150, nj = 150;
+  std::vector<std::vector<std::vector<std::vector<double>>>> coef2D;
+  coef2D.resize(nz);
+  for (int i = 0; i < nz; i++)
+  {
+    coef2D[i].resize(nr);
+    for (int j = 0; j < nr; j++)
+    {
+      coef2D[i][j].resize(4);
+      for (int k = 0; k < 4; k++)
+      {
+        coef2D[i][j][k].resize(4);
+        for (int m = 0; m < 4; m++)
+        {
+          coef2D[i][j][k][m] = tmp2D[idx];
+          idx++;
+        }
+      }
+    }
+  }
+
+  idx = 0;
+  std::vector<vtkm::FloatDefault> arr_coeff2D(nz*nr*4*4);
+  for (int i = 0; i < nz; i++)
+    for (int j = 0; j < nr; j++)
+      for (int k = 0; k < 4; k++)
+        for (int m = 0; m < 4; m++)
+        {
+          arr_coeff2D[idx] = coef2D[i][j][k][m];
+          idx++;
+        }
+
+  ds.AddField(vtkm::cont::make_Field("coeff_2D",
+                                     vtkm::cont::Field::Association::WHOLE_MESH,
+                                     arr_coeff2D,
+                                     vtkm::CopyFlag::On));
+
+
+  //Reorder coeff2d to see if it's wrong...
+  idx = 0;
+  std::vector<std::vector<std::vector<std::vector<double>>>> coeff_2D;
+  coeff_2D.resize(nz);
+  for (int i = 0; i < nz; i++)
+  {
+    coeff_2D[i].resize(nr);
+    for (int j = 0; j < nr; j++)
+    {
+      coeff_2D[i][j].resize(4);
+      for (int k = 0; k < 4; k++)
+      {
+        coeff_2D[i][j][k].resize(4);
+        for (int m = 0; m < 4; m++)
+        {
+          coeff_2D[i][j][k][m] = tmp2D[idx];
+          idx++;
+        }
+      }
+    }
+  }
+
+
+  vtkm::Vec2f origin2D(eq_min_r, eq_min_z);
+  vtkm::Vec2f spacing2D((eq_max_r-eq_min_r)/150., (eq_max_z-eq_min_z)/150.);
+  auto ds2D = vtkm::cont::DataSetBuilderUniform::Create(vtkm::Id2(151, 151),
+                                                        origin2D, spacing2D);
+  std::vector<vtkm::FloatDefault> c00;
+  std::vector<std::vector<std::vector<vtkm::FloatDefault>>> cij(4);
+  for (int k = 0; k < 4; k++) cij[k].resize(4);
+
+  for (int i = 0; i < nz; i++)
+    for (int j = 0; j < nr; j++)
+    {
+      c00.push_back(coeff_2D[i][j][0][0]);
+      for (int k = 0; k < 4; k++)
+        for (int m = 0; m < 4; m++)
+          cij[k][m].push_back(coeff_2D[i][j][k][m]);
+    }
+
+  //ds2D.AddPointField("c00", c00);
+  for (int k = 0; k < 4; k++)
+  {
+    for (int m = 0; m < 4; m++)
+    {
+      char nm[32];
+      sprintf(nm, "c%d%d", k,m);
+      std::cout<<"Add cij: "<<nm<<" "<<cij[k][m].size()<<std::endl;
+      ds2D.AddCellField(nm, cij[k][m]);
+    }
+  }
+
+  //ds2D.AddCellField("bum", cij[0][0]);
+  ds.PrintSummary(std::cout);
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> arr;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> b3d;
+  ds.GetField("eq_psi_rz").GetData().AsArrayHandle(arr);
+  ds2D.AddPointField("eq_psi_rz", arr);
+
+//  ds.GetField("B_RZP").GetData().AsArrayHandle(b3d);
+//  std::vector<vtkm::Vec3f> B2D(
+
+  vtkm::io::VTKDataSetWriter writer("psiGrid.vtk");
+  writer.WriteDataSet(ds2D);
+  vtkm::io::VTKDataSetWriter writer2("grid.vtk");
+  writer2.WriteDataSet(ds);
+
+
+  /*
+  auto v = stuff->io.InquireVariable<double>("eq_psi_rz");
+  std::vector<double> tmp;
+  stuff->engine.Get(v, tmp, adios2::Mode::Sync);
+
+  std::cout<<"eq_psi_rz: "<<tmp.size()<<std::endl;
+  for (int i = eq_mr; i < 2*eq_mr; i++)
+    std::cout<<"eq_psi_rz["<<i<<"] = "<<tmp[i]<<std::endl;
+  */
+
+
+  //Let's evaluate the b field.
+  vtkm::FloatDefault R = 2, Z = 0;
+
 }
 
 //-----------------------------------------------------------------------------
@@ -1821,7 +1992,7 @@ Poincare(const vtkm::cont::DataSet& ds,
       s.push_back(vtkm::Particle(pts[i], i));
     auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
 
-    vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff;
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff, coeff_1D, coeff_2D;
     vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp, AsCurlBHat_rzp, curl_nb_rzp;
     ds.GetField("As_ff").GetData().AsArrayHandle(As_ff);
     ds.GetField("B_RZP").GetData().AsArrayHandle(B_rzp);
@@ -1829,6 +2000,8 @@ Poincare(const vtkm::cont::DataSet& ds,
     ds.GetField("dAs_ff_rzp").GetData().AsArrayHandle(dAs_ff_rzp);
     ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
     ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(curl_nb_rzp);
+    ds.GetField("coeff_1D").GetData().AsArrayHandle(coeff_1D);
+    ds.GetField("coeff_2D").GetData().AsArrayHandle(coeff_2D);
 
     vtkm::cont::ArrayHandle<vtkm::Vec3f> tracesArr;
     std::vector<vtkm::Vec3f> o, t;
@@ -1846,6 +2019,7 @@ Poincare(const vtkm::cont::DataSet& ds,
 
     invoker(worklet, seeds, locator, ds.GetCellSet(), ds.GetCoordinateSystem(),
             B_rzp, B_Norm_rzp, curl_nb_rzp, As_ff, dAs_ff_rzp,
+            coeff_1D, coeff_2D,
             tracesArr, output, punctureID);
 
     std::vector<std::vector<vtkm::Vec3f>> res;
@@ -2509,12 +2683,14 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   //adiosStuff["psi_bicub_acoef"] = new adiosS(adios, "xgc.bfield_with_coeff.bp", "psi_bicub_acoef", adiosArgs);
   //adiosStuff["one_d_cub_psi_acoef"] = new adiosS(adios, "xgc.bfield_with_coeff.bp", "one_d_cub_acoef", adiosArgs);
   adiosStuff["interp_coeff"] = new adiosS(adios, "xgc.bfield_with_coeff.bp", "interp_coeff", adiosArgs);
+  adiosStuff["equil"] = new adiosS(adios, "xgc.equil.bp", "equil", adiosArgs);
 
   auto meshStuff = adiosStuff["mesh"];
   auto dataStuff = adiosStuff["data"];
   auto bfieldStuff = adiosStuff["bfield"];
   auto bfield_allStuff = adiosStuff["bfield-all"];
   auto interp_coeffStuff = adiosStuff["interp_coeff"];
+  auto equilStuff = adiosStuff["equil"];
   //auto one_dcub_acoefStuff = adiosStuff["one_d_cub_psi_acoef"];
 
   meshStuff->engine.BeginStep();
@@ -2522,6 +2698,7 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   bfieldStuff->engine.BeginStep();
   bfield_allStuff->engine.BeginStep();
   interp_coeffStuff->engine.BeginStep();
+  equilStuff->engine.BeginStep();
   //one_dcub_acoefStuff->engine.BeginStep();
 
   dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &numPlanes, adios2::Mode::Sync);
@@ -2542,8 +2719,8 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   */
   ReadOther(bfieldStuff, ds, "As_phi_ff");
   ReadOther(bfieldStuff, ds, "dAs_phi_ff");
-  ReadOther(interp_coeffStuff, ds, "psi_bicub_acoef");
-  ReadOther(interp_coeffStuff, ds, "one_d_cub_psi_acoef");
+  ReadPsiInterp(equilStuff, interp_coeffStuff, ds);
+
   //CalcX(ds);
 
   std::cout<<"FIX ME:: "<<__LINE__<<std::endl;
@@ -2897,7 +3074,20 @@ main(int argc, char** argv)
   else if (args.find("--jong1") != args.end())
   {
     //first point in traces.v2
+    //zone = 3132, incident nodes: 1521, 1612, 1613
     seeds = {{3.029365, 6.183185, 0.020600}};
+
+    //take position at vid=1512
+    //seeds = {{2.98872, 0, -0.113239}};
+
+    //first point in log file w/ dpsi_dr
+    //seeds = {{3.030292040947820, 0, 0}};
+
+    //testing seed...
+    //seeds = {{2,0,0}};
+    //seeds = {{2,0,.5}};
+    //seeds = {{2,0,-.5}};
+    //seeds = {{2.8, 0, -.99}};
   }
   else if (args.find("--jong6") != args.end())
   {
