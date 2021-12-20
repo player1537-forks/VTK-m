@@ -916,7 +916,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   vtkm::FloatDefault dPhi;
 
   bool UseBOnly = false;
-  bool UseHighOrder = true;
+  bool UseHighOrder = false;
   bool SaveTraces = false;
 
   int nr, nz;

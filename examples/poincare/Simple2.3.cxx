@@ -1974,6 +1974,8 @@ Poincare(const vtkm::cont::DataSet& ds,
          vtkm::FloatDefault h,
          int numPunc,
          bool useWorklet,
+         bool useBOnly,
+         bool useHighOrder,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
@@ -1985,6 +1987,8 @@ Poincare(const vtkm::cont::DataSet& ds,
     locator.Update();
 
     PoincareWorklet worklet(numPunc, 0.0f, h, (traces!=nullptr));
+    worklet.UseBOnly = useBOnly;
+    worklet.UseHighOrder = useHighOrder;
 
     vtkm::cont::Invoker invoker;
     std::vector<vtkm::Particle> s;
@@ -3048,6 +3052,11 @@ main(int argc, char** argv)
   bool useTraces = std::atoi(args["--traces"][0].c_str());
   std::string outFileName = args["--output"][0];
 
+  bool useBOnly = false, useHighOrder = false;
+  if (args.find("--useBOnly") != args.end()) useBOnly = true;
+  if (args.find("--useHighOrder") != args.end()) useHighOrder = true;
+
+
   if (args.find("--range") != args.end())
   {
     vtkm::Id numSeeds = std::stoi(args["--numSeeds"][0]);
@@ -3129,7 +3138,7 @@ main(int argc, char** argv)
   }
 
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
-  auto punctures = Poincare(ds, seeds, vField, stepSize, numPunc, useWorklet, (useTraces ? &traces : nullptr));
+  auto punctures = Poincare(ds, seeds, vField, stepSize, numPunc, useWorklet, useBOnly, useHighOrder, (useTraces ? &traces : nullptr));
 
   auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);
 
