@@ -91,7 +91,8 @@ public:
     ParticleType p(this->GetParticle(idx));
 
     return (p.Status.CheckOk() && !p.Status.CheckTerminate() && !p.Status.CheckSpatialBounds() &&
-            !p.Status.CheckTemporalBounds() && !p.Status.CheckInGhostCell());
+            !p.Status.CheckTemporalBounds() && !p.Status.CheckInGhostCell() &&
+            !p.Status.CheckZeroVelocity());
   }
 
   VTKM_EXEC

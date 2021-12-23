@@ -55,6 +55,10 @@ public:
   VTKM_EXEC_CONT void ClearInGhostCell() { this->reset(this->IN_GHOST_CELL_BIT); }
   VTKM_EXEC_CONT bool CheckInGhostCell() const { return this->test(this->IN_GHOST_CELL_BIT); }
 
+  VTKM_EXEC_CONT void SetZeroVelocity() { this->set(this-> ZERO_VELOCITY_BIT); }
+  VTKM_EXEC_CONT void ClearZeroVelocity() { this->reset(this-> ZERO_VELOCITY_BIT); }
+  VTKM_EXEC_CONT bool CheckZeroVelocity() const { return this->test(this-> ZERO_VELOCITY_BIT); }
+
 private:
   static constexpr vtkm::Id SUCCESS_BIT = 0;
   static constexpr vtkm::Id TERMINATE_BIT = 1;
@@ -62,6 +66,7 @@ private:
   static constexpr vtkm::Id TEMPORAL_BOUNDS_BIT = 3;
   static constexpr vtkm::Id TOOK_ANY_STEPS_BIT = 4;
   static constexpr vtkm::Id IN_GHOST_CELL_BIT = 5;
+  static constexpr vtkm::Id ZERO_VELOCITY_BIT = 6;
 };
 
 inline VTKM_CONT std::ostream& operator<<(std::ostream& s, const vtkm::ParticleStatus& status)
@@ -71,6 +76,7 @@ inline VTKM_CONT std::ostream& operator<<(std::ostream& s, const vtkm::ParticleS
   s << " spat= " << status.CheckSpatialBounds();
   s << " temp= " << status.CheckTemporalBounds();
   s << " ghst= " << status.CheckInGhostCell();
+  s << " zvel= " << status.CheckZeroVelocity();
   s << "]";
   return s;
 }

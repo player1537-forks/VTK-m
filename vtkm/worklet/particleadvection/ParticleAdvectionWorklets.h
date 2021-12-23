@@ -40,6 +40,12 @@ namespace particleadvection
 class ParticleAdvectWorklet : public vtkm::worklet::WorkletMapField
 {
 public:
+  ParticleAdvectWorklet()
+    : ZeroVelocityEps(std::numeric_limits<vtkm::FloatDefault>::epsilon() *
+                      static_cast<vtkm::FloatDefault>(10))
+  {
+  }
+
   using ControlSignature = void(FieldIn idx,
                                 ExecObject integrator,
                                 ExecObject integralCurve,
@@ -84,12 +90,20 @@ public:
           tookAnySteps = true;
         }
       }
+
+      //Check to see if we are in a zero velocity.
+      vtkm::FloatDefault dist = vtkm::Magnitude(particle.Pos - outpos);
+      if (dist < this->ZeroVelocityEps)
+        status.SetZeroVelocity();
+
       integralCurve.StatusUpdate(idx, status, maxSteps);
     } while (integralCurve.CanContinue(idx));
 
     //Mark if any steps taken
     integralCurve.UpdateTookSteps(idx, tookAnySteps);
   }
+private:
+  vtkm::FloatDefault ZeroVelocityEps = std::numeric_limits<vtkm::FloatDefault>::epsilon() * static_cast<vtkm::FloatDefault>(10.0f);
 };
 
 
@@ -103,17 +117,13 @@ public:
 
   void Run(const IntegratorType& integrator,
            vtkm::cont::ArrayHandle<ParticleType>& particles,
-           vtkm::Id& MaxSteps)
+           vtkm::Id& maxSteps)
   {
-
-    using ParticleAdvectWorkletType = vtkm::worklet::particleadvection::ParticleAdvectWorklet;
-    using ParticleWorkletDispatchType =
-      typename vtkm::worklet::DispatcherMapField<ParticleAdvectWorkletType>;
     using ParticleArrayType = vtkm::worklet::particleadvection::Particles<ParticleType>;
 
     vtkm::Id numSeeds = static_cast<vtkm::Id>(particles.GetNumberOfValues());
     //Create and invoke the particle advection.
-    vtkm::cont::ArrayHandleConstant<vtkm::Id> maxSteps(MaxSteps, numSeeds);
+    vtkm::cont::ArrayHandleConstant<vtkm::Id> maxStepArr(maxSteps, numSeeds);
     vtkm::cont::ArrayHandleIndex idxArray(numSeeds);
 
     // TODO: The particle advection sometimes behaves incorrectly on CUDA if the stack size
@@ -127,12 +137,12 @@ public:
     (void)stack;
 #endif // VTKM_CUDA
 
-    ParticleArrayType particlesObj(particles, MaxSteps);
+    //TODO: max steps in invoker AND particlesObj
+    ParticleArrayType particlesObj(particles, maxSteps);
 
     //Invoke particle advection worklet
-    ParticleWorkletDispatchType particleWorkletDispatch;
-
-    particleWorkletDispatch.Invoke(idxArray, integrator, particlesObj, maxSteps);
+    vtkm::cont::Invoker invoker;
+    invoker(ParticleAdvectWorklet{}, idxArray, integrator, particlesObj, maxStepArr);
   }
 };
 
@@ -181,23 +191,23 @@ public:
   template <typename PointStorage, typename PointStorage2>
   void Run(const IntegratorType& it,
            vtkm::cont::ArrayHandle<ParticleType, PointStorage>& particles,
-           vtkm::Id& MaxSteps,
+           vtkm::Id& maxSteps,
            vtkm::cont::ArrayHandle<vtkm::Vec3f, PointStorage2>& positions,
            vtkm::cont::CellSetExplicit<>& polyLines)
   {
-
-    using ParticleWorkletDispatchType = typename vtkm::worklet::DispatcherMapField<
-      vtkm::worklet::particleadvection::ParticleAdvectWorklet>;
+//    using ParticleWorkletDispatchType = typename vtkm::worklet::DispatcherMapField<
+//      vtkm::worklet::particleadvection::ParticleAdvectWorklet>;
     using StreamlineArrayType =
       vtkm::worklet::particleadvection::StateRecordingParticles<ParticleType>;
 
-    vtkm::cont::ArrayHandle<vtkm::Id> initialStepsTaken;
+    vtkm::cont::Invoker invoker;
 
     vtkm::Id numSeeds = static_cast<vtkm::Id>(particles.GetNumberOfValues());
     vtkm::cont::ArrayHandleIndex idxArray(numSeeds);
 
-    vtkm::worklet::DispatcherMapField<detail::GetSteps> getStepDispatcher{ (detail::GetSteps{}) };
-    getStepDispatcher.Invoke(particles, initialStepsTaken);
+    vtkm::cont::ArrayHandle<vtkm::Id> initialStepsTaken;
+    invoker(detail::GetSteps{}, particles, initialStepsTaken);
+
 
     // This method uses the same workklet as ParticleAdvectionWorklet::Run (and more). Yet for
     // some reason ParticleAdvectionWorklet::Run needs this adjustment while this method does
@@ -209,19 +219,18 @@ public:
 #endif // VTKM_CUDA
 
     //Run streamline worklet
-    StreamlineArrayType streamlines(particles, MaxSteps);
-    ParticleWorkletDispatchType particleWorkletDispatch;
-    vtkm::cont::ArrayHandleConstant<vtkm::Id> maxSteps(MaxSteps, numSeeds);
-    particleWorkletDispatch.Invoke(idxArray, it, streamlines, maxSteps);
+    StreamlineArrayType streamlines(particles, maxSteps);
+    //ParticleWorkletDispatchType particleWorkletDispatch;
+    vtkm::cont::ArrayHandleConstant<vtkm::Id> maxStepsArr(maxSteps, numSeeds);
+
+    invoker(ParticleAdvectWorklet{}, idxArray, it, streamlines, maxStepsArr);
 
     //Get the positions
     streamlines.GetCompactedHistory(positions);
 
     //Create the cells
     vtkm::cont::ArrayHandle<vtkm::Id> numPoints;
-    vtkm::worklet::DispatcherMapField<detail::ComputeNumPoints> computeNumPointsDispatcher{ (
-      detail::ComputeNumPoints{}) };
-    computeNumPointsDispatcher.Invoke(particles, initialStepsTaken, numPoints);
+    invoker(detail::ComputeNumPoints{}, particles, initialStepsTaken, numPoints);
 
     vtkm::cont::ArrayHandle<vtkm::Id> cellIndex;
     vtkm::Id connectivityLen = vtkm::cont::Algorithm::ScanExclusive(numPoints, cellIndex);
