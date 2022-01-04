@@ -1,7 +1,47 @@
+//
+//./examples/poincare/Simple2.3 --vField B --dir ../data/sku_8000/POINC --worklet 1 --traces 1 --numPunc 2 --stepSize 0.01 --useHighOrder --jong1 --output bumm
+
+
+
 //XGC code:  /gpfs/alpine/proj-shared/csc143/pugmire/XGC-Devel/XGC-Devel-poincare-debug
 // make xgc-eem
 // make xgc-eem-cpp
 //run: bsub job-summit.sh
+/*
+
+Jong's branch w/ coeff and debug stuff.
+/gpfs/alpine/proj-shared/csc143/jyc/summit/exp-xgc-poincare/exp-poincare-8000-dave
+
+//run: bsub job-summit.sh
+
+
+//old code (that runs...)
+/gpfs/alpine/proj-shared/csc143/pugmire/XGC-Devel/XGC-Devel-poincare-debug
+launched job: 1714079
+wrong number of procs.
+fixed script and ran again. Looks like it works.
+
+run with DDT
+
+bsub -q debug -nnodes 6  -P PHY122 -W 0:30 -Is $SHELL -l
+
+[ -z $JOBSIZE ] && JOBSIZE=$(((LSB_DJOB_NUMPROC-1)/42))
+[ -z $ISTEP ] && ISTEP=3000
+WDIR=exp-poincare-$ISTEP
+SDIR=poincare_plot_for_su419.org
+export OMP_NUM_THREADS=2
+export COLUMNS=512
+export OMPI_MCA_coll_ibm_collselect_mode_barrier=failsafe
+
+date
+
+
+
+ddt --connect jsrun -n $((JOBSIZE*32)) -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem 2>&1 | tee run-$JOBID.log
+
+
+
+*/
 
 
 //#define PRINT_STUFF
@@ -49,16 +89,20 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     this->StepSize_6 = this->StepSize / 6.0;
 
 
-    this->nr = eq_mr;
-    this->nz = eq_mz;
+    std::cout<<"These are hard coded!!! Fix me!!"<<std::endl;
+
+    this->nr = 150; //eq_mr;
+    this->nz = 150; //eq_mz;
     this->rmin = eq_min_r;
+    this->rmax = eq_max_r;
     this->zmin = eq_min_z;
+    this->zmax = eq_max_z;
     this->dr = (eq_max_r - eq_min_r) / vtkm::FloatDefault(this->nr);
     this->dz = (eq_max_z - eq_min_z) / vtkm::FloatDefault(this->nz);
     this->dr_inv = 1.0/this->dr;
     this->dz_inv = 1.0/this->dz;
 
-    std::cout<<"These are hard coded!!! Fix me!!"<<std::endl;
+
     this->min_psi = 0.0;
     this->max_psi = 0.0697345;
     this->one_d_cub_dpsi_inv = 1.0/.0004649;
@@ -66,23 +110,23 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   }
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename Coeff_1DType, typename Coeff_2DType>
-  VTKM_EXEC bool Bum(const vtkm::Vec3f& ptRPZ,
-                     const LocatorType& locator,
-                     const CellSetType& cellSet,
-                     const BFieldType& B_RZP,
-                     const Coeff_1DType& Coeff_1D,
-                     const Coeff_2DType& Coeff_2D,
-                     vtkm::Vec3f& res) const
+  VTKM_EXEC bool HighOrderB(const vtkm::Vec3f& ptRPZ,
+                            const LocatorType& locator,
+                            const CellSetType& cellSet,
+                            const BFieldType& B_RZP,
+                            const Coeff_1DType& Coeff_1D,
+                            const Coeff_2DType& Coeff_2D,
+                            vtkm::Vec3f& res) const
   {
     vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2];
 
-    std::cout<<"***************************************"<<std::endl;
-    std::cout<<"Bum"<<std::endl;
-    std::cout<<" ptRPZ= "<<ptRPZ<<std::endl;
+//    std::cout<<"***************************************"<<std::endl;
+//    std::cout<<"HighOrderB"<<std::endl;
+//    std::cout<<" ptRPZ= "<<ptRPZ<<std::endl;
 
     vtkm::Vec3f ptRZ(R,Z,0);
 
-    if (1)
+    if (0)
     {
       vtkm::Vec3f particlePos_param;
       vtkm::Vec<vtkm::Id,3> particlePos_vids;
@@ -99,52 +143,81 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
 
     int r_i = this->GetIndex(R, this->nr, this->rmin, this->dr_inv);
     int z_i = this->GetIndex(Z, this->nz, this->zmin, this->dz_inv);
+    //std::cout<<"r_i, z_i = "<<r_i<<" "<<z_i<<std::endl;
+    /*
+    r_i = 76-1;
+    z_i = 76-1;
+    r_i = 88-1;
+    z_i = 76-1;
+    */
+
     // rc(i), zc(j)
     vtkm::FloatDefault Rc = rmin + (vtkm::FloatDefault)(r_i)*this->dr;
     vtkm::FloatDefault Zc = zmin + (vtkm::FloatDefault)(z_i)*this->dz;
+    auto Rc_1 = Rc + this->dr;
+    auto Zc_1 = Zc + this->dz;
+    Rc = (Rc + Rc_1) * 0.5;
+    Zc = (Zc + Zc_1) * 0.5;
+    /*
+    Rc = this->rmin + (this->rmax-this->rmin)/(this->nr-1) * vtkm::FloatDefault(r_i+1);
+    Zc = this->zmin + (this->zmax-this->zmin)/(this->nr-1) * vtkm::FloatDefault(z_i+1);
+    auto Rc_1 = this->rmin + (this->rmax-this->rmin)/(this->nr-1) * vtkm::FloatDefault(r_i+2);
+    auto Zc_1 = this->zmin + (this->zmax-this->zmin)/(this->nr-1) * vtkm::FloatDefault(z_i+2);
+    Rc = (Rc+Rc_1)/2.;
+    Zc = (Zc+Zc_1)/2.;
+
+    std::cout<<"Fix me: "<<__LINE__<<std::endl;
+    std::cout<<"Rc, Zc= "<<Rc<<" "<<Zc<<std::endl;
+
+    Rc = 2.999976000000000;
+    Zc = 7.9990400000000666E-003;
+
+    std::cout<<"SHOULD BE: Rc, Zc= "<<Rc<<" "<<Zc<<std::endl;
     std::cout<<"(r_i,z_i)= "<<r_i<<" "<<z_i<<"  Rc,Zc= "<<Rc<<" "<<Zc<<std::endl;
+    */
 
     //Get the coeffcients (z,r,4,4)
     vtkm::Matrix<vtkm::FloatDefault, 4, 4> acoeff;
     //offset = ri * nz + zi
     vtkm::Id offset = (r_i * this->ncoeff + z_i) * 16;
+    //offset = (z_i * this->ncoeff + r_i)*16;
     vtkm::Id idx = 0;
+    //std::cout<<"Offset= "<<(offset/16)<<" 16: "<<offset<<std::endl;
     for (vtkm::Id ii = 0; ii < 4; ii++)
       for (vtkm::Id jj = 0; jj < 4; jj++)
       {
-        //acoeff[ii][jj] = Coeff_2D.Get(offset+idx);
-        acoeff[jj][ii] = Coeff_2D.Get(offset+idx); //z,r
-        std::cout<<"c_"<<ii<<jj<<"= "<<Coeff_2D.Get(offset+idx)<<std::endl;
+        acoeff[ii][jj] = Coeff_2D.Get(offset+idx);
+        //acoeff[jj][ii] = Coeff_2D.Get(offset+idx); //z,r
+        //std::cout<<"c_"<<ii<<jj<<"= "<<Coeff_2D.Get(offset+idx)<<std::endl;
         idx++;
       }
 
     double psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
     this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+    /*
     std::cout<<" psi= "<<psi<<std::endl;
     std::cout<<" dpsi_dr = "<<dpsi_dr<<std::endl;
     std::cout<<" dpsi_dz = "<<dpsi_dz<<std::endl;
+    */
 
     vtkm::FloatDefault fld_I = this->I_interpol(psi, 0, Coeff_1D);
-    vtkm::FloatDefault fld_dIdpsi = this->I_interpol(psi, 1, Coeff_1D);
+    //vtkm::FloatDefault fld_dIdpsi = this->I_interpol(psi, 1, Coeff_1D);
 
     vtkm::FloatDefault over_r = 1/R;
     vtkm::FloatDefault Br = -dpsi_dz * over_r;
     vtkm::FloatDefault Bz = dpsi_dr * over_r;
-    vtkm::FloatDefault Bp = fld_I * over_r;
-    //Divide again by R so that it looks a little better....
-    Bp = Bp/R;
+    vtkm::FloatDefault Bp = fld_I * over_r * this->sml_bp_sign;
 
-    res = vtkm::Vec3f(Br, -Bp, Bz);
+    res = vtkm::Vec3f(Br, Bp, Bz);
+    /*
     std::cout<<"BUM_B_rpz= "<<res<<std::endl;
-
-
-
     std::cout<<std::endl;
     std::cout<<"***************************************"<<std::endl;
     std::cout<<"***************************************"<<std::endl;
     std::cout<<"***************************************"<<std::endl;
     std::cout<<"***************************************"<<std::endl;
     std::cout<<"***************************************"<<std::endl;
+    */
 
     return true;
   }
@@ -166,13 +239,6 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                             OutputType& output,
                             IdType punctureID) const
   {
-    /*
-    vtkm::Vec3f res;
-    this->Bum(particle.Pos, locator, cellSet, B_RZP, Coeff_1D, Coeff_2D, res);
-    return;
-    */
-
-
     DBG("Begin: "<<particle<<std::endl);
     /*
     //values for dopri
@@ -519,8 +585,11 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                const vtkm::FloatDefault& xmin,
                const vtkm::FloatDefault& dx_inv) const
   {
-    std::cout<<"GetIndex: "<<x<<" "<<nx<<" min= "<<xmin<<" dx_inv "<<dx_inv<<std::endl;
-    return std::max(0, std::min(nx-1, (int)((x-xmin)*dx_inv)) );
+    //std::cout<<"GetIndex: "<<x<<" "<<nx<<" min= "<<xmin<<" dx_inv "<<dx_inv<<std::endl;
+    //return std::max(0, std::min(nx-1, (int)((x-xmin)*dx_inv)) );
+    //return std::max(0, std::min(nx-1,    (int)((x-xmin)*dx_inv)) );
+    int idx = std::max(1, std::min(nx  , 1 + int ((x-xmin)*dx_inv)) );
+    return idx-1;
   }
 
   bool eval_bicub_2(const vtkm::FloatDefault& x,
@@ -534,6 +603,54 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     double dx = x - xc;
     double dy = y - yc;
 
+    //fortran code.
+
+    f00 = f01 = f10 = f11 = f20 = f02 = 0.0f;
+    double xv[4] = {1, dx, dx*dx, dx*dx*dx};
+    double yv[4] = {1, dy, dy*dy, dy*dy*dy};
+    double fx[4] = {0,0,0,0};
+    double dfx[4] = {0,0,0,0};
+    double dfy[4] = {0,0,0,0};
+    double dfx2[4] = {0,0,0,0};
+    double dfy2[4] = {0,0,0,0};
+
+    for (int j=0; j<4; j++)
+    {
+      for (int i=0; i<4; i++)
+        fx[j] = fx[j] + xv[i]*acoeff[i][j];
+      for (int i=1; i<4; i++)
+        dfx[j] = dfx[j] + double(i)*xv[i-1]*acoeff[i][j];
+      for (int i=2; i<4; i++)
+        dfx2[j] = dfx2[j] + double(i*(i-1))*xv[i-2]*acoeff[i][j];
+    }
+
+    for (int j = 0; j < 4; j++)
+    {
+      f00 = f00 + fx[j]*yv[j];
+      f10 = f10 + dfx[j]*yv[j];
+      f20 = f20 + dfx2[j]*yv[j];
+    }
+
+    for (int j = 1; j < 4; j++)
+    {
+      dfy[j] = double(j)*yv[j-1];
+      f01 = f01 + fx[j]*dfy[j];
+      f11 = f11 + dfx[j]*dfy[j];
+    }
+
+    for (int j = 2; j < 4; j++)
+    {
+      dfy2[j] = double(j*(j-1))*yv[j-2];
+      f02 = f02 + fx[j]*dfy2[j];
+    }
+
+
+
+
+
+
+    //c++ code.
+    /*
     double fx_i, dfx_i, dfx2_i;
 
     f00 = 0;
@@ -588,6 +705,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
 
     dfx2_i = (3.*2.*acoeff[3][3]*dx + 2.*1.*acoeff[3][2]);
     f20 = f20 + (dy*dy)*dy*dfx2_i;
+    */
     return true;
   }
 
@@ -613,29 +731,30 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                        coeff_1D.Get(idx+1),
                        coeff_1D.Get(idx+2),
                        coeff_1D.Get(idx+3)};
-    if (ideriv==0)
-    {
-      return acoef[0]+(acoef[1]+(acoef[2]+acoef[3]*wp)*wp)*wp;
-    }
-    else if (ideriv==1)
-    {
-      return (acoef[1]+(2.0*acoef[2]+3.0*acoef[3]*wp)*wp)*one_d_cub_dpsi_inv;
-    }
 
-    return 0.0;
+    vtkm::FloatDefault iVal = 0.0;
+    if (ideriv==0)
+      iVal = acoef[0]+(acoef[1]+(acoef[2]+acoef[3]*wp)*wp)*wp;
+    else if (ideriv==1)
+      iVal = (acoef[1]+(2.0*acoef[2]+3.0*acoef[3]*wp)*wp)*one_d_cub_dpsi_inv;
+
+    return iVal;
   }
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename Coeff_1DType, typename Coeff_2DType>
-  bool HighOrderB(vtkm::Vec3f& ptRPZ,
-                  const LocatorType& locator,
-                  const CellSetType& cellSet,
-                  const BFieldType& B_RZP,
-                  const Coeff_1DType& coeff_1D,
-                  const Coeff_2DType& coeff_2D,
-                  vtkm::Vec3f& res) const
+  bool HighOrderEval(vtkm::Vec3f& ptRPZ,
+                     const LocatorType& locator,
+                     const CellSetType& cellSet,
+                     const BFieldType& B_RZP,
+                     const Coeff_1DType& coeff_1D,
+                     const Coeff_2DType& coeff_2D,
+                     vtkm::Vec3f& res) const
   {
 
-    return this->Bum(ptRPZ, locator, cellSet, B_RZP, coeff_1D, coeff_2D, res);
+    //res is R,P,Z
+    bool val = this->HighOrderB(ptRPZ, locator, cellSet, B_RZP, coeff_1D, coeff_2D, res);
+    res[1] /= ptRPZ[0];
+    return val;
 /*
     auto R = ptRPZ[0];
     auto Phi = ptRPZ[1];
@@ -723,7 +842,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     auto Z = ptRPZ[2];
 
     if (this->UseHighOrder)
-      return this->HighOrderB(ptRPZ, locator, cellSet, B_RZP, Coeff_1D, Coeff_2D, res);
+      return this->HighOrderEval(ptRPZ, locator, cellSet, B_RZP, Coeff_1D, Coeff_2D, res);
 
     vtkm::Id planeIdx0, planeIdx1, numRevs;
     vtkm::FloatDefault phiN, Phi0, Phi1, T;
@@ -920,10 +1039,11 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   bool SaveTraces = false;
 
   int nr, nz;
-  vtkm::FloatDefault rmin, zmin;
+  vtkm::FloatDefault rmin, zmin, rmax, zmax;
   vtkm::FloatDefault dr, dz, dr_inv, dz_inv;
 
   int ncoeff;
   vtkm::FloatDefault one_d_cub_dpsi_inv;
   vtkm::FloatDefault min_psi, max_psi;
+  vtkm::FloatDefault sml_bp_sign = -1.0f;
 };

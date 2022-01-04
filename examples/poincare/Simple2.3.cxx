@@ -3097,6 +3097,13 @@ main(int argc, char** argv)
     //seeds = {{2,0,.5}};
     //seeds = {{2,0,-.5}};
     //seeds = {{2.8, 0, -.99}};
+
+    /*
+      Jong's changes in diagnosis.F90
+      R,Z = 3.0, 0.0: psi,dpsi_dr,dpsi_dz: 1.0227020266024015E-002   4.6889284669612431E-002  -4.6889284669613417E-002
+     */
+    //seeds = {{3, 0, 0}};
+    //seeds = {{2.8, 0, 0}};
   }
   else if (args.find("--jong6") != args.end())
   {
