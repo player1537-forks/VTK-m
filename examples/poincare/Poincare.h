@@ -356,7 +356,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                             IdType punctureID) const
   {
 
-    if (1)
+    if (0)
     {
       auto ptRPZ = particle.Pos;
       vtkm::Vec3f res;
@@ -879,6 +879,11 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, gradPsi_rzp;
     vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
     this->HighOrderB(pt_rpz, coeff_1D, coeff_2D, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
+
+    //This gives is the time derivative: Br = dR/dt, Bz= dZ/dt, B_phi/R = dphi/dt
+    //We need with respect to phi:
+    // dR/dphi = dR/dt / (dphi/dt) = Br / B_phi * R
+    // same for z;
 
     vtkm::Vec3f B0_rpz(B0_rzp[0], B0_rzp[2], B0_rzp[1]);
     B0_rpz[0]/=B0_rzp[2];
