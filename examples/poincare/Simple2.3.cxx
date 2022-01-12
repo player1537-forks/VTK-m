@@ -71,6 +71,7 @@ adios2::ADIOS *adios = NULL;
 class adiosS;
 std::map<std::string, adiosS*> adiosStuff;
 
+bool useTurb=true;
 int numPlanes = -1;
 int numNodes = -1;
 int numTri = -1;
@@ -397,6 +398,12 @@ ReadOther(adiosS* stuff,
   std::vector<double> tmp;
   stuff->engine.Get(v, tmp, adios2::Mode::Sync);
 
+  if ((vname == "As_phi_ff" || vname == "dAs_phi_ff")&& useTurb == false)
+  {
+    for (auto& x : tmp)
+      x = 0.0;
+  }
+
   ds.AddField(vtkm::cont::make_Field(vname,
                                      vtkm::cont::Field::Association::WHOLE_MESH,
                                      tmp,
@@ -571,7 +578,7 @@ ReadPsiInterp(adiosS* eqStuff,
   }
 
   //ds2D.AddCellField("bum", cij[0][0]);
-  ds.PrintSummary(std::cout);
+  //ds.PrintSummary(std::cout);
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> arr;
   vtkm::cont::ArrayHandle<vtkm::Vec3f> b3d;
   ds.GetField("eq_psi_rz").GetData().AsArrayHandle(arr);
@@ -2182,7 +2189,7 @@ CalcV(vtkm::cont::DataSet& ds)
   //DeltaB = As * curl(Bhat) + grad_As x bhat
   //Advect: DeltaB + B0
 
-  ds.PrintSummary(std::cout);
+  //ds.PrintSummary(std::cout);
   vtkm::cont::ArrayHandle<vtkm::Vec3f> AsCurlBhat, gradAs, B0;
   ds.GetField("AsCurlBHat").GetData().AsArrayHandle(AsCurlBhat);
   ds.GetField("gradAs").GetData().AsArrayHandle(gradAs);
@@ -2728,7 +2735,7 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   //CalcX(ds);
 
   std::cout<<"FIX ME:: "<<__LINE__<<std::endl;
-  ds.PrintSummary(std::cout);
+  //ds.PrintSummary(std::cout);
   CalcAsCurlBHat(ds);
   CalcGradAs(ds);
   //CalcV(ds);
@@ -2744,7 +2751,7 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
     writer.WriteDataSet(ds3d);
   }
 
-  ds.PrintSummary(std::cout);
+  //ds.PrintSummary(std::cout);
 //  vtkm::io::VTKDataSetWriter writer("debug.vtk");
 //  writer.WriteDataSet(ds);
 
@@ -2783,14 +2790,14 @@ GradientTest()
   vecs.push_back(vtkm::Vec3f(1,1,1));
 
   ds.AddField(vtkm::cont::make_FieldPoint("V", vtkm::cont::make_ArrayHandle(vecs, vtkm::CopyFlag::On)));
-  ds.PrintSummary(std::cout);
+  //ds.PrintSummary(std::cout);
 
   vtkm::filter::Gradient gradient;
   gradient.SetComputePointGradient(true);
   gradient.SetActiveField("V");
   gradient.SetOutputFieldName("gradV");
   auto out = gradient.Execute(ds);
-  out.PrintSummary(std::cout);
+  //out.PrintSummary(std::cout);
 
 }
 
@@ -3033,16 +3040,6 @@ main(int argc, char** argv)
     return -1;
   }
 
-  auto ds = ReadData(args);
-
-  //ds.PrintSummary(std::cout);
-  //return 0;
-  /*
-  SaveStuff(ds);
-  Debug(ds);
-  return 0;
-  */
-
   vtkm::FloatDefault stepSize = std::atof(args["--stepSize"][0].c_str());
   int numPunc = std::atoi(args["--numPunc"][0].c_str());
   std::string vField = args["--vField"][0];
@@ -3051,11 +3048,24 @@ main(int argc, char** argv)
   bool useWorklet = std::atoi(args["--worklet"][0].c_str());
   bool useTraces = std::atoi(args["--traces"][0].c_str());
   std::string outFileName = args["--output"][0];
+  useTurb = true;
+  if (args.find("--turbulence") != args.end())
+    useTurb = std::atoi(args["--turbulence"][0].c_str());
+  auto ds = ReadData(args);
+  //ds.PrintSummary(std::cout);
+  //return 0;
+  /*
+  SaveStuff(ds);
+  Debug(ds);
+  return 0;
+  */
+
+
 
   bool useBOnly = false, useHighOrder = false;
   if (args.find("--useBOnly") != args.end()) useBOnly = true;
   if (args.find("--useHighOrder") != args.end()) useHighOrder = true;
-
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   if (args.find("--range") != args.end())
   {
@@ -3289,24 +3299,130 @@ pIn     2.728835848680459        0.2190207369512611        6.183185307179587
   }
   else if (args.find("--jong6") != args.end())
   {
+    auto vals = args["--jong6"];
+    std::cout<<"VALS= "<<vals<<std::endl;
+
+    std::vector<vtkm::Vec3f> allSeeds;
+    allSeeds = {
+      {3.351443028564415449, 0.0, -0.451648806402756176}, //pt_0, ID= 10670   blue 3 islands
+      {3.187329423521033878, 0.0, -0.665017624967372267}, //pt_1, ID= 12000
+      {1.992020349316277139, 0.0, -0.126203396421661285}, //pt_2, ID= 13100
+      {3.018666196722858963, 0.0, 0.073864239629065770}, //pt_3, ID= 0
+      {3.176582679765305173, 0.0, -0.220557108925872658}, //pt_4, ID= 4000    stochastic problem area
+      {2.129928300491922499, 0.0, -0.176508860570331577}, //pt_5, ID= 10153  semi stoch. xgc spread out, vtkm thin. good with 0.001
+      {2.568671712782164995, 0.0, 0.050249128799423198}, //pt_6, ID= 100
+      {2.934624677179501262, 0.0, 0.220686132855778427}, //pt_7, ID= 500
+      {2.959288366738244580, 0.0, 0.448869653975662142}, //pt_8, ID= 5000
+    };
+
+
+      /*
+      {3.351443028564415449, 0.0, -0.451648806402756176}, //blue 3 islands.
+      {3.187329423521033878, 0.0, -0.665017624967372267},
+      {1.992020349316277139, 0.0, -0.126203396421661285},
+      {3.018666196722858963, 0.0, 0.073864239629065770},
+      {3.176582679765305173, 0.0, -0.220557108925872658},  //stochastic region 4000
+      {2.179226604128697176, 0.0, 0.291539359807166554},
+
+      {2.552260904008052389, 0, -0.003112355795000767}, //stochastic: 100
+      {2.904147293825020348, 0, 0.233676309266207888},  //stochastic: 500
+      {2.834116132387578091, 0, 0.301602359825420996},  //stochastic: 1000
+      {3.221313019897226848, 0, -0.169787551332608172}, //stochastic: 5000
+      {2.1299283004919225 0, -0.17650886057033158},     //semi stoch: pt 10153: xgc spread out, vtkm thin.
+      */
+
+    if (vals.size() == 0) //all the points.
+      seeds = allSeeds;
+    else
+    {
+      int n = std::stoi(vals[0]);
+      if (n >= allSeeds.size())
+        std::cout<<"Bad seed!!! #allseeds= "<<allSeeds.size()<<std::endl;
+
+      seeds = {allSeeds[n]};
+    }
+
+    /*
+allSeeds[0] 50 punctures
+--stepSize 0.01   Total error=  0.0120200778585 maxErr= 0.000484904284968
+--stepSize 0.005  Total error=  0.00764654588018 maxErr= 0.000306355820869
+--stepSize 0.001  Total error=  0.00458809221615 maxErr= 0.000220362884491
+
+-stepSize  0.00050 Total error=  0.00410665950475 maxErr= 0.000212761006711
+-stepSize  0.00025 Total error=  0.00395742797169 maxErr= 0.000212790194159
+-stepSize  0.00010 Total error=  0.00384771565615 maxErr= 0.000209736086882
+
+allSeeds[1] 50 punctures
+--stepSize 0.01   Total error=  0.0246758872498 maxErr= 0.00102710677529
+--stepSize 0.005  Total error=  0.0204393203537 maxErr= 0.000897389164912
+--stepSize 0.001  Total error=  0.0168112860277 maxErr= 0.00089728753628
+
+allSeeds[2] 50 punctures
+--stepSize 0.01  Total error=  0.020815736223 maxErr= 0.000694933702884
+--stepSize 0.005 Total error=  0.0157798325015 maxErr= 0.000548627689596
+--stepSize 0.001 Total error=  0.012512912312 maxErr= 0.000501483340821
+
+
+allSeeds[3] 50 punctures
+--stepSize 0.01  Total error=  0.00930387190718 maxErr= 0.000376516678999
+--stepSize 0.005 Total error=  0.00660720169504 maxErr= 0.000267672744868
+--stepSize 0.001 Total error=  0.00501206967247 maxErr= 0.000244691060404
+
+
+allSeeds[4] 50 punctures ##Stochastic region
+--stepSize 0.01    Total error=  3.11058237394 maxErr= 0.417674988212
+--stepSize 0.005   Total error=  3.10614570903 maxErr= 0.422411249578
+--stepSize 0.001   Total error=  3.0891389475 maxErr= 0.424464351612
+--stepSize 0.0005  Total error=  3.10299880864 maxErr= 0.423057887001
+--stepSize 0.00025 Total error=  3.10476342536 maxErr= 0.421858627004
+
+
+10 punctures:
+--stepSize 0.000001
+
+
+allSeeds[5] 50 punctures
+--stepSize 0.01  Total error=  0.0173742171359 maxErr= 0.000733842147223
+--stepSize 0.005 Total error=  0.0130991456975 maxErr= 0.000589881209904
+--stepSize 0.001 Total error=  0.00999171349076 maxErr= 0.000566749317839
+
+allSeeds[5] PID=10153 50 punctures
+--stepSize 0.001  Total error=  0.00630002849371 maxErr= 0.000329808548949
+--stepSize 0.0005 Total error=  0.00625729353866 maxErr= 0.000329798904507
+
+
+
+     */
+
     //traces.v2 pt near begining.
     //seeds = {{3.024768, 6.070249, 0.049700}};
 
     //seeds from data/sku_8000/jong.py
-    seeds = {
-      //{3.351443, 0.0, -0.451649},
-      {3.351443028564415449, 0.0, -0.451648806402756176},
-      //{3.187329, 0.0, -0.665018},
-      {3.187329423521033878, 0.0, -0.665017624967372267},
-      //{1.992020, 0.0, -0.126203},
-      {1.992020349316277139, 0.0, -0.126203396421661285},
-      //{3.018666, 0.0, 0.073864},
-      {3.018666196722858963, 0.0, 0.073864239629065770},
-      //{3.176583, 0.0, -0.220557},
-      {3.176582679765305173, 0.0, -0.220557108925872658},
-      //{2.179227, 0.0, 0.291539},
-      {2.179226604128697176, 0.0, 0.291539359807166554},
-    };
+    //pts in: xgc_theta_psi.txt, xgc_punctures.txt
+//    seeds = {
+//      {3.351443028564415449, 0.0, -0.451648806402756176}, //blue 3 islands.
+//      {3.187329423521033878, 0.0, -0.665017624967372267},
+//      {1.992020349316277139, 0.0, -0.126203396421661285},
+//      {3.018666196722858963, 0.0, 0.073864239629065770},
+//      {3.176582679765305173, 0.0, -0.220557108925872658},  //stochastic region
+//      {2.179226604128697176, 0.0, 0.291539359807166554},
+
+      //stochastic region, i=4000
+      /*
+s         3.176582679765305173, -0.220557108925872658
+p1        2.673415694283511446, -0.404035922651817592
+p2        2.366230557551912916, -0.054420066925619182
+p3        2.602919798501353910, 0.404861298966848748
+p4        3.164266550057113658, 0.258207175353824703
+p5        3.087268470563441003, -0.311153651480581217
+p6        2.556488556701177028, -0.370963671520662341
+p7        2.363954167247493743, 0.104848146584189700
+p8        2.744892558803513793, 0.421606828485864227
+p9        3.244749979529466088, 0.034975199218512609
+p10       2.780834806912544810, -0.455027987386564192
+p11       2.329460849125147615, -0.073678279004152566
+       */
+//    };
   }
   else if (args.find("--jongrz") != args.end())
   {
@@ -3324,6 +3440,23 @@ pIn     2.728835848680459        0.2190207369512611        6.183185307179587
       {2.905837753215041008, 0.0, -0.397811882628356817},
       {3.391834939600261389, 0.0, -0.350011953142094434},
     };
+  }
+  else if (args.find("--parse") != args.end())
+  {
+//    ./examples/poincare/Simple2.3 --vField B --dir ../data/sku_8000/POINC --worklet 1 --traces 0 --useHighOrder --parse ../data/sku_8000/seeds.txt   --output bumm --numPunc 1000 --stepSize 0.001
+
+    //Generaate the seed list by running jongAll.py
+    std::cout<<"READING: "<<args["--parse"][0]<<std::endl;
+    std::ifstream seedFile;
+    seedFile.open(args["--parse"][0]);
+    std::string line;
+    while (std::getline(seedFile, line))
+    {
+      vtkm::FloatDefault r, p, z;
+      sscanf(line.c_str(), "%lf, %lf, %lf", &r, &p, &z);
+      seeds.push_back({r,p,z});
+    }
+    std::cout<<"NumSeeds= "<<seeds.size()<<std::endl;
   }
 
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());

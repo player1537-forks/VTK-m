@@ -40,7 +40,11 @@ date
 ddt --connect jsrun -n $((JOBSIZE*32)) -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem 2>&1 | tee run-$JOBID.log
 ddt --connect jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem 2>&1 | tee run-$JOBID.log
 
+jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | tee run.log
 
+
+//jongs code.
+/gpfs/alpine/proj-shared/csc143/jyc/summit/exp-xgc-poincare/exp-poincare-8000-dave
 
 */
 
@@ -219,8 +223,8 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     vtkm::FloatDefault Bp = fld_I * over_r;
 
     B0_rzp = vtkm::Vec3f(Br, Bz, Bp);
-    std::cout<<"  ****** dPsi("<<R<<" "<<Z<<") = "<<dpsi_dr<<" "<<dpsi_dz<<std::endl;
-    std::cout<<"  ********  B0= "<<Br<<" "<<Bz<<std::endl;
+    //std::cout<<"  ****** dPsi("<<R<<" "<<Z<<") = "<<dpsi_dr<<" "<<dpsi_dz<<std::endl;
+    //std::cout<<"  ********  B0= "<<Br<<" "<<Bz<<std::endl;
 
     //Set the jacobian.
     const int PIR = 0;
@@ -317,6 +321,16 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     vtkm::FloatDefault dBdr, dBdz, dBdp = 0;
     dBdr = (Br*dBr_dr + Bp*dBp_dr + Bz*dBz_dr) * over_B;
     dBdz = (Br*dBr_dz + Bp*dBp_dz + Bz*dBz_dz) * over_B;
+
+    //Check divergence.
+    auto divergence = dBr_dr + Br/R + dBz_dz;
+    if (vtkm::Abs(divergence) > 1e-16)
+    {
+      std::cout<<std::endl;
+      std::cout<<"****************************************************** DIVERGENCE= "<<divergence<<std::endl;
+      std::cout<<std::endl;
+    }
+
 
     //vtkm::Vec3f curl_nb_rzp;
     curl_nb_rzp[0] = curlB_rzp[0] * over_B + ( Bp * dBdz)*over_B2;
@@ -656,9 +670,11 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     vals.Append(sPortal.Get(vId[1]+offset));
     vals.Append(sPortal.Get(vId[2]+offset));
 
+    /*
     std::cout<<"  EvalS idx: "<<vId[0]<<" "<<vId[1]<<" "<<vId[2]<<std::endl;
     std::cout<<"  EvalS params: "<<param<<std::endl;
     std::cout<<"  EvalS: "<<vals[0]<<" "<<vals[1]<<" "<<vals[2]<<std::endl;
+    */
 
     vtkm::FloatDefault s;
     vtkm::exec::CellInterpolate(vals, param, vtkm::CellShapeTagTriangle(), s);
@@ -960,15 +976,17 @@ DRP: field_following_pos2() i=             2
     vtkm::FloatDefault Phi = pt_rpz[1];
     vtkm::FloatDefault Z = pt_rpz[2];
 
+    /*
     std::cout<<"********************************************************"<<std::endl;
     std::cout<<"   field following code."<<std::endl;
     std::cout<<"********************************************************"<<std::endl;
     std::cout<<std::setprecision(16);
     std::cout<<" pIn= "<<R<<" "<<Phi<<" "<<Z<<std::endl;
+    */
 
 
     vtkm::FloatDefault PhiMid = Phi0 + (Phi1-Phi0)/2.0;
-    std::cout<<std::setprecision(16)<<"   PhiMid= "<<PhiMid<<std::endl;
+    //std::cout<<std::setprecision(16)<<"   PhiMid= "<<PhiMid<<std::endl;
     vtkm::Plane<> midPlane({0, PhiMid, 0}, {0,1,0});
     Ray3f ray_rpz({R, Phi, Z}, B0_rpz);
 
@@ -978,14 +996,14 @@ DRP: field_following_pos2() i=             2
     bool b;
     midPlane.Intersect(ray_rpz, RP_T, ptOnMidPlane_rpz, b);
 
-    std::cout<<"  ***** plane method: "<<ptOnMidPlane_rpz<<std::endl;
+    //std::cout<<"  ***** plane method: "<<ptOnMidPlane_rpz<<std::endl;
 
 
     //Now, do it using RK4 and two steps.
     vtkm::FloatDefault h = (PhiMid-Phi) / 2.0;
     //h = -h;
     vtkm::FloatDefault h_2 = h / 2.0;
-    std::cout<<"("<<Phi<<" "<<PhiMid<<") dP= "<<h<<std::endl;
+    //std::cout<<"("<<Phi<<" "<<PhiMid<<") dP= "<<h<<std::endl;
 
     //k1 = F(p)
     //k2 = F(p+hk1/2)
@@ -994,43 +1012,35 @@ DRP: field_following_pos2() i=             2
     //Yn+1 = Yn + 1/6 h (k1+2k2+2k3+k4)
     vtkm::Vec3f p0 = {R,Phi,Z}; //pt_rpz;
     vtkm::Vec3f tmp, k1, k2, k3, k4;
-    std::cout<<"     p0 = "<<p0<<std::endl;
+    //std::cout<<"     p0 = "<<p0<<std::endl;
     for (int i = 0; i < 2; i++)
     {
-      std::cout<<"  i= "<<i<<std::endl;
       k1 = this->GetB(p0, coeff_1D, coeff_2D);
       tmp = p0 + k1*h_2;
-      std::cout<<"    k1_rpz= "<<k1<<std::endl;
-      std::cout<<"    tmp= "<<tmp<<std::endl;
 
       k2 = this->GetB(tmp, coeff_1D, coeff_2D);
       tmp = p0 + k2*h_2;
-      std::cout<<"    k2= "<<k2<<std::endl;
-      std::cout<<"    tmp= "<<tmp<<std::endl;
 
       k3 = this->GetB(tmp, coeff_1D, coeff_2D);
       tmp = p0 + k3*h;
-      std::cout<<"    k3= "<<k3<<std::endl;
-      std::cout<<"    tmp= "<<tmp<<std::endl;
 
       k4 = this->GetB(tmp, coeff_1D, coeff_2D);
-      std::cout<<"    k4= "<<k4<<std::endl;
 
       vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4) / 6.0;
       p0 = p0 + h * vec;
-      std::cout<<"     p0_"<<i<<" = "<<p0<<std::endl;
     }
 
-    std::cout<<"  **** rk4 method: "<<p0<<std::endl;
+    //std::cout<<"  **** rk4 method: "<<p0<<std::endl;
     x_ff_rpz = p0;
 
+    /*
     //correct
     //vtkm::Vec3f correct(2.736638733942683, PhiMid, 0.2214040972989031);
     vtkm::Vec3f correct(3.021638837619697, PhiMid, 6.2535188082394388E-002);
     std::cout<<"  **rk4 error=  "<<(correct-p0)<<std::endl;
-
     std::cout<<"********************************************************"<<std::endl;
     std::cout<<"********************************************************"<<std::endl;
+    */
 
     return true;
   }
@@ -1081,17 +1091,16 @@ DRP: field_following_pos2() i=             2
     //x_ff is in rzp
     //vtkm::Vec3f x_ff_rzp(ptOnMidPlane_rpz[0], ptOnMidPlane_rpz[2], 0);
     vtkm::Vec3f x_ff_rzp(ff_pt_rpz[0], ff_pt_rpz[2], 0);
-    std::cout<<"x_ff_rzp= "<<x_ff_rzp<<std::endl;
+    //std::cout<<"x_ff_rzp= "<<x_ff_rzp<<std::endl;
     //x_ff_rzp[0] = 3.021638837619697;
     //x_ff_rzp[1] = 6.2535188082394388E-002;
     //x_ff_rzp[2] = 6.217735460229799;
-    std::cout<<"****** XGC-fixed: x_ff_rzp= "<<x_ff_rzp<<std::endl;
+    //std::cout<<"****** XGC-fixed: x_ff_rzp= "<<x_ff_rzp<<std::endl;
 
     std::vector<int> offsets(2);
     offsets[0] = planeIdx0*numNodes*2;
     offsets[1] = planeIdx0*numNodes*2 + numNodes;
-    std::cout<<"*** planeIdx = "<<planeIdx0<<" "<<planeIdx1<<std::endl;
-
+    //std::cout<<"*** planeIdx = "<<planeIdx0<<" "<<planeIdx1<<std::endl;
 
     const vtkm::FloatDefault basis = 0.0f;
     auto B0_R = B0_rzp[0];
@@ -1145,7 +1154,7 @@ DRP: field_following_pos2() i=             2
     //gradAs.Phi = (gradAs.Phi * BMag - gradAs.R*B0_pos.R - gradAs.Z*B0_pos.Z) / B0_pos.Phi
     gradAs_rpz[1] = (gradAs_rpz[1]*BMag -gradAs_rpz[0]*B0_rzp[0] - gradAs_rpz[2]*B0_rzp[1]) / B0_rzp[2];
 
-    std::cout<<" gradAs_rpz= "<<gradAs_rpz<<std::endl;
+    //std::cout<<" gradAs_rpz= "<<gradAs_rpz<<std::endl;
 
     //deltaB = AsCurl(bhat) + gradAs x bhat.
     //std::vector<int> off = {planeIdx0*numNodes};
@@ -1162,13 +1171,15 @@ DRP: field_following_pos2() i=             2
     //auto As_ff = InterpScalar(ds, locator, {x_ff_rzp, x_ff_rzp}, "As_ff", offsets);
     //vtkm::FloatDefault As_ff0 = As_ff[0];
     //vtkm::FloatDefault As_ff1 = As_ff[1];
-    std::cout<<"****** Call EvalS on AsPhi_ff"<<std::endl;
+    //std::cout<<"****** Call EvalS on AsPhi_ff"<<std::endl;
     auto As_ff0 = this->EvalS(AsPhiFF, offsets[0], x_ff_vids, x_ff_param);
     auto As_ff1 = this->EvalS(AsPhiFF, offsets[1], x_ff_vids, x_ff_param);
 
     vtkm::FloatDefault As = wphi[0]*As_ff0 + wphi[1]*As_ff1;
-    //As = 3.0485639983994535E-006;
     auto AsCurl_bhat_rzp = As * curl_nb_rzp;
+
+    /*
+    //As = 3.0485639983994535E-006;
     std::cout<<"    psi= "<<psi<<std::endl;
     std::cout<<"    Bsa= "<<AsCurl_bhat_rzp<<std::endl;
     std::cout<<"    As= "<<As<<std::endl;
@@ -1187,6 +1198,7 @@ DRP: field_following_pos2() i=             2
     std::cout<<"  gammaPsi: "<<gammaPsi<<std::endl;
     std::cout<<"  GRADPSI_rzp: "<<GRADPSI_rzp<<std::endl;
     std::cout<<"  GAMMAPSI: "<<(1.0/vtkm::Magnitude(GRADPSI_rzp))<<std::endl;
+    */
 
 
     //std::cout<<"    curl_nb_rzp.size()= "<<Curl_NB_RZP.GetNumberOfValues()<<std::endl;
