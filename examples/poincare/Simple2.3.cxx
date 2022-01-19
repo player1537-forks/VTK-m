@@ -55,18 +55,6 @@ Get the Bs in 3D working.
 */
 
 
-class Rock
-{
-public:
-  Rock() {}
-  Rock(const vtkm::Id& id, const vtkm::Vec3f& p) : ID(id), Pos(p) {}
-
-  vtkm::Id ID;
-  vtkm::Vec3f Pos;
-  vtkm::Id Punc=0;
-  bool Valid=true;
-};
-
 adios2::ADIOS *adios = NULL;
 class adiosS;
 std::map<std::string, adiosS*> adiosStuff;
@@ -79,9 +67,9 @@ float XScale = 1;
 vtkm::FloatDefault eq_axis_r = 2.8, eq_axis_z = 0.0, eq_x_psi = 0.0697345;
 vtkm::FloatDefault eq_min_r = 1.60014, eq_max_r = 3.99986;
 vtkm::FloatDefault eq_min_z = -1.19986, eq_max_z = 1.19986;
+vtkm::FloatDefault psi_min = -1, psi_max = -1;
 int eq_mr = -1, eq_mz = -1;
 //  vtkm::FloatDefault eq_x_psi = 0.0697345, eq_x_r = 2.8, eq_x_z = -0.99988;
-
 
 
 using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
@@ -2028,7 +2016,7 @@ Poincare(const vtkm::cont::DataSet& ds,
     std::vector<vtkm::Id> puncID(o.size(), -1);
     vtkm::cont::ArrayHandle<vtkm::Id> punctureID = vtkm::cont::make_ArrayHandle(puncID, vtkm::CopyFlag::On);
 
-    invoker(worklet, seeds, locator, ds.GetCellSet(), ds.GetCoordinateSystem(),
+    invoker(worklet, seeds, locator, ds.GetCellSet(),
             B_rzp, B_Norm_rzp, curl_nb_rzp, As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, output, punctureID);
@@ -2715,6 +2703,10 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &numPlanes, adios2::Mode::Sync);
   meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_n"), &numNodes, adios2::Mode::Sync);
   meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_t"), &numTri, adios2::Mode::Sync);
+  std::vector<double> psiVals;
+  meshStuff->engine.Get(meshStuff->io.InquireVariable<double>("psi"), psiVals, adios2::Mode::Sync);
+  psi_min = psiVals[0];
+  psi_max = psiVals[psiVals.size()-1];
 
   //Try and do everything in cylindrical coords and worklets.
   auto ds = ReadMesh(meshStuff);
