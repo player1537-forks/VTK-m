@@ -109,7 +109,9 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     this->max_psi = psi_max; //0.0697345;
     //this->one_d_cub_dpsi_inv = 1.0/.0004649;
     this->one_d_cub_dpsi_inv = 1.0 / ((max_psi-min_psi)/vtkm::FloatDefault(this->ncoeff));
+    #ifndef VTKM_CUDA
     std::cout<<"PSI min/max= "<<psi_min<<" "<<psi_max<<std::endl;
+    #endif
   }
 
   template <typename Coeff_1DType, typename Coeff_2DType>
@@ -320,6 +322,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     dBdr = (Br*dBr_dr + Bp*dBp_dr + Bz*dBz_dr) * over_B;
     dBdz = (Br*dBr_dz + Bp*dBp_dz + Bz*dBz_dz) * over_B;
 
+    #ifndef VTKM_CUDA
     //Check divergence.
     auto divergence = dBr_dr + Br/R + dBz_dz;
     if (vtkm::Abs(divergence) > 1e-16)
@@ -328,6 +331,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
       std::cout<<"****************************************************** DIVERGENCE= "<<divergence<<std::endl;
       std::cout<<std::endl;
     }
+    #endif
 
 
     //vtkm::Vec3f curl_nb_rzp;
@@ -387,7 +391,9 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                              B_RZP, B_Norm_RZP, Curl_NB_RZP,
                              AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, newPos))
       {
+#ifndef VTKM_CUDA
         std::cout<<"*****************       All done: RK step failed."<<std::endl;
+#endif
         break;
       }
 
@@ -407,17 +413,23 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
         output.Set(i, particle.Pos);
         punctureID.Set(i, idx);
         particle.NumPunctures++;
+#ifndef VTKM_CUDA
         if (idx == 0 && particle.NumPunctures%10 == 0 ) std::cout<<" ***** PUNCTURE n= "<<particle.NumPunctures<<std::endl;
+#endif
         DBG("************* PUNCTURE n= "<<particle.NumPunctures<<std::endl);
       }
 
       if (particle.NumSteps >= this->MaxIter || particle.NumPunctures >= this->MaxPunc)
       {
+#ifndef VTKM_CUDA
         std::cout<<"************************************* All done: "<<particle<<std::endl;
+#endif
         break;
       }
     }
+#ifndef VTKM_CUDA
     std::cout<<"Particle done: "<<idx<<std::endl;
+#endif
   }
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
@@ -520,7 +532,9 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param);
     if (status != vtkm::ErrorCode::Success)
     {
+#ifndef VTKM_CUDA
       std::cout<<"Point not found: "<<ptRZ<<std::endl;
+#endif
       return false;
     }
 
