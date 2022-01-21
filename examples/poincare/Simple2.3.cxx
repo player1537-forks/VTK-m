@@ -9,11 +9,12 @@
 //============================================================================
 
 #include <typeinfo>
+#include <vtkm/cont/Initialize.h>
 #include <vtkm/Geometry.h>
+#include <vtkm/Matrix.h>
 #include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/ArrayHandle.h>
 #include <vtkm/cont/DataSet.h>
-#include <vtkm/cont/testing/Testing.h>
 #include <vtkm/filter/GhostCellClassify.h>
 #include <vtkm/io/VTKDataSetReader.h>
 #include <vtkm/worklet/WorkletMapTopology.h>
