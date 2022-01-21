@@ -29,11 +29,11 @@
 
 #include <vtkm/cont/CellLocatorGeneral.h>
 
-#include <vtkm/filter/Gradient.h>
+//#include <vtkm/filter/Gradient.h>
 
 #include <vtkm/io/VTKDataSetWriter.h>
 
-#include <fides/DataSetReader.h>
+//#include <fides/DataSetReader.h>
 
 #include <adios2.h>
 
@@ -290,6 +290,7 @@ public:
 void
 ComputeV(vtkm::cont::DataSet& ds)
 {
+#if 0
   vtkm::cont::ArrayHandle<vtkm::Vec3f> b;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> A_s;
   std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
@@ -372,6 +373,7 @@ ComputeV(vtkm::cont::DataSet& ds)
   ds.AddField(vtkm::cont::make_FieldPoint("V", vtkm::cont::make_ArrayHandle(V, vtkm::CopyFlag::On)));
 
   std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+#endif
 }
 
 void
@@ -619,8 +621,14 @@ public:
 vtkm::cont::ArrayHandle<vtkm::Vec3f>
 ComputeCurl(const vtkm::cont::DataSet& inDS)
 {
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B;
+  inDS.GetCoordinateSystem().GetData().AsArrayHandle(coords);    
   vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm;
-
+  vtkm::Id numPts = coords.GetNumberOfValues();
+  curlBNorm.Allocate(numPts);
+  return curlBNorm;
+    
+#if 0
   vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B;
   inDS.GetCoordinateSystem().GetData().AsArrayHandle(coords);
   inDS.GetField("B_RZP").GetData().AsArrayHandle(B);
@@ -791,12 +799,14 @@ ComputeCurl(const vtkm::cont::DataSet& inDS)
 
   return curlBNorm;
 #endif
+#endif
 }
 
 //This uses the curl_b
 vtkm::cont::ArrayHandle<vtkm::Vec3f>
 ComputeCurl2(const vtkm::cont::DataSet& ds)
 {
+#if 0
   vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, Brzp;
   ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
   ds.GetField("B_RZP_2D").GetData().AsArrayHandle(Brzp);
@@ -893,6 +903,7 @@ ComputeCurl2(const vtkm::cont::DataSet& ds)
   }
 
   return curlBNorm;
+#endif
 }
 
 void
@@ -1178,8 +1189,8 @@ public:
     vtkm::ErrorCode status = locator.FindCell(point, cellId, pcoords);
     if (status != vtkm::ErrorCode::Success)
     {
-      std::cout<<"Cell not found! "<<point<<std::endl;
-      std::cout<<"    ***** Try reducing the step size."<<std::endl;
+//      std::cout<<"Cell not found! "<<point<<std::endl;
+//      std::cout<<"    ***** Try reducing the step size."<<std::endl;
       this->RaiseError(vtkm::ErrorString(status));
     }
     //ptIndices = cellSet.GetIndices(cellId);
@@ -2017,10 +2028,19 @@ Poincare(const vtkm::cont::DataSet& ds,
     std::vector<vtkm::Id> puncID(o.size(), -1);
     vtkm::cont::ArrayHandle<vtkm::Id> punctureID = vtkm::cont::make_ArrayHandle(puncID, vtkm::CopyFlag::On);
 
+    auto start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
             B_rzp, B_Norm_rzp, curl_nb_rzp, As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, output, punctureID);
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end-start;
+
+    std::cout<<"PoincareTime= "<<elapsed_seconds.count()<<std::endl;
+    std::cout<<"output.size()= "<<output.GetNumberOfValues()<<std::endl;
+    std::cout<<"punctureID.size()= "<<punctureID.GetNumberOfValues()<<std::endl;    
+    //vtkm::cont::printSummary_ArrayHandle(output, std::cout);
+    //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);    
 
     std::vector<std::vector<vtkm::Vec3f>> res;
     if (traces)
@@ -2675,6 +2695,7 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   std::map<std::string, std::string> adiosArgs;
   adiosArgs["--dir"] = args["--dir"][0];
 
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;        
   adios = new adios2::ADIOS;
   adiosStuff["mesh"] = new adiosS(adios, "xgc.mesh.bp", "mesh", adiosArgs);
   adiosStuff["data"] = new adiosS(adios, "xgc.3d.bp", "3d", adiosArgs);
@@ -2716,6 +2737,7 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   ReadScalar(meshStuff, ds, "psi");
   ReadScalar(meshStuff, ds, "theta");
   ReadB(bfieldStuff, ds);
+
   /*
   ReadVec(bfieldStuff, ds, "B", "/node_data[0]/values");
   ReadVec(bfieldStuff, ds, "B3D", "/node_data[0]/values", true, false);
@@ -2727,7 +2749,6 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
 
   //CalcX(ds);
 
-  std::cout<<"FIX ME:: "<<__LINE__<<std::endl;
   //ds.PrintSummary(std::cout);
   CalcAsCurlBHat(ds);
   CalcGradAs(ds);
@@ -2754,6 +2775,7 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
 void
 GradientTest()
 {
+#if 0
   std::vector<vtkm::Vec3f> coords;
 
   coords.push_back(vtkm::Vec3f(0,0,0));
@@ -2791,12 +2813,13 @@ GradientTest()
   gradient.SetOutputFieldName("gradV");
   auto out = gradient.Execute(ds);
   //out.PrintSummary(std::cout);
-
+#endif
 }
 
 void
 Debug(const vtkm::cont::DataSet& inDS)
 {
+#if 0
   auto ds = inDS;
 
   /*
@@ -2980,6 +3003,7 @@ Debug(const vtkm::cont::DataSet& inDS)
     std::cout<<"\n\n";
   }
 #endif
+#endif
 }
 
 void
@@ -3033,6 +3057,13 @@ main(int argc, char** argv)
     return -1;
   }
 
+  if (args.find("--gpu") != args.end())
+      vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
+  else if (args.find("--openmp") != args.end())  
+      vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagOpenMP{});
+  else if (args.find("--serial") != args.end())  
+      vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagSerial{});  
+
   vtkm::FloatDefault stepSize = std::atof(args["--stepSize"][0].c_str());
   int numPunc = std::atoi(args["--numPunc"][0].c_str());
   std::string vField = args["--vField"][0];
@@ -3054,11 +3085,9 @@ main(int argc, char** argv)
   */
 
 
-
   bool useBOnly = false, useHighOrder = false;
   if (args.find("--useBOnly") != args.end()) useBOnly = true;
   if (args.find("--useHighOrder") != args.end()) useHighOrder = true;
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   if (args.find("--range") != args.end())
   {

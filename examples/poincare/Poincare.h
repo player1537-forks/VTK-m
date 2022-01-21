@@ -125,6 +125,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                             vtkm::FloatDefault& PSI,
                             vtkm::Vec3f& gradPsi_rzp) const
   {
+      printf("  worklet %d\n", __LINE__);        
     vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2], P = ptRPZ[1];
 
 //    std::cout<<"***************************************"<<std::endl;
@@ -350,7 +351,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     std::cout<<"***************************************"<<std::endl;
     std::cout<<"***************************************"<<std::endl;
     */
-
+    printf("  worklet %d\n", __LINE__);        
     return true;
   }
 
@@ -381,9 +382,11 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
 */
 
     DBG("Begin: "<<particle<<std::endl);
+    printf("operator() BEGIN\n");
 
     while (true)
     {
+      printf("  worklet %d\n", __LINE__);                
       vtkm::Vec3f newPos;
       DBG("\n\n\n*********************************************"<<std::endl);
       DBG("   "<<particle.Pos<<" #s= "<<particle.NumSteps<<std::endl);
@@ -396,6 +399,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
 #endif
         break;
       }
+      printf("  worklet %d\n", __LINE__);              
 
       DBG("     *** Step--> "<<newPos<<std::endl);
       vtkm::Id numRevs0 = vtkm::Floor(vtkm::Abs(particle.Pos[1] / vtkm::TwoPi()));
@@ -404,6 +408,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
       particle.Pos = newPos;
       particle.NumSteps++;
 
+      printf("  worklet %d\n", __LINE__);                      
       if (this->SaveTraces)
         traces.Set(idx*this->MaxIter + particle.NumSteps, particle.Pos);
 
@@ -418,7 +423,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
 #endif
         DBG("************* PUNCTURE n= "<<particle.NumPunctures<<std::endl);
       }
-
+      printf("  worklet %d\n", __LINE__);                      
       if (particle.NumSteps >= this->MaxIter || particle.NumPunctures >= this->MaxPunc)
       {
 #ifndef VTKM_CUDA
@@ -430,6 +435,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
 #ifndef VTKM_CUDA
     std::cout<<"Particle done: "<<idx<<std::endl;
 #endif
+    printf("operator() DONE\n");    
   }
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
@@ -446,7 +452,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                    vtkm::Vec3f& res) const
   {
     vtkm::Vec3f tmp, k1, k2, k3, k4, p0;
-
+    printf("  worklet %d\n", __LINE__);
     //k1 = F(p)
     //k2 = F(p+hk1/2)
     //k3 = F(p+hk2/2)
@@ -475,6 +481,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + this->StepSize * vec;
 
+    printf("  worklet %d\n", __LINE__);    
     return true;
   }
 
@@ -567,6 +574,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                     vtkm::FloatDefault &f00, vtkm::FloatDefault &f10, vtkm::FloatDefault &f01,
                     vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02) const
   {
+    printf("  worklet %d\n", __LINE__);              
     double dx = x - xc;
     double dy = y - yc;
 
@@ -673,6 +681,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     dfx2_i = (3.*2.*acoeff[3][3]*dx + 2.*1.*acoeff[3][2]);
     f20 = f20 + (dy*dy)*dy*dfx2_i;
     */
+    printf("  worklet %d\n", __LINE__);                        
     return true;
   }
 
@@ -681,6 +690,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                                 const int& ideriv,
                                 const Coeff_1DType& coeff_1D) const
   {
+    printf("  worklet %d\n", __LINE__);                    
     double pn = psi * this->one_d_cub_dpsi_inv;
     int ip=floor(pn);
     ip=std::min(std::max(ip,0),this->ncoeff-1);
@@ -705,6 +715,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     else if (ideriv==1)
       iVal = (acoef[1]+(2.0*acoef[2]+3.0*acoef[3]*wp)*wp)*one_d_cub_dpsi_inv;
 
+    printf("  worklet %d\n", __LINE__);                        
     return iVal * this->sml_bp_sign;
   }
 
@@ -877,6 +888,7 @@ DRP: field_following_pos2() i=             2
                      const Coeff_2DType& coeff_2D,
                      vtkm::Vec3f& res) const
   {
+    printf("  worklet %d\n", __LINE__);          
     auto R = ptRPZ[0];
     auto Phi = ptRPZ[1];
     auto Z = ptRPZ[2];
@@ -887,7 +899,8 @@ DRP: field_following_pos2() i=             2
     vtkm::Vec<vtkm::Vec3f, 3> jacobian;
     if (!this->HighOrderB(ptRPZ, coeff_1D, coeff_2D, B0_rzp, jacobian, curlB_rzp, curl_nb_rzp, psi, GRADPSI_rzp))
       return false;
-
+    
+    printf("  worklet %d\n", __LINE__);    
     if (this->UseBOnly)
     {
       B0_rzp[2] /= R;
@@ -901,6 +914,7 @@ DRP: field_following_pos2() i=             2
     this->GetPlaneIdx(Phi, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
     vtkm::Vec3f B0_rpz(B0_rzp[0], B0_rzp[2], B0_rzp[1]);
 
+    printf("  worklet %d\n", __LINE__);        
     vtkm::Vec3f ff_pt_rpz;
     this->CalcFieldFollowingPt({R,phiN,Z}, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
 
@@ -1046,7 +1060,7 @@ DRP: field_following_pos2() i=             2
     vtkm::Vec3f vec_rpz(vec_rzp[0], vec_rzp[2], vec_rzp[1]);
     res = vec_rpz;
     //std::cout<<"    vec_rpz= "<<vec_rpz<<std::endl<<std::endl;
-
+    printf("  worklet %d\n", __LINE__);        
     return true;
   }
 
@@ -1063,6 +1077,7 @@ DRP: field_following_pos2() i=             2
                 const Coeff_2DType& Coeff_2D,
                 vtkm::Vec3f& res) const
   {
+    printf("  worklet %d\n", __LINE__);          
     if (this->UseHighOrder)
       return this->HighOrderEval(ptRPZ, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, res);
 
