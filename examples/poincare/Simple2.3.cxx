@@ -622,12 +622,12 @@ vtkm::cont::ArrayHandle<vtkm::Vec3f>
 ComputeCurl(const vtkm::cont::DataSet& inDS)
 {
   vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B;
-  inDS.GetCoordinateSystem().GetData().AsArrayHandle(coords);    
+  inDS.GetCoordinateSystem().GetData().AsArrayHandle(coords);
   vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm;
   vtkm::Id numPts = coords.GetNumberOfValues();
   curlBNorm.Allocate(numPts);
   return curlBNorm;
-    
+
 #if 0
   vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B;
   inDS.GetCoordinateSystem().GetData().AsArrayHandle(coords);
@@ -932,9 +932,11 @@ ReadB(adiosS* stuff,
   invoker(NormalizeWorklet{}, b, bhat_rzp);
   ds.AddField(vtkm::cont::make_FieldPoint("B_RZP_Norm",bhat_rzp));
 
+  /*
   vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm_rzp;
   curlBNorm_rzp = ComputeCurl(ds);
   ds.AddField(vtkm::cont::make_FieldPoint("curl_nb_rzp", curlBNorm_rzp));
+  */
 }
 
 void
@@ -2004,13 +2006,13 @@ Poincare(const vtkm::cont::DataSet& ds,
     auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
 
     vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff, coeff_1D, coeff_2D;
-    vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp, AsCurlBHat_rzp, curl_nb_rzp;
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp;//, AsCurlBHat_rzp, curl_nb_rzp;
     ds.GetField("As_ff").GetData().AsArrayHandle(As_ff);
     ds.GetField("B_RZP").GetData().AsArrayHandle(B_rzp);
     ds.GetField("B_RZP_Norm").GetData().AsArrayHandle(B_Norm_rzp);
     ds.GetField("dAs_ff_rzp").GetData().AsArrayHandle(dAs_ff_rzp);
-    ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
-    ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(curl_nb_rzp);
+    //ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
+    //ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(curl_nb_rzp);
     ds.GetField("coeff_1D").GetData().AsArrayHandle(coeff_1D);
     ds.GetField("coeff_2D").GetData().AsArrayHandle(coeff_2D);
 
@@ -2030,7 +2032,7 @@ Poincare(const vtkm::cont::DataSet& ds,
 
     auto start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
-            B_rzp, B_Norm_rzp, curl_nb_rzp, As_ff, dAs_ff_rzp,
+            B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, output, punctureID);
     auto end = std::chrono::steady_clock::now();
@@ -2038,9 +2040,9 @@ Poincare(const vtkm::cont::DataSet& ds,
 
     std::cout<<"PoincareTime= "<<elapsed_seconds.count()<<std::endl;
     std::cout<<"output.size()= "<<output.GetNumberOfValues()<<std::endl;
-    std::cout<<"punctureID.size()= "<<punctureID.GetNumberOfValues()<<std::endl;    
+    std::cout<<"punctureID.size()= "<<punctureID.GetNumberOfValues()<<std::endl;
     //vtkm::cont::printSummary_ArrayHandle(output, std::cout);
-    //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);    
+    //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);
 
     std::vector<std::vector<vtkm::Vec3f>> res;
     if (traces)
@@ -2323,18 +2325,176 @@ CalcX(vtkm::cont::DataSet& ds)
 }
 
 void
+CalcAs(vtkm::cont::DataSet& ds)
+{
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> As;
+
+  ds.GetField("As_phi_ff").GetData().AsArrayHandle(As);
+  vtkm::Id numAs = As.GetNumberOfValues();
+  auto asPortal = As.ReadPortal();
+
+  //Dim: (numPlanes, numNodes, idx)
+  std::vector<std::vector<std::vector<vtkm::FloatDefault>>> As_arr;
+  As_arr.resize(numPlanes);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    As_arr[p].resize(2);
+    for (int i = 0; i < 2; i++)
+      As_arr[p][i].resize(numNodes);
+  }
+
+  //Do some easy indexing.
+  vtkm::Id idx = 0;
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int n = 0; n < numNodes; n++)
+    {
+      //vtkm::Vec3f cBhat = cbPortal.Get(n);
+      for (int i = 0; i < 2; i++)
+      {
+        auto as = asPortal.Get(idx);
+        //std::cout<<"As: "<<as<<" cBhat= "<<cBhat<<" :: "<<vtkm::Magnitude(cBhat)<<"  val= "<<val<<std::endl;
+        //As_curlBhat[p][i][n] = val;
+        As_arr[p][i][n] = as;
+        idx++;
+      }
+    }
+  }
+
+  //flatten to 1d index.
+  idx = 0;
+  std::vector<vtkm::FloatDefault> arrAs(numAs);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int i = 0; i < 2; i++)
+    {
+      for (int n = 0; n < numNodes; n++)
+      {
+        vtkm::FloatDefault asVal = As_arr[p][i][n];
+        arrAs[idx] = asVal;
+        idx++;
+      }
+    }
+  }
+
+  ds.AddField(vtkm::cont::make_Field("As_ff",
+                                     vtkm::cont::Field::Association::WHOLE_MESH,
+                                     arrAs,
+                                     vtkm::CopyFlag::On));
+}
+
+void
+Calc_dAs(vtkm::cont::DataSet& ds)
+{
+  //Assumed that dAs_phi_ff is R,Z,Phi
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> dAsAH;
+  ds.GetField("dAs_phi_ff").GetData().AsArrayHandle(dAsAH);
+  int nVals = dAsAH.GetNumberOfValues()/3;
+
+  //Dim: (numPlanes, numNodes, idx)
+  std::vector<std::vector<std::vector<vtkm::Vec3f>>> dAs_ff;
+  dAs_ff.resize(numPlanes);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    dAs_ff[p].resize(2);
+    for (int i = 0; i < 2; i++)
+      dAs_ff[p][i].resize(numNodes);
+  }
+
+
+  int idx = 0;
+  auto dAsPortal = dAsAH.ReadPortal();
+
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int n = 0; n < numNodes; n++)
+    {
+      for (int c = 0; c < 3; c++) //vec coords
+      {
+        for (int i = 0; i < 2; i++) //idx
+        {
+          vtkm::FloatDefault val = dAsPortal.Get(idx);
+          idx++;
+          int cc = c;
+
+          /*
+          //Change to R,Phi,Z
+          //swap phi and z
+          if (c == 1) cc = 2;
+          else if (c == 2) cc = 1;
+          */
+
+          dAs_ff[p][i][n][cc] = val;
+        }
+      }
+    }
+  }
+
+  //
+  std::vector<std::vector<std::vector<vtkm::Vec3f>>> VEC_ff;
+  VEC_ff.resize(numPlanes);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    VEC_ff[p].resize(2);
+    for (int i = 0; i < 2; i++)
+      VEC_ff[p][i].resize(numNodes);
+  }
+
+  idx = 0;
+  std::vector<vtkm::Vec3f> arr_ff(nVals);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int i = 0; i < 2; i++)
+    {
+      for (int n = 0; n < numNodes; n++)
+      {
+        vtkm::Vec3f val = VEC_ff[p][i][n];
+        val = dAs_ff[p][i][n];
+        arr_ff[idx] = val;
+        idx++;
+      }
+    }
+  }
+
+  //do some testing..
+  for (int p = 0; p < numPlanes; p++)
+  {
+    int off0 = p*numNodes*2;
+    int off1 = p*numNodes*2 + numNodes;
+    for (int n = 0; n < numNodes; n++)
+    {
+      auto V0 = dAs_ff[p][0][n];
+      auto V1 = dAs_ff[p][1][n];
+
+      auto X0 = arr_ff[off0 + n];
+      auto X1 = arr_ff[off1 + n];
+      auto diff = vtkm::Magnitude(V0-X0) + vtkm::Magnitude(V1-X1);
+      if (diff > 0)
+        std::cout<<"ERROR: "<<V0<<" : "<<V1<<"  diff0= "<<(V0-X0)<<" diff1= "<<(V1-X1)<<std::endl;
+
+    }
+  }
+
+  ds.AddField(vtkm::cont::make_Field("dAs_ff_rzp",
+                                     vtkm::cont::Field::Association::WHOLE_MESH,
+                                     arr_ff,
+                                     vtkm::CopyFlag::On));
+}
+
+void
 CalcAsCurlBHat(vtkm::cont::DataSet& ds)
 {
   vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBhat;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> As;
 
-  ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(curlBhat);
   ds.GetField("As_phi_ff").GetData().AsArrayHandle(As);
-
   vtkm::Id numAs = As.GetNumberOfValues();
-
-  auto cbPortal = curlBhat.ReadPortal();
   auto asPortal = As.ReadPortal();
+
+
+  ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(curlBhat);
+  auto cbPortal = curlBhat.ReadPortal();
+
 
   //Dim: (numPlanes, numNodes, idx)
   std::vector<std::vector<std::vector<vtkm::Vec3f>>> As_curlBhat;
@@ -2695,7 +2855,7 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   std::map<std::string, std::string> adiosArgs;
   adiosArgs["--dir"] = args["--dir"][0];
 
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;        
+  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   adios = new adios2::ADIOS;
   adiosStuff["mesh"] = new adiosS(adios, "xgc.mesh.bp", "mesh", adiosArgs);
   adiosStuff["data"] = new adiosS(adios, "xgc.3d.bp", "3d", adiosArgs);
@@ -2750,8 +2910,8 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   //CalcX(ds);
 
   //ds.PrintSummary(std::cout);
-  CalcAsCurlBHat(ds);
-  CalcGradAs(ds);
+  CalcAs(ds);
+  Calc_dAs(ds);
   //CalcV(ds);
 
   if (0)
@@ -3059,10 +3219,10 @@ main(int argc, char** argv)
 
   if (args.find("--gpu") != args.end())
       vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
-  else if (args.find("--openmp") != args.end())  
+  else if (args.find("--openmp") != args.end())
       vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagOpenMP{});
-  else if (args.find("--serial") != args.end())  
-      vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagSerial{});  
+  else if (args.find("--serial") != args.end())
+      vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagSerial{});
 
   vtkm::FloatDefault stepSize = std::atof(args["--stepSize"][0].c_str());
   int numPunc = std::atoi(args["--numPunc"][0].c_str());
