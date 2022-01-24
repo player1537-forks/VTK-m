@@ -115,15 +115,16 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   }
 
   template <typename Coeff_1DType, typename Coeff_2DType>
-  VTKM_EXEC bool HighOrderB(const vtkm::Vec3f& ptRPZ,
-                            const Coeff_1DType& Coeff_1D,
-                            const Coeff_2DType& Coeff_2D,
-                            vtkm::Vec3f& B0_rzp,
-                            vtkm::Vec<vtkm::Vec3f, 3>& jacobian_rzp,
-                            vtkm::Vec3f& curlB_rzp,
-                            vtkm::Vec3f& curl_nb_rzp,
-                            vtkm::FloatDefault& PSI,
-                            vtkm::Vec3f& gradPsi_rzp) const
+  VTKM_EXEC
+  bool HighOrderB(const vtkm::Vec3f& ptRPZ,
+                  const Coeff_1DType& Coeff_1D,
+                  const Coeff_2DType& Coeff_2D,
+                  vtkm::Vec3f& B0_rzp,
+                  vtkm::Vec<vtkm::Vec3f, 3>& jacobian_rzp,
+                  vtkm::Vec3f& curlB_rzp,
+                  vtkm::Vec3f& curl_nb_rzp,
+                  vtkm::FloatDefault& PSI,
+                  vtkm::Vec3f& gradPsi_rzp) const
   {
     //printf("  worklet %d\n", __LINE__);
     vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2], P = ptRPZ[1];
@@ -261,20 +262,17 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     //std::cout<<"   JAC_Z = "<<jacobian_rzp[PIZ]<<std::endl;
     //std::cout<<"   JAC_P = "<<jacobian_rzp[PIP]<<std::endl;
 
-    vtkm::FloatDefault dBr_dr, dBr_dz, dBr_dp;
-    dBr_dr = jacobian_rzp[0][0];
-    dBr_dz = jacobian_rzp[1][0];
-    dBr_dp = jacobian_rzp[2][0];
+    auto dBr_dr = jacobian_rzp[0][0];
+    auto dBr_dz = jacobian_rzp[1][0];
+    auto dBr_dp = jacobian_rzp[2][0];
 
-    vtkm::FloatDefault dBz_dr, dBz_dz, dBz_dp;
-    dBz_dr = jacobian_rzp[0][1];
-    dBz_dz = jacobian_rzp[1][1];
-    dBz_dp = jacobian_rzp[2][1];
+    auto dBz_dr = jacobian_rzp[0][1];
+    auto dBz_dz = jacobian_rzp[1][1];
+    auto dBz_dp = jacobian_rzp[2][1];
 
-    vtkm::FloatDefault dBp_dr, dBp_dz, dBp_dp;
-    dBp_dr = jacobian_rzp[0][2];
-    dBp_dz = jacobian_rzp[1][2];
-    dBp_dp = jacobian_rzp[2][2];
+    auto dBp_dr = jacobian_rzp[0][2];
+    auto dBp_dz = jacobian_rzp[1][2];
+    //auto dBp_dp = jacobian_rzp[2][2];
 
     //these are correct.
     /*
@@ -319,7 +317,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     dbdphi=0D0  ! no B perturbation
     */
 
-    vtkm::FloatDefault dBdr, dBdz, dBdp = 0;
+    vtkm::FloatDefault dBdr, dBdz; /*, dBdp = 0;*/
     dBdr = (Br*dBr_dr + Bp*dBp_dr + Bz*dBz_dr) * over_B;
     dBdz = (Br*dBr_dz + Bp*dBp_dz + Bz*dBz_dz) * over_B;
 
@@ -439,6 +437,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   }
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
+  VTKM_EXEC
   bool TakeRK4Step(vtkm::Particle& particle,
                    const LocatorType& locator,
                    const CellSetType& cellSet,
@@ -485,11 +484,12 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   }
 
   template <typename PortalType>
-    vtkm::FloatDefault
-    EvalS(const PortalType& sPortal,
-          const vtkm::Id& offset,
-          const vtkm::Vec<vtkm::Id, 3>& vId,
-          const vtkm::Vec3f& param) const
+  VTKM_EXEC
+  vtkm::FloatDefault
+  EvalS(const PortalType& sPortal,
+        const vtkm::Id& offset,
+        const vtkm::Vec<vtkm::Id, 3>& vId,
+        const vtkm::Vec3f& param) const
   {
     vtkm::VecVariable<vtkm::FloatDefault, 3> vals;
     vals.Append(sPortal.Get(vId[0]+offset));
@@ -508,12 +508,12 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   }
 
   template <typename PortalType>
-    vtkm::Vec3f
-    EvalV(const PortalType& vPortal,
-          const vtkm::Id& offset,
-          const vtkm::Vec3f& param,
-          const vtkm::Vec<vtkm::Id, 3>& vId) const
-
+  VTKM_EXEC
+  vtkm::Vec3f
+  EvalV(const PortalType& vPortal,
+        const vtkm::Id& offset,
+        const vtkm::Vec3f& param,
+        const vtkm::Vec<vtkm::Id, 3>& vId) const
   {
     //std::cout<<"    ******** vid= "<<vId[0]<<" "<<vId[1]<<" "<<vId[2]<<std::endl;
     //std::cout<<"    ******** vec= "<<vPortal.Get(vId[0])<<" "<<vPortal.Get(vId[1])<<" "<<vPortal.Get(vId[2])<<std::endl;
@@ -528,6 +528,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   }
 
   template <typename LocatorType, typename CellSetType>
+  VTKM_EXEC
   bool PtLoc(const vtkm::Vec3f& ptRZ,
              const LocatorType& locator,
              const CellSetType& cs,
@@ -538,6 +539,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param);
     if (status != vtkm::ErrorCode::Success)
     {
+      printf("Find Cell failed! pt= %lf %lf %lf\n", ptRZ[0], ptRZ[1], ptRZ[2]);
 #ifndef VTKM_CUDA
       std::cout<<"Point not found: "<<ptRZ<<std::endl;
 #endif
@@ -553,6 +555,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     return true;
   }
 
+  VTKM_EXEC
   int GetIndex(const vtkm::FloatDefault& x,
                const int& nx,
                const vtkm::FloatDefault& xmin,
@@ -565,6 +568,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     return idx-1;
   }
 
+  VTKM_EXEC
   bool eval_bicub_2(const vtkm::FloatDefault& x,
                     const vtkm::FloatDefault& y,
                     const vtkm::FloatDefault& xc,
@@ -685,6 +689,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   }
 
   template <typename Coeff_1DType>
+  VTKM_EXEC
   vtkm::FloatDefault I_interpol(const vtkm::FloatDefault& psi,
                                 const int& ideriv,
                                 const Coeff_1DType& coeff_1D) const
@@ -719,6 +724,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
   }
 
   template <typename Coeff_1DType, typename Coeff_2DType>
+  VTKM_EXEC
   vtkm::Vec3f GetB(vtkm::Vec3f& pt_rpz,
                    const Coeff_1DType& coeff_1D,
                    const Coeff_2DType& coeff_2D) const
@@ -796,6 +802,7 @@ DRP: field_following_pos2() i=             2
 #endif
 
   template <typename Coeff_1DType, typename Coeff_2DType>
+  VTKM_EXEC
   bool CalcFieldFollowingPt(const vtkm::Vec3f& pt_rpz,
                             const vtkm::Vec3f& B0_rpz,
                             const vtkm::FloatDefault& Phi0,
@@ -878,6 +885,7 @@ DRP: field_following_pos2() i=             2
   }
 
   template <typename LocatorType, typename CellSetType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
+  VTKM_EXEC
   bool HighOrderEval(vtkm::Vec3f& ptRPZ,
                      const LocatorType& locator,
                      const CellSetType& cellSet,
@@ -931,9 +939,9 @@ DRP: field_following_pos2() i=             2
     //x_ff_rzp[2] = 6.217735460229799;
     //std::cout<<"****** XGC-fixed: x_ff_rzp= "<<x_ff_rzp<<std::endl;
 
-    std::vector<int> offsets(2);
-    offsets[0] = planeIdx0*numNodes*2;
-    offsets[1] = planeIdx0*numNodes*2 + numNodes;
+    int offsets[2];
+    offsets[0] = planeIdx0*this->NumNodes*2;
+    offsets[1] = planeIdx0*this->NumNodes*2 + this->NumNodes;
     //std::cout<<"*** planeIdx = "<<planeIdx0<<" "<<planeIdx1<<std::endl;
 
     const vtkm::FloatDefault basis = 0.0f;
@@ -991,7 +999,7 @@ DRP: field_following_pos2() i=             2
     //std::cout<<" gradAs_rpz= "<<gradAs_rpz<<std::endl;
 
     //deltaB = AsCurl(bhat) + gradAs x bhat.
-    //std::vector<int> off = {planeIdx0*numNodes};
+    //std::vector<int> off = {planeIdx0*this->NumNodes};
     //vtkm::Vec3f AsCurl_bhat_rzp = EvalVector(ds, locator, {x_ff_rzp}, "AsCurlBHat_RZP", off)[0];
     //auto AsCurl_bhat_rzp = this->EvalV(AsCurlBHat_RZP, 0, x_ff_vids, x_ff_param);
 
@@ -1064,6 +1072,7 @@ DRP: field_following_pos2() i=             2
   }
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
+  VTKM_EXEC
   bool Evaluate(vtkm::Vec3f& ptRPZ,
                 const LocatorType& locator,
                 const CellSetType& cellSet,
@@ -1126,9 +1135,9 @@ DRP: field_following_pos2() i=             2
     //Get vec at Phi0 and Phi1.
     //x_ff is in rzp
     vtkm::Vec3f x_ff_rzp(ptOnMidPlane_rpz[0], ptOnMidPlane_rpz[2], 0);
-    std::vector<int> offsets(2);
-    offsets[0] = planeIdx0*numNodes*2;
-    offsets[1] = planeIdx0*numNodes*2 + numNodes;
+    int offsets[2];
+    offsets[0] = planeIdx0*this->NumNodes*2;
+    offsets[1] = planeIdx0*this->NumNodes*2 + this->NumNodes;
 
 
     const vtkm::FloatDefault basis = 0.0f;
@@ -1182,7 +1191,7 @@ DRP: field_following_pos2() i=             2
     gradAs_rpz[1] = (gradAs_rpz[1]*BMag -gradAs_rpz[0]*B0_rzp[0] - gradAs_rpz[2]*B0_rzp[1]) / B0_rzp[2];
 
     //deltaB = AsCurl(bhat) + gradAs x bhat.
-    //std::vector<int> off = {planeIdx0*numNodes};
+    //std::vector<int> off = {planeIdx0*this->NumNodes};
     //vtkm::Vec3f AsCurl_bhat_rzp = EvalVector(ds, locator, {x_ff_rzp}, "AsCurlBHat_RZP", off)[0];
     //auto AsCurl_bhat_rzp = this->EvalV(AsCurlBHat_RZP, 0, x_ff_vids, x_ff_param);
 
@@ -1228,7 +1237,7 @@ DRP: field_following_pos2() i=             2
     return true;
   }
 
-  void
+  VTKM_EXEC void
   GetPlaneIdx(const vtkm::FloatDefault& phi,
               vtkm::FloatDefault& phiN,
               vtkm::Id& plane0,

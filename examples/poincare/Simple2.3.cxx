@@ -9,16 +9,22 @@
 //============================================================================
 
 #include <typeinfo>
+#include <iomanip>
 #include <vtkm/cont/Initialize.h>
 #include <vtkm/Geometry.h>
 #include <vtkm/Matrix.h>
 #include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/ArrayHandle.h>
 #include <vtkm/cont/DataSet.h>
-#include <vtkm/filter/GhostCellClassify.h>
-#include <vtkm/io/VTKDataSetReader.h>
 #include <vtkm/worklet/WorkletMapTopology.h>
 #include <vtkm/worklet/WorkletMapField.h>
+#include <vtkm/Particle.h>
+#include <vtkm/cont/DataSetBuilderUniform.h>
+#include <vtkm/cont/DataSetBuilderExplicit.h>
+
+#if 0
+#include <vtkm/filter/GhostCellClassify.h>
+#include <vtkm/io/VTKDataSetReader.h>
 #include <vtkm/worklet/ParticleAdvection.h>
 #include <vtkm/worklet/particleadvection/EulerIntegrator.h>
 #include <vtkm/worklet/particleadvection/Field.h>
@@ -27,8 +33,9 @@
 #include <vtkm/worklet/particleadvection/RK4Integrator.h>
 #include <vtkm/worklet/particleadvection/Stepper.h>
 #include <vtkm/worklet/testing/GenerateTestDataSets.h>
-
+#endif
 #include <vtkm/cont/CellLocatorGeneral.h>
+
 
 //#include <vtkm/filter/Gradient.h>
 
@@ -72,11 +79,10 @@ vtkm::FloatDefault eq_min_z = -1.19986, eq_max_z = 1.19986;
 vtkm::FloatDefault psi_min = -1, psi_max = -1;
 int eq_mr = -1, eq_mz = -1;
 //  vtkm::FloatDefault eq_x_psi = 0.0697345, eq_x_r = 2.8, eq_x_z = -0.99988;
-
-
 using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 
 #include "Poincare.h"
+
 
 template <typename T>
 std::ostream& operator<< (std::ostream& out, const std::vector<T>& v)
@@ -597,8 +603,7 @@ ReadPsiInterp(adiosS* eqStuff,
 
 
   //Let's evaluate the b field.
-  vtkm::FloatDefault R = 2, Z = 0;
-
+  //vtkm::FloatDefault R = 2, Z = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -803,11 +808,11 @@ ComputeCurl(const vtkm::cont::DataSet& inDS)
 #endif
 }
 
+#if 0
 //This uses the curl_b
 vtkm::cont::ArrayHandle<vtkm::Vec3f>
 ComputeCurl2(const vtkm::cont::DataSet& ds)
 {
-#if 0
   vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, Brzp;
   ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
   ds.GetField("B_RZP_2D").GetData().AsArrayHandle(Brzp);
@@ -904,8 +909,9 @@ ComputeCurl2(const vtkm::cont::DataSet& ds)
   }
 
   return curlBNorm;
-#endif
 }
+#endif
+
 
 void
 ReadB(adiosS* stuff,
@@ -3224,6 +3230,8 @@ main(int argc, char** argv)
       vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagOpenMP{});
   else if (args.find("--serial") != args.end())
       vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagSerial{});
+  else
+    vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
 
   vtkm::FloatDefault stepSize = std::atof(args["--stepSize"][0].c_str());
   int numPunc = std::atoi(args["--numPunc"][0].c_str());
