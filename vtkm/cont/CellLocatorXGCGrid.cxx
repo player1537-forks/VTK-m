@@ -40,7 +40,10 @@ void CellLocatorXGCGrid::Build()
 
   //Create the coords/cellset for the plane.
 
-  auto xgcCoordSys = coords.GetData().Cast<XGCType>();
+  XGCType xgcCoordSys;
+  //auto xgcCoordSys = coords.GetData().Cast<XGCType>();
+  coords.GetData().AsArrayHandle(xgcCoordSys);
+
   auto xgcPts = xgcCoordSys.GetArray();
   this->IsCylindrical = xgcCoordSys.GetUseCylindrical();
   /*
@@ -80,8 +83,8 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
   vtkm::cont::DeviceAdapterId device,
   vtkm::cont::Token& token) const
 {
-  using CoordsPortalType =
-    typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
+//  using CoordsPortalType =
+//    typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
 
   this->TwoLevelLocator.Update();
   this->Update();
@@ -89,8 +92,9 @@ vtkm::exec::CellLocatorXGCGrid CellLocatorXGCGrid::PrepareForExecution(
   auto locMux = this->TwoLevelLocator.PrepareForExecution(device, token);
   using CellLocatorType = vtkm::cont::CellSetSingleType<>::ExecConnectivityType<vtkm::TopologyElementTagCell, vtkm::TopologyElementTagPoint>;
 
-  auto coords = this->GetCoordinates().GetData();
-  auto xgcCoords = coords.Cast<vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault>>();
+  vtkm::cont::ArrayHandleXGCCoordinates<vtkm::FloatDefault> xgcCoords;
+  this->GetCoordinates().GetData().AsArrayHandle(xgcCoords);
+
   auto coordsExec = xgcCoords.PrepareForInput(device, token);
   //CoordsPortalType coordsExec = xgcCoords.PrepareForInput(device, token);
 //  coordsExec.meow();

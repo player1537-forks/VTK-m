@@ -50,8 +50,8 @@ public:
                      const vtkm::Id& cellsPerPlane,
                      const bool& useCylindrical)
     : CellsPerPlane(cellsPerPlane)
-    , Coords(coords)
     , Connectivity(conn)
+    , Coords(coords)
     , NumPlanes(numPlanes)
     , PlaneLocator(planeLocator)
     , ThetaSpacing(vtkm::TwoPi() / numPlanes)
@@ -86,11 +86,11 @@ public:
     vtkm::FloatDefault theta = cylPt[1];
 
     vtkm::Vec3f cylPt2D(cylPt[0], cylPt[2], 0);
-    std::cout << "FindCell: " << point << " --> " << cylPt << " 2d= "<<cylPt2D<<" theta= "<<(cylPt[1]*57.2958)<<std::endl;
+    //std::cout << "FindCell: " << point << " --> " << cylPt << " 2d= "<<cylPt2D<<" theta= "<<(cylPt[1]*57.2958)<<std::endl;
 
     vtkm::Id cid = -1;
     auto res = this->PlaneLocator.FindCell(cylPt2D, cid, parametric);
-    std::cout<<"     plane cid= "<<cid<<std::endl;
+    //std::cout<<"     plane cid= "<<cid<<std::endl;
 
     if (res != vtkm::ErrorCode::Success)
       return res;
@@ -101,11 +101,11 @@ public:
       cid += (planeIdx * this->CellsPerPlane);
 
     auto indices = this->Connectivity.GetIndices(cid);
-    std::cout<<"CID= "<<cid<<" planeIdx= "<<planeIdx<<std::endl;
+    //std::cout<<"CID= "<<cid<<" planeIdx= "<<planeIdx<<std::endl;
 
     auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
-    for (int i = 0; i < 6; i++)
-      std::cout << "Pt_" << i << " idx= " << indices[i] << " pt= "<<pts[i]<<std::endl;
+    //for (int i = 0; i < 6; i++)
+      //std::cout << "Pt_" << i << " idx= " << indices[i] << " pt= "<<pts[i]<<std::endl;
 
     //do the wedge tests in R,Theta,Z space.
     /*
@@ -152,9 +152,9 @@ public:
 
     auto xx = cylPt;
     xx[1] *=  57.2958;
-    std::cout<<"****** cylPt= "<<xx<<std::endl;
-    for (int i = 0; i < 6; i++)
-      std::cout << "CPt_" << i << " idx= " << indices[i] << " pt= "<<cylVertsDeg[i]<<std::endl;
+    //std::cout<<"****** cylPt= "<<xx<<std::endl;
+    //for (int i = 0; i < 6; i++)
+    //std::cout << "CPt_" << i << " idx= " << indices[i] << " pt= "<<cylVertsDeg[i]<<std::endl;
 
 
     FloatVec3 pc;
@@ -166,16 +166,17 @@ public:
       cellId = cid;
       parametric = pc;
 
-      std::cout << " *** cellId= " << cellId << " p: " << parametric << std::endl;
-      std::cout << "   planeIdx= " << planeIdx << " cellId= " << cellId << std::endl;
-      std::cout << "   parametric= " << parametric << std::endl;
-      std::cout<<std::endl<<std::endl;
-      std::cout<<"************************ FOUND!!!!!!!!!!!"<<std::endl;
+      //std::cout << " *** cellId= " << cellId << " p: " << parametric << std::endl;
+      //std::cout << "   planeIdx= " << planeIdx << " cellId= " << cellId << std::endl;
+      //std::cout << "   parametric= " << parametric << std::endl;
+      //std::cout<<std::endl<<std::endl;
+      //std::cout<<"************************ FOUND!!!!!!!!!!!"<<std::endl;
 
       return vtkm::ErrorCode::Success;
     }
 
-    std::cout<<"************************ NOT FOUND"<<std::endl;
+    //std::cout<<"************************ NOT FOUND"<<std::endl;
+    printf("XGC CellNotFound %d\n", __LINE__);
     return vtkm::ErrorCode::CellNotFound;
   }
 
@@ -186,7 +187,7 @@ public:
 
 private:
   template <typename PointsVecType>
-  vtkm::Bounds ComputeCellBounds(const PointsVecType& points) const
+  VTKM_EXEC vtkm::Bounds ComputeCellBounds(const PointsVecType& points) const
   {
     using CoordsType = typename vtkm::VecTraits<PointsVecType>::ComponentType;
     CoordsType minp = points[0], maxp = points[0];
@@ -206,15 +207,15 @@ private:
   {
 #define isBetween(A, B, C) ( ((A-B) > -eps) && ((A-C) < eps) )
 
-    std::cout<<"   InBounds: "<<point<<" "<<bounds;
+    //std::cout<<"   InBounds: "<<point<<" "<<bounds;
     if (isBetween(point[0], bounds.X.Min, bounds.X.Max) &&
         isBetween(point[1], bounds.Y.Min, bounds.Y.Max) &&
         isBetween(point[2], bounds.Z.Min, bounds.Z.Max))
     {
-      std::cout<<" -->INSIDE"<<std::endl;
+      //std::cout<<" -->INSIDE"<<std::endl;
       return true;
     }
-    std::cout<<" -->OUTSIDE"<<std::endl;
+    //std::cout<<" -->OUTSIDE"<<std::endl;
     return false;
   }
 
@@ -233,7 +234,7 @@ private:
     {
       VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
         cellPoints, point, vtkm::CellShapeTagWedge{}, parametricCoordinates));
-      std::cout<<"   PARAMETRIC: "<<parametricCoordinates<<std::endl;
+      //std::cout<<"   PARAMETRIC: "<<parametricCoordinates<<std::endl;
       inside = vtkm::exec::CellInside(parametricCoordinates, vtkm::CellShapeTagWedge{});
     }
 
@@ -255,7 +256,7 @@ private:
     {
       VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
         cellPoints, point, vtkm::CellShapeTagWedge{}, parametricCoordinates));
-      std::cout<<"   PARAMETRIC: "<<parametricCoordinates<<std::endl;
+      //std::cout<<"   PARAMETRIC: "<<parametricCoordinates<<std::endl;
       inside = vtkm::exec::CellInside(parametricCoordinates, vtkm::CellShapeTagWedge{});
     }
 
@@ -263,6 +264,7 @@ private:
     return vtkm::ErrorCode::Success;
   }
 
+/*
   VTKM_EXEC
   vtkm::ErrorCode FindCellCylindrical(const vtkm::Vec3f& point,
                                       vtkm::Id& cellId,
@@ -276,18 +278,15 @@ private:
                                     vtkm::Vec3f& parametric) const
   {
   }
+*/
 
-
-
-
-
+  vtkm::Id CellsPerPlane;
   vtkm::exec::ConnectivityExtrude Connectivity;
   CoordsPortalType Coords;
-  vtkm::exec::CellLocatorTwoLevel<CellLocatorType> PlaneLocator;
-  bool UseCylindrical;
   vtkm::Id NumPlanes;
-  vtkm::Id CellsPerPlane;
+  vtkm::exec::CellLocatorTwoLevel<CellLocatorType> PlaneLocator;
   vtkm::FloatDefault ThetaSpacing;
+  bool UseCylindrical;
 };
 }
 }
