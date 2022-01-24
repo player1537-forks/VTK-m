@@ -585,10 +585,12 @@ ReadPsiInterp(adiosS* eqStuff,
 //  ds.GetField("B_RZP").GetData().AsArrayHandle(b3d);
 //  std::vector<vtkm::Vec3f> B2D(
 
+  /*
   vtkm::io::VTKDataSetWriter writer("psiGrid.vtk");
   writer.WriteDataSet(ds2D);
   vtkm::io::VTKDataSetWriter writer2("grid.vtk");
   writer2.WriteDataSet(ds);
+  */
 
 
   /*
@@ -1230,7 +1232,7 @@ ConvertPuncturesToThetaPsi(const std::vector<std::vector<vtkm::Vec3f>>& puncture
       auto Z = pt[2];
       pt = vtkm::Vec3f(R,Z,0);
     }
-    std::cout<<"RZ_pts.size()= "<<pts.size()<<std::endl;
+    //std::cout<<"RZ_pts.size()= "<<pts.size()<<std::endl;
     auto RZpoints = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
 
     vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
@@ -2064,18 +2066,21 @@ Poincare(const vtkm::cont::DataSet& ds,
       }
     }
 
+    std::cout<<"push data into std::vector"<<std::endl;
     auto portal = output.ReadPortal();
+    auto portalID = punctureID.ReadPortal();
     vtkm::Id n = portal.GetNumberOfValues();
     res.resize(pts.size());
     for (vtkm::Id i = 0; i < n; i++)
     {
-      vtkm::Id id = punctureID.ReadPortal().Get(i);
+      vtkm::Id id = portalID.Get(i);
       if (id >= 0)
       {
         auto p = portal.Get(i);
         res[id].push_back(p);
       }
     }
+    std::cout<<"Done!"<<std::endl;
     return res;
   }
 
@@ -3271,7 +3276,7 @@ main(int argc, char** argv)
 
     for (vtkm::Id id = 0; id < numSeeds; id++, r+=dr)
       seeds.push_back({r, .1, 0});
-    std::cout<<"SEEDS= "<<seeds<<std::endl;
+    //std::cout<<"SEEDS= "<<seeds<<std::endl;
   }
   else if (args.find("--seed") != args.end())
   {
@@ -3653,10 +3658,12 @@ p11       2.329460849125147615, -0.073678279004152566
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
   auto punctures = Poincare(ds, seeds, vField, stepSize, numPunc, useWorklet, useBOnly, useHighOrder, (useTraces ? &traces : nullptr));
 
+  std::cout<<"Convert to theta/psi"<<std::endl;
   auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);
 
   std::cout<<"TRACES: "<<traces.size()<<std::endl;
 
+  std::cout<<"SaveOutput"<<std::endl;
   SaveOutput(traces, punctures, puncturesTP, outFileName);
 
 #if 0
