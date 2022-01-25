@@ -2002,8 +2002,8 @@ Poincare(const vtkm::cont::DataSet& ds,
          bool useWorklet,
          bool useBOnly,
          bool useHighOrder,
-         vtkm::cont::ArrayHandle<vtkm::Vec3f>& outRZ,
-         vtkm::cont::ArrayHandle<vtkm::Vec3f>& outTP,
+         vtkm::cont::ArrayHandle<vtkm::Vec2f>& outRZ,
+         vtkm::cont::ArrayHandle<vtkm::Vec2f>& outTP,
          vtkm::cont::ArrayHandle<vtkm::Id>& outID,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
@@ -2037,8 +2037,9 @@ Poincare(const vtkm::cont::DataSet& ds,
     ds.GetField("coeff_2D").GetData().AsArrayHandle(coeff_2D);
 
     vtkm::cont::ArrayHandle<vtkm::Vec3f> tracesArr;
-    std::vector<vtkm::Vec3f> o, t;
-    o.resize(numPunc*pts.size(), {-100, -100, -100});
+    std::vector<vtkm::Vec2f> o;
+    std::vector<vtkm::Vec3f> t;
+    o.resize(numPunc*pts.size(), {-100, -100});
     auto outputRZ = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
     auto outputTP = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
     if (traces != nullptr)
@@ -2082,50 +2083,6 @@ Poincare(const vtkm::cont::DataSet& ds,
     outTP = outputTP;
     outID = punctureID;
 
-    /*
-    outRZ.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", outputRZ));
-    outTP.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", outputTP));
-    vtkm::cont::CellSetSingleType<> cellSet;
-    vtkm::cont::ArrayHandle<vtkm::Id> connIds;
-    vtkm::Id numPts = outputRZ.GetNumberOfValues();
-    vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleIndex(numPts), connIds);
-    cellSet.Fill(numPts, vtkm::CELL_SHAPE_VERTEX, 1, connIds);
-    outRZ.SetCellSet(cellSet);
-    outTP.SetCellSet(cellSet);
-    outRZ.AddField(vtkm::cont::make_FieldPoint("id", punctureID));
-    outTP.AddField(vtkm::cont::make_FieldPoint("id", punctureID));
-
-    vtkm::io::VTKDataSetWriter writer("outRZ.vtk"), writer2("outTP.vtk");
-    writer.WriteDataSet(outRZ);
-    writer2.WriteDataSet(outTP);
-    */
-
-/*
-    std::cout<<"push data into std::vector"<<std::endl;
-    const vtkm::Id* idBuffer = vtkm::cont::ArrayHandleBasic<vtkm::Id>(punctureID).GetReadPointer();
-    const vtkm::Vec3f* ptRZBuffer = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(outputRZ).GetReadPointer();
-    const vtkm::Vec3f* ptTPBuffer = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(outputTP).GetReadPointer();
-
-    outPtsRZ.resize(pts.size());
-    outPtsTP.resize(pts.size());
-    for (auto& r : outPtsRZ)
-      r.reserve(numPunc);
-    for (auto& r : outPtsTP)
-      r.reserve(numPunc);
-
-    int N = outputRZ.GetNumberOfValues();
-    for (int i = 0; i < N; i++)
-    {
-      vtkm::Id id = idBuffer[i];
-      if (id >= 0)
-      {
-        outPtsRZ[id].push_back(ptRZBuffer[i]);
-        outPtsTP[id].push_back(ptTPBuffer[i]);
-      }
-    }
-
-    std::cout<<"Done!"<<std::endl;
-*/
     return;
   }
 
@@ -2843,8 +2800,8 @@ void WriteHeader(const std::string& fname, const std::string& header)
 
 void
 SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
-           const vtkm::cont::ArrayHandle<vtkm::Vec3f>& outRZ,
-           const vtkm::cont::ArrayHandle<vtkm::Vec3f>& outTP,
+           const vtkm::cont::ArrayHandle<vtkm::Vec2f>& outRZ,
+           const vtkm::cont::ArrayHandle<vtkm::Vec2f>& outTP,
            const vtkm::cont::ArrayHandle<vtkm::Id>& outID,
            const std::string& outFileName = "")
 {
@@ -2902,23 +2859,11 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
 
   std::size_t nPts = static_cast<std::size_t>(outRZ.GetNumberOfValues());
 
-  auto RZBuff = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(outRZ).GetReadPointer();
-  auto TPBuff = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(outTP).GetReadPointer();
+  auto RZBuff = vtkm::cont::ArrayHandleBasic<vtkm::Vec2f>(outRZ).GetReadPointer();
+  auto TPBuff = vtkm::cont::ArrayHandleBasic<vtkm::Vec2f>(outTP).GetReadPointer();
   auto IDBuff = vtkm::cont::ArrayHandleBasic<vtkm::Id>(outID).GetReadPointer();
-/*
-  vtkm::cont::ArrayHandle<vtkm::FloatDefault> Rarr, Zarr, Tarr, Parr;
-  vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outRZ, 0), Rarr);
-  vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outRZ, 1), Zarr);
-  vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outTP, 0), Tarr);
-  vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outTP, 1), Parr);
-  auto RBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Rarr).GetReadPointer();
-  auto ZBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Zarr).GetReadPointer();
-  auto TBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Tarr).GetReadPointer();
-  auto PBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Parr).GetReadPointer();
-*/
 
-
-  std::vector<std::size_t> shape = {nPts*3}, offset = {0}, size = {nPts*3};
+  std::vector<std::size_t> shape = {nPts*2}, offset = {0}, size = {nPts*2};
   auto vRZ = io.DefineVariable<vtkm::FloatDefault>("RZ", shape, offset, size);
   auto vTP = io.DefineVariable<vtkm::FloatDefault>("ThetaPsi", shape, offset, size);
   std::vector<std::size_t> shape2 = {nPts},size2 = {nPts};
@@ -2929,7 +2874,6 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
   bpWriter.Put<vtkm::FloatDefault>(vTP, &(TPBuff[0][0]));
   bpWriter.Put<vtkm::Id>(vID, IDBuff);
   bpWriter.Close();
-
 
   /*
   //write punctures
@@ -3739,7 +3683,7 @@ p11       2.329460849125147615, -0.073678279004152566
   }
 
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> outRZ, outTP;
+  vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
   Poincare(ds, seeds, vField, stepSize, numPunc, useWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, (useTraces ? &traces : nullptr));
 
