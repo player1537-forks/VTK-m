@@ -15,6 +15,7 @@
 #include <vtkm/Matrix.h>
 #include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/ArrayHandle.h>
+#include <vtkm/cont/ArrayHandleExtractComponent.h>
 #include <vtkm/cont/DataSet.h>
 #include <vtkm/worklet/WorkletMapTopology.h>
 #include <vtkm/worklet/WorkletMapField.h>
@@ -2001,8 +2002,9 @@ Poincare(const vtkm::cont::DataSet& ds,
          bool useWorklet,
          bool useBOnly,
          bool useHighOrder,
-         vtkm::cont::DataSet& outRZ,
-         vtkm::cont::DataSet& outTP,
+         vtkm::cont::ArrayHandle<vtkm::Vec3f>& outRZ,
+         vtkm::cont::ArrayHandle<vtkm::Vec3f>& outTP,
+         vtkm::cont::ArrayHandle<vtkm::Id>& outID,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
@@ -2076,7 +2078,11 @@ Poincare(const vtkm::cont::DataSet& ds,
           (*traces)[0].push_back(v);
       }
     }
+    outRZ = outputRZ;
+    outTP = outputTP;
+    outID = punctureID;
 
+    /*
     outRZ.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", outputRZ));
     outTP.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", outputTP));
     vtkm::cont::CellSetSingleType<> cellSet;
@@ -2092,6 +2098,7 @@ Poincare(const vtkm::cont::DataSet& ds,
     vtkm::io::VTKDataSetWriter writer("outRZ.vtk"), writer2("outTP.vtk");
     writer.WriteDataSet(outRZ);
     writer2.WriteDataSet(outTP);
+    */
 
 /*
     std::cout<<"push data into std::vector"<<std::endl;
@@ -2836,8 +2843,9 @@ void WriteHeader(const std::string& fname, const std::string& header)
 
 void
 SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
-           const vtkm::cont::DataSet& dsRZ,
-           const vtkm::cont::DataSet& dsTP,
+           const vtkm::cont::ArrayHandle<vtkm::Vec3f>& outRZ,
+           const vtkm::cont::ArrayHandle<vtkm::Vec3f>& outTP,
+           const vtkm::cont::ArrayHandle<vtkm::Id>& outID,
            const std::string& outFileName = "")
 {
   std::string tracesNm, puncNm, puncThetaPsiNm;
@@ -2879,9 +2887,45 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
       outTraces<<i<<", "<<R<<", "<<Z<<", "<<PHI_N<<std::endl;
     }
   }
+  /*
   vtkm::io::VTKDataSetWriter writer1(puncNm), writer2(puncThetaPsiNm);
   writer1.WriteDataSet(dsRZ);
   writer2.WriteDataSet(dsTP);
+  */
+
+  //save to adios
+  std::vector<vtkm::FloatDefault> ptsRZ(100);
+  adios2::ADIOS adiosW;
+  adios2::IO io = adiosW.DeclareIO("io");
+
+  vtkm::Id nPts = outRZ.GetNumberOfValues();
+
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> Rarr, Zarr, Tarr, Parr;
+  vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outRZ, 0), Rarr);
+  vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outRZ, 1), Zarr);
+  vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outTP, 0), Tarr);
+  vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outTP, 1), Parr);
+  auto RBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Rarr).GetReadPointer();
+  auto ZBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Zarr).GetReadPointer();
+  auto TBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Tarr).GetReadPointer();
+  auto PBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Parr).GetReadPointer();
+  auto IDBuff = vtkm::cont::ArrayHandleBasic<vtkm::Id>(outID).GetReadPointer();
+
+  std::vector<std::size_t> shape = {nPts}, offset = {0}, size = {nPts};
+  auto vR = io.DefineVariable<vtkm::FloatDefault>("R", shape, offset, size);
+  auto vZ = io.DefineVariable<vtkm::FloatDefault>("Z", shape, offset, size);
+  auto vT = io.DefineVariable<vtkm::FloatDefault>("Theta", shape, offset, size);
+  auto vP = io.DefineVariable<vtkm::FloatDefault>("Psi", shape, offset, size);
+  auto vID = io.DefineVariable<vtkm::Id>("ID", shape, offset, size);
+
+  adios2::Engine bpWriter = io.Open("test.bp", adios2::Mode::Write);
+  bpWriter.Put<vtkm::FloatDefault>(vR, RBuff);
+  bpWriter.Put<vtkm::FloatDefault>(vZ, ZBuff);
+  bpWriter.Put<vtkm::FloatDefault>(vT, TBuff);
+  bpWriter.Put<vtkm::FloatDefault>(vP, PBuff);
+  bpWriter.Put<vtkm::Id>(vID, IDBuff);
+  bpWriter.Close();
+
 
   /*
   //write punctures
@@ -3691,8 +3735,9 @@ p11       2.329460849125147615, -0.073678279004152566
   }
 
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
-  vtkm::cont::DataSet outRZ, outTP;
-  Poincare(ds, seeds, vField, stepSize, numPunc, useWorklet, useBOnly, useHighOrder, outRZ, outTP, (useTraces ? &traces : nullptr));
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> outRZ, outTP;
+  vtkm::cont::ArrayHandle<vtkm::Id> outID;
+  Poincare(ds, seeds, vField, stepSize, numPunc, useWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, (useTraces ? &traces : nullptr));
 
   //std::cout<<"Convert to theta/psi"<<std::endl;
   //auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);
@@ -3700,7 +3745,7 @@ p11       2.329460849125147615, -0.073678279004152566
   std::cout<<"TRACES: "<<traces.size()<<std::endl;
 
   std::cout<<"SaveOutput"<<std::endl;
-  SaveOutput(traces, outRZ, outTP, outFileName);
+  SaveOutput(traces, outRZ, outTP, outID, outFileName);
 
 #if 0
   std::ofstream outPts, outPtsPsiTheta;
