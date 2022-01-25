@@ -2848,18 +2848,20 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
            const vtkm::cont::ArrayHandle<vtkm::Id>& outID,
            const std::string& outFileName = "")
 {
-  std::string tracesNm, puncNm, puncThetaPsiNm;
+  std::string tracesNm, puncNm, puncThetaPsiNm, adiosNm;
   if (outFileName.empty())
   {
     tracesNm = "./traces.txt";
     puncNm = "./punctures.vtk";
     puncThetaPsiNm = "./punctures.theta_psi.vtk";
+    adiosNm = "./punctures.bp";
   }
   else
   {
     tracesNm = outFileName + ".traces.txt";
     puncNm = outFileName + ".punc.vtk";
     puncThetaPsiNm = outFileName + ".punc.theta_psi.vtk";
+    adiosNm = outFileName + ".adios.bp";
   }
 
   bool tExists = Exists(tracesNm);
@@ -2898,8 +2900,12 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
   adios2::ADIOS adiosW;
   adios2::IO io = adiosW.DeclareIO("io");
 
-  vtkm::Id nPts = outRZ.GetNumberOfValues();
+  std::size_t nPts = static_cast<std::size_t>(outRZ.GetNumberOfValues());
 
+  auto RZBuff = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(outRZ).GetReadPointer();
+  auto TPBuff = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(outTP).GetReadPointer();
+  auto IDBuff = vtkm::cont::ArrayHandleBasic<vtkm::Id>(outID).GetReadPointer();
+/*
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> Rarr, Zarr, Tarr, Parr;
   vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outRZ, 0), Rarr);
   vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleExtractComponent(outRZ, 1), Zarr);
@@ -2909,20 +2915,18 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
   auto ZBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Zarr).GetReadPointer();
   auto TBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Tarr).GetReadPointer();
   auto PBuff = vtkm::cont::ArrayHandleBasic<vtkm::FloatDefault>(Parr).GetReadPointer();
-  auto IDBuff = vtkm::cont::ArrayHandleBasic<vtkm::Id>(outID).GetReadPointer();
+*/
 
-  std::vector<std::size_t> shape = {nPts}, offset = {0}, size = {nPts};
-  auto vR = io.DefineVariable<vtkm::FloatDefault>("R", shape, offset, size);
-  auto vZ = io.DefineVariable<vtkm::FloatDefault>("Z", shape, offset, size);
-  auto vT = io.DefineVariable<vtkm::FloatDefault>("Theta", shape, offset, size);
-  auto vP = io.DefineVariable<vtkm::FloatDefault>("Psi", shape, offset, size);
-  auto vID = io.DefineVariable<vtkm::Id>("ID", shape, offset, size);
 
-  adios2::Engine bpWriter = io.Open("test.bp", adios2::Mode::Write);
-  bpWriter.Put<vtkm::FloatDefault>(vR, RBuff);
-  bpWriter.Put<vtkm::FloatDefault>(vZ, ZBuff);
-  bpWriter.Put<vtkm::FloatDefault>(vT, TBuff);
-  bpWriter.Put<vtkm::FloatDefault>(vP, PBuff);
+  std::vector<std::size_t> shape = {nPts*3}, offset = {0}, size = {nPts*3};
+  auto vRZ = io.DefineVariable<vtkm::FloatDefault>("RZ", shape, offset, size);
+  auto vTP = io.DefineVariable<vtkm::FloatDefault>("ThetaPsi", shape, offset, size);
+  std::vector<std::size_t> shape2 = {nPts},size2 = {nPts};
+  auto vID = io.DefineVariable<vtkm::Id>("ID", shape2, offset, size2);
+
+  adios2::Engine bpWriter = io.Open(adiosNm, adios2::Mode::Write);
+  bpWriter.Put<vtkm::FloatDefault>(vRZ, &(RZBuff[0][0]));
+  bpWriter.Put<vtkm::FloatDefault>(vTP, &(TPBuff[0][0]));
   bpWriter.Put<vtkm::Id>(vID, IDBuff);
   bpWriter.Close();
 
