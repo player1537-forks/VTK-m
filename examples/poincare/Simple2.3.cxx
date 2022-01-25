@@ -1200,7 +1200,7 @@ public:
     vtkm::ErrorCode status = locator.FindCell(point, cellId, pcoords);
     if (status != vtkm::ErrorCode::Success)
     {
-//      std::cout<<"Cell not found! "<<point<<std::endl;
+      //std::cout<<"Cell not found! "<<point<<std::endl;
 //      std::cout<<"    ***** Try reducing the step size."<<std::endl;
       this->RaiseError(vtkm::ErrorString(status));
     }
@@ -1273,7 +1273,6 @@ ConvertPuncturesToThetaPsi(const std::vector<std::vector<vtkm::Vec3f>>& puncture
       vtkm::exec::CellInterpolate(pVals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), psiI);
       vtkm::exec::CellInterpolate(tVals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), thetaI);
       thetaI += vtkm::Pi();
-
       auto thetaVal = vtkm::ATan2(Z-eq_axis_z, R-eq_axis_r);
       if (thetaVal < 0)
         thetaVal += vtkm::TwoPi();
@@ -1985,6 +1984,16 @@ RK4(const vtkm::cont::DataSet& ds,
   return newPts;
 }
 
+struct GreaterThanEq0
+{
+  VTKM_EXEC_CONT bool operator()(const vtkm::Id& id) const
+  {
+    return id >= 0;
+  }
+};
+
+
+
 std::vector<std::vector<vtkm::Vec3f>>
 Poincare(const vtkm::cont::DataSet& ds,
          std::vector<vtkm::Vec3f>& pts,
@@ -2066,20 +2075,26 @@ Poincare(const vtkm::cont::DataSet& ds,
       }
     }
 
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> outputPts;
+    vtkm::cont::Algorithm::CopyIf(output, punctureID, outputPts, GreaterThanEq0());
+    std::cout<<"outputPts.size() = "<<outputPts.GetNumberOfValues()<<std::endl;
+
     std::cout<<"push data into std::vector"<<std::endl;
-    auto portal = output.ReadPortal();
-    auto portalID = punctureID.ReadPortal();
-    vtkm::Id n = portal.GetNumberOfValues();
+    const vtkm::Id* idBuffer = vtkm::cont::ArrayHandleBasic<vtkm::Id>(punctureID).GetReadPointer();
+    const vtkm::Vec3f* ptBuffer = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(output).GetReadPointer();
+
+    int nPts = output.GetNumberOfValues();
     res.resize(pts.size());
-    for (vtkm::Id i = 0; i < n; i++)
+    for (auto& r : res)
+      r.reserve(numPunc);
+
+    for (int i = 0; i < nPts; i++)
     {
-      vtkm::Id id = portalID.Get(i);
+      vtkm::Id id = idBuffer[i];
       if (id >= 0)
-      {
-        auto p = portal.Get(i);
-        res[id].push_back(p);
-      }
+        res[id].push_back(ptBuffer[i]);
     }
+
     std::cout<<"Done!"<<std::endl;
     return res;
   }

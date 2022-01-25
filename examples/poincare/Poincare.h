@@ -945,9 +945,9 @@ DRP: field_following_pos2() i=             2
     //std::cout<<"*** planeIdx = "<<planeIdx0<<" "<<planeIdx1<<std::endl;
 
     const vtkm::FloatDefault basis = 0.0f;
-    auto B0_R = B0_rzp[0];
-    auto B0_Z = B0_rzp[1];
-    auto x_ff_R = x_ff_rzp[0];
+    //auto B0_R = B0_rzp[0];
+    //auto B0_Z = B0_rzp[1];
+    //auto x_ff_R = x_ff_rzp[0];
     //auto x_ff_Z = x_ff_rzp[1];
 
     //gradPsi: pt on mid plane?  (question)
@@ -1076,8 +1076,8 @@ DRP: field_following_pos2() i=             2
   bool Evaluate(vtkm::Vec3f& ptRPZ,
                 const LocatorType& locator,
                 const CellSetType& cellSet,
-                const BFieldType& B_RZP,
-                const BFieldType& B_Norm_RZP,
+                const BFieldType& /*B_RZP*/,
+                const BFieldType& /*B_Norm_RZP*/,
                 //const BFieldType& Curl_NB_RZP,
                 const AsFieldType& AsPhiFF,
                 const DAsFieldType& DAsPhiFF_RZP,
