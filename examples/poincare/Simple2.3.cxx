@@ -1223,6 +1223,13 @@ ConvertPuncturesToThetaPsi(const std::vector<std::vector<vtkm::Vec3f>>& puncture
   locator.Update();
 
   std::vector<std::vector<vtkm::Vec3f>> puncturesTP(puncturesRZ.size());
+
+
+  std::vector<vtkm::Vec3f> tmp;
+  auto allPuncRZ = vtkm::cont::make_ArrayHandle(tmp, vtkm::CopyFlag::On);
+
+
+#if 1
   for (int p = 0; p < (int)puncturesRZ.size(); p++)
   {
     auto pts = puncturesRZ[p];
@@ -1282,6 +1289,7 @@ ConvertPuncturesToThetaPsi(const std::vector<std::vector<vtkm::Vec3f>>& puncture
       puncturesTP[p][i][1] = psiI / eq_x_psi;
     }
   }
+#endif
 
   return puncturesTP;
 }
@@ -1984,17 +1992,7 @@ RK4(const vtkm::cont::DataSet& ds,
   return newPts;
 }
 
-struct GreaterThanEq0
-{
-  VTKM_EXEC_CONT bool operator()(const vtkm::Id& id) const
-  {
-    return id >= 0;
-  }
-};
-
-
-
-std::vector<std::vector<vtkm::Vec3f>>
+void
 Poincare(const vtkm::cont::DataSet& ds,
          std::vector<vtkm::Vec3f>& pts,
          const std::string& vField,
@@ -2003,6 +2001,8 @@ Poincare(const vtkm::cont::DataSet& ds,
          bool useWorklet,
          bool useBOnly,
          bool useHighOrder,
+         vtkm::cont::DataSet& outRZ,
+         vtkm::cont::DataSet& outTP,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
@@ -2037,7 +2037,8 @@ Poincare(const vtkm::cont::DataSet& ds,
     vtkm::cont::ArrayHandle<vtkm::Vec3f> tracesArr;
     std::vector<vtkm::Vec3f> o, t;
     o.resize(numPunc*pts.size(), {-100, -100, -100});
-    auto output = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
+    auto outputRZ = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
+    auto outputTP = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
     if (traces != nullptr)
     {
       t.resize(pts.size()*worklet.MaxIter, {-100, -100, -100});
@@ -2052,12 +2053,13 @@ Poincare(const vtkm::cont::DataSet& ds,
     invoker(worklet, seeds, locator, ds.GetCellSet(),
             B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
-            tracesArr, output, punctureID);
+            tracesArr, outputRZ, outputTP, punctureID);
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed_seconds = end-start;
 
     std::cout<<"PoincareTime= "<<elapsed_seconds.count()<<std::endl;
-    std::cout<<"output.size()= "<<output.GetNumberOfValues()<<std::endl;
+    std::cout<<"outputRZ.size()= "<<outputRZ.GetNumberOfValues()<<std::endl;
+    std::cout<<"outputTP.size()= "<<outputTP.GetNumberOfValues()<<std::endl;
     std::cout<<"punctureID.size()= "<<punctureID.GetNumberOfValues()<<std::endl;
     //vtkm::cont::printSummary_ArrayHandle(output, std::cout);
     //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);
@@ -2075,28 +2077,49 @@ Poincare(const vtkm::cont::DataSet& ds,
       }
     }
 
-    vtkm::cont::ArrayHandle<vtkm::Vec3f> outputPts;
-    vtkm::cont::Algorithm::CopyIf(output, punctureID, outputPts, GreaterThanEq0());
-    std::cout<<"outputPts.size() = "<<outputPts.GetNumberOfValues()<<std::endl;
+    outRZ.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", outputRZ));
+    outTP.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", outputTP));
+    vtkm::cont::CellSetSingleType<> cellSet;
+    vtkm::cont::ArrayHandle<vtkm::Id> connIds;
+    vtkm::Id numPts = outputRZ.GetNumberOfValues();
+    vtkm::cont::ArrayCopy(vtkm::cont::make_ArrayHandleIndex(numPts), connIds);
+    cellSet.Fill(numPts, vtkm::CELL_SHAPE_VERTEX, 1, connIds);
+    outRZ.SetCellSet(cellSet);
+    outTP.SetCellSet(cellSet);
+    outRZ.AddField(vtkm::cont::make_FieldPoint("id", punctureID));
+    outTP.AddField(vtkm::cont::make_FieldPoint("id", punctureID));
 
+    vtkm::io::VTKDataSetWriter writer("outRZ.vtk"), writer2("outTP.vtk");
+    writer.WriteDataSet(outRZ);
+    writer2.WriteDataSet(outTP);
+
+/*
     std::cout<<"push data into std::vector"<<std::endl;
     const vtkm::Id* idBuffer = vtkm::cont::ArrayHandleBasic<vtkm::Id>(punctureID).GetReadPointer();
-    const vtkm::Vec3f* ptBuffer = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(output).GetReadPointer();
+    const vtkm::Vec3f* ptRZBuffer = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(outputRZ).GetReadPointer();
+    const vtkm::Vec3f* ptTPBuffer = vtkm::cont::ArrayHandleBasic<vtkm::Vec3f>(outputTP).GetReadPointer();
 
-    int nPts = output.GetNumberOfValues();
-    res.resize(pts.size());
-    for (auto& r : res)
+    outPtsRZ.resize(pts.size());
+    outPtsTP.resize(pts.size());
+    for (auto& r : outPtsRZ)
+      r.reserve(numPunc);
+    for (auto& r : outPtsTP)
       r.reserve(numPunc);
 
-    for (int i = 0; i < nPts; i++)
+    int N = outputRZ.GetNumberOfValues();
+    for (int i = 0; i < N; i++)
     {
       vtkm::Id id = idBuffer[i];
       if (id >= 0)
-        res[id].push_back(ptBuffer[i]);
+      {
+        outPtsRZ[id].push_back(ptRZBuffer[i]);
+        outPtsTP[id].push_back(ptTPBuffer[i]);
+      }
     }
 
     std::cout<<"Done!"<<std::endl;
-    return res;
+*/
+    return;
   }
 
 //  const vtkm::FloatDefault planeVal = 2.0f;
@@ -2172,7 +2195,7 @@ Poincare(const vtkm::cont::DataSet& ds,
     pts = std::move(newPts);
   }
 
-  return punctures;
+  //return punctures;
 }
 
 void TestLocator(const vtkm::cont::DataSet& ds)
@@ -2813,22 +2836,22 @@ void WriteHeader(const std::string& fname, const std::string& header)
 
 void
 SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
-           const std::vector<std::vector<vtkm::Vec3f>>& punctures,
-           const std::vector<std::vector<vtkm::Vec3f>>& puncturesTP,
+           const vtkm::cont::DataSet& dsRZ,
+           const vtkm::cont::DataSet& dsTP,
            const std::string& outFileName = "")
 {
   std::string tracesNm, puncNm, puncThetaPsiNm;
   if (outFileName.empty())
   {
     tracesNm = "./traces.txt";
-    puncNm = "./punctures.txt";
-    puncThetaPsiNm = "./punctures.theta_psi.txt";
+    puncNm = "./punctures.vtk";
+    puncThetaPsiNm = "./punctures.theta_psi.vtk";
   }
   else
   {
     tracesNm = outFileName + ".traces.txt";
-    puncNm = outFileName + ".punc.txt";
-    puncThetaPsiNm = outFileName + ".punc.theta_psi.txt";
+    puncNm = outFileName + ".punc.vtk";
+    puncThetaPsiNm = outFileName + ".punc.theta_psi.vtk";
   }
 
   bool tExists = Exists(tracesNm);
@@ -2839,17 +2862,9 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
   //Write headers.
   if (!tExists)
     WriteHeader(tracesNm, "ID, R, Z, T");
-  if (!pExists)
-    WriteHeader(puncNm, "ID, R, Z");
-  if (!ptpExists)
-    WriteHeader(puncThetaPsiNm, "ID, THETA, PSI");
 
-  std::ofstream outTraces, outPunc, outPuncThetaPsi;
-
+  std::ofstream outTraces;
   outTraces.open(tracesNm, std::ofstream::app);
-  outPunc.open(puncNm, std::ofstream::app);
-  outPuncThetaPsi.open(puncThetaPsiNm, std::ofstream::app);
-
   //write traces
   for (int i = 0; i < (int)traces.size(); i++)
   {
@@ -2864,7 +2879,11 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
       outTraces<<i<<", "<<R<<", "<<Z<<", "<<PHI_N<<std::endl;
     }
   }
+  vtkm::io::VTKDataSetWriter writer1(puncNm), writer2(puncThetaPsiNm);
+  writer1.WriteDataSet(dsRZ);
+  writer2.WriteDataSet(dsTP);
 
+  /*
   //write punctures
   for (int i = 0; i < (int)punctures.size(); i++)
   {
@@ -2874,6 +2893,7 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
     for (const auto& p : puncturesTP[i])
       outPuncThetaPsi<<std::setprecision(12)<<i<<", "<<p[0]<<", "<<p[1]<<std::endl;
   }
+  */
 }
 
 vtkm::cont::DataSet
@@ -3200,8 +3220,8 @@ SaveStuff(const vtkm::cont::DataSet& inDS)
   ds.AddCoordinateSystem(inDS.GetCoordinateSystem());
   ds.SetCellSet(inDS.GetCellSet());
 
-  ds.AddField(inDS.GetField("B_RZP_Norm"));
-  ds.AddField(inDS.GetField("curl_nb_rzp"));
+  //ds.AddField(inDS.GetField("B_RZP_Norm"));
+  //ds.AddField(inDS.GetField("curl_nb_rzp"));
   ds.AddField(inDS.GetField("B_RZP"));
 
   //Add gradPsi
@@ -3671,15 +3691,16 @@ p11       2.329460849125147615, -0.073678279004152566
   }
 
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
-  auto punctures = Poincare(ds, seeds, vField, stepSize, numPunc, useWorklet, useBOnly, useHighOrder, (useTraces ? &traces : nullptr));
+  vtkm::cont::DataSet outRZ, outTP;
+  Poincare(ds, seeds, vField, stepSize, numPunc, useWorklet, useBOnly, useHighOrder, outRZ, outTP, (useTraces ? &traces : nullptr));
 
-  std::cout<<"Convert to theta/psi"<<std::endl;
-  auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);
+  //std::cout<<"Convert to theta/psi"<<std::endl;
+  //auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);
 
   std::cout<<"TRACES: "<<traces.size()<<std::endl;
 
   std::cout<<"SaveOutput"<<std::endl;
-  SaveOutput(traces, punctures, puncturesTP, outFileName);
+  SaveOutput(traces, outRZ, outTP, outFileName);
 
 #if 0
   std::ofstream outPts, outPtsPsiTheta;

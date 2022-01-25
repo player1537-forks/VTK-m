@@ -74,9 +74,10 @@ public:
                                 WholeArrayIn coeff_1D,
                                 WholeArrayIn coeff_2D,
                                 WholeArrayInOut traces,
-                                WholeArrayInOut output,
+                                WholeArrayInOut outputRZ,
+                                WholeArrayInOut outputTP,
                                 WholeArrayInOut punctureID);
-  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12);
+  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13);
   using InputDomain = _1;
 
 PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefault stepSize, bool saveTraces)
@@ -99,6 +100,8 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     this->rmax = eq_max_r;
     this->zmin = eq_min_z;
     this->zmax = eq_max_z;
+    this->EqAxisR = eq_axis_r;
+    this->EqAxisZ = eq_axis_z;
     this->dr = (eq_max_r - eq_min_r) / vtkm::FloatDefault(this->nr);
     this->dz = (eq_max_z - eq_min_z) / vtkm::FloatDefault(this->nz);
     this->dr_inv = 1.0/this->dr;
@@ -366,7 +369,8 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                             const Coeff_1DType& Coeff_1D,
                             const Coeff_2DType& Coeff_2D,
                             OutputType& traces,
-                            OutputType& output,
+                            OutputType& outputRZ,
+                            OutputType& outputTP,
                             IdType punctureID) const
   {
 /*
@@ -412,10 +416,25 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
 
       if (numRevs1 > numRevs0)
       {
+        auto R = particle.Pos[0], Z = particle.Pos[2];
+        auto theta = vtkm::ATan2(Z-this->EqAxisZ, R-this->EqAxisR);
+        if (theta < 0)
+          theta += vtkm::TwoPi();
+
+        //calcualte psi. need to stash psi on the particle somehow....
+        vtkm::Vec3f ptRPZ = particle.Pos;
+        vtkm::FloatDefault psi;
+        vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, gradPsi_rzp;
+        vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
+        this->HighOrderB(ptRPZ, Coeff_1D, Coeff_2D, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
+        vtkm::Vec3f thetaPsi(theta, psi, 0);
+
         vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
-        output.Set(i, particle.Pos);
+        outputRZ.Set(i, vtkm::Vec3f(R,Z,0));
+        outputTP.Set(i, thetaPsi);
         punctureID.Set(i, idx);
         particle.NumPunctures++;
+
 #ifndef VTKM_CUDA
         if (idx == 0 && particle.NumPunctures%10 == 0 ) std::cout<<" ***** PUNCTURE n= "<<particle.NumPunctures<<std::endl;
 #endif
@@ -1286,6 +1305,7 @@ DRP: field_following_pos2() i=             2
   int nr, nz;
   vtkm::FloatDefault rmin, zmin, rmax, zmax;
   vtkm::FloatDefault dr, dz, dr_inv, dz_inv;
+  vtkm::FloatDefault EqAxisZ, EqAxisR;
 
   int ncoeff;
   vtkm::FloatDefault min_psi, max_psi;
