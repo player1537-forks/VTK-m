@@ -80,12 +80,17 @@ public:
   using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13);
   using InputDomain = _1;
 
-PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefault stepSize, bool saveTraces)
+  PoincareWorklet(vtkm::Id maxPunc,
+                  vtkm::FloatDefault planeVal,
+                  vtkm::FloatDefault stepSize,
+                  bool saveTraces,
+                  bool quickTest)
     : MaxIter(maxPunc * 100000000)
     , MaxPunc(maxPunc)
     , PlaneVal(planeVal)
     , StepSize(stepSize)
     , SaveTraces(saveTraces)
+    , QuickTest(quickTest)
   {
     this->NumPlanes = numPlanes;
     this->NumNodes = numNodes;
@@ -374,6 +379,18 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
                             OutputType2D& outputTP,
                             IdType punctureID) const
   {
+    if (this->QuickTest)
+    {
+      for (vtkm::Id p = 0; p < this->MaxPunc; p++)
+      {
+        vtkm::Id i = (idx * this->MaxPunc) + p;
+        outputRZ.Set(i, vtkm::Vec2f(0,0));
+        outputTP.Set(i, vtkm::Vec2f(0,0));
+        punctureID.Set(i, idx);
+      }
+
+      return;
+    }
 /*
     if (0)
     {
@@ -1300,6 +1317,7 @@ DRP: field_following_pos2() i=             2
   bool UseBOnly = false;
   bool UseHighOrder = false;
   bool SaveTraces = false;
+  bool QuickTest = false;
 
   int nr, nz;
   vtkm::FloatDefault rmin, zmin, rmax, zmax;
