@@ -23,26 +23,8 @@
 #include <vtkm/cont/DataSetBuilderUniform.h>
 #include <vtkm/cont/DataSetBuilderExplicit.h>
 
-#if 0
-#include <vtkm/filter/GhostCellClassify.h>
-#include <vtkm/io/VTKDataSetReader.h>
-#include <vtkm/worklet/ParticleAdvection.h>
-#include <vtkm/worklet/particleadvection/EulerIntegrator.h>
-#include <vtkm/worklet/particleadvection/Field.h>
-#include <vtkm/worklet/particleadvection/GridEvaluators.h>
-#include <vtkm/worklet/particleadvection/Particles.h>
-#include <vtkm/worklet/particleadvection/RK4Integrator.h>
-#include <vtkm/worklet/particleadvection/Stepper.h>
-#include <vtkm/worklet/testing/GenerateTestDataSets.h>
-#endif
 #include <vtkm/cont/CellLocatorGeneral.h>
-
-
-//#include <vtkm/filter/Gradient.h>
-
 #include <vtkm/io/VTKDataSetWriter.h>
-
-//#include <fides/DataSetReader.h>
 
 #include <adios2.h>
 
@@ -52,18 +34,11 @@
 #include <filesystem>
 #include <mpi.h>
 
+
 /*
 radius values: max range: 2.5 3.7
 for interesting psi: 3.5  3.7
 */
-
-/*
-TODO:
-Make sure that wrap around works.
-Get the Bs in 3D working.
-
-*/
-
 
 adios2::ADIOS *adios = NULL;
 class adiosS;
@@ -2037,33 +2012,30 @@ Poincare(const vtkm::cont::DataSet& ds,
     ds.GetField("coeff_2D").GetData().AsArrayHandle(coeff_2D);
 
     vtkm::cont::ArrayHandle<vtkm::Vec3f> tracesArr;
-    std::vector<vtkm::Vec2f> o;
-    std::vector<vtkm::Vec3f> t;
-    o.resize(numPunc*pts.size(), {-100, -100});
-    auto outputRZ = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
-    auto outputTP = vtkm::cont::make_ArrayHandle(o, vtkm::CopyFlag::On);
+    outRZ.Allocate(numPunc*pts.size());
+    outTP.Allocate(numPunc*pts.size());
+    outID.Allocate(numPunc*pts.size());
+
     if (traces != nullptr)
     {
+      std::vector<vtkm::Vec3f> t;
       t.resize(pts.size()*worklet.MaxIter, {-100, -100, -100});
       std::cout<<"TRACES: "<<t.size()<<std::endl;
       tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
 
-    std::vector<vtkm::Id> puncID(o.size(), -1);
-    vtkm::cont::ArrayHandle<vtkm::Id> punctureID = vtkm::cont::make_ArrayHandle(puncID, vtkm::CopyFlag::On);
-
     auto start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
             B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
-            tracesArr, outputRZ, outputTP, punctureID);
+            tracesArr, outRZ, outTP, outID);
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed_seconds = end-start;
 
     std::cout<<"PoincareTime= "<<elapsed_seconds.count()<<std::endl;
-    std::cout<<"outputRZ.size()= "<<outputRZ.GetNumberOfValues()<<std::endl;
-    std::cout<<"outputTP.size()= "<<outputTP.GetNumberOfValues()<<std::endl;
-    std::cout<<"punctureID.size()= "<<punctureID.GetNumberOfValues()<<std::endl;
+    std::cout<<"outputRZ.size()= "<<outRZ.GetNumberOfValues()<<std::endl;
+    std::cout<<"outputTP.size()= "<<outTP.GetNumberOfValues()<<std::endl;
+    std::cout<<"punctureID.size()= "<<outID.GetNumberOfValues()<<std::endl;
     //vtkm::cont::printSummary_ArrayHandle(output, std::cout);
     //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);
 
@@ -2079,9 +2051,6 @@ Poincare(const vtkm::cont::DataSet& ds,
           (*traces)[0].push_back(v);
       }
     }
-    outRZ = outputRZ;
-    outTP = outputTP;
-    outID = punctureID;
 
     return;
   }

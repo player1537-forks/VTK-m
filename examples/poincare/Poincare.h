@@ -102,6 +102,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
     this->zmax = eq_max_z;
     this->EqAxisR = eq_axis_r;
     this->EqAxisZ = eq_axis_z;
+    this->EqXPsi = eq_x_psi;
     this->dr = (eq_max_r - eq_min_r) / vtkm::FloatDefault(this->nr);
     this->dz = (eq_max_z - eq_min_z) / vtkm::FloatDefault(this->nz);
     this->dr_inv = 1.0/this->dr;
@@ -429,7 +430,7 @@ PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefaul
         this->HighOrderB(ptRPZ, Coeff_1D, Coeff_2D, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
         vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
         outputRZ.Set(i, vtkm::Vec2f(R, Z));
-        outputTP.Set(i, vtkm::Vec2f(theta, psi));
+        outputTP.Set(i, vtkm::Vec2f(theta, psi/this->EqXPsi));
         punctureID.Set(i, idx);
         particle.NumPunctures++;
 
@@ -1303,7 +1304,7 @@ DRP: field_following_pos2() i=             2
   int nr, nz;
   vtkm::FloatDefault rmin, zmin, rmax, zmax;
   vtkm::FloatDefault dr, dz, dr_inv, dz_inv;
-  vtkm::FloatDefault EqAxisZ, EqAxisR;
+  vtkm::FloatDefault EqAxisZ, EqAxisR, EqXPsi;
 
   int ncoeff;
   vtkm::FloatDefault min_psi, max_psi;
