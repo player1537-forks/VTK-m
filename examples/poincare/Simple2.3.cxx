@@ -22,6 +22,7 @@
 #include <vtkm/Particle.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
 #include <vtkm/cont/DataSetBuilderExplicit.h>
+#include <vtkm/cont/Timer.h>
 
 #include <vtkm/cont/CellLocatorGeneral.h>
 #include <vtkm/io/VTKDataSetWriter.h>
@@ -881,15 +882,19 @@ Poincare(const vtkm::cont::DataSet& ds,
       tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
 
+    vtkm::cont::Timer timer;
+    timer.Start();
     auto start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
             B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
     auto end = std::chrono::steady_clock::now();
+    timer.Stop();
     std::chrono::duration<double> elapsed_seconds = end-start;
 
     std::cout<<"PoincareTime= "<<elapsed_seconds.count()<<std::endl;
+    std::cout<<"vtkm::cont::Timer= "<<timer.GetElapsedTime()<<std::endl;
     std::cout<<"outputRZ.size()= "<<outRZ.GetNumberOfValues()<<std::endl;
     std::cout<<"outputTP.size()= "<<outTP.GetNumberOfValues()<<std::endl;
     std::cout<<"punctureID.size()= "<<outID.GetNumberOfValues()<<std::endl;
