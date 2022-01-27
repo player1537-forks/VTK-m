@@ -59,7 +59,7 @@ int eq_mr = -1, eq_mz = -1;
 using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 
 #include "Poincare.h"
-
+#include "Poincare2.h"
 
 template <typename T>
 std::ostream& operator<< (std::ostream& out, const std::vector<T>& v)
@@ -831,7 +831,7 @@ Poincare(const vtkm::cont::DataSet& ds,
          const std::string& vField,
          vtkm::FloatDefault h,
          int numPunc,
-         bool useWorklet,
+         int whichWorklet,
          bool useBOnly,
          bool useHighOrder,
          vtkm::cont::ArrayHandle<vtkm::Vec2f>& outRZ,
@@ -841,38 +841,41 @@ Poincare(const vtkm::cont::DataSet& ds,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
-  if (useWorklet)
-  {
-    vtkm::cont::CellLocatorGeneral locator;
-    locator.SetCellSet(ds.GetCellSet());
-    locator.SetCoordinates(ds.GetCoordinateSystem());
-    locator.Update();
+  vtkm::cont::CellLocatorGeneral locator;
+  locator.SetCellSet(ds.GetCellSet());
+  locator.SetCoordinates(ds.GetCoordinateSystem());
+  locator.Update();
 
+  vtkm::cont::Invoker invoker;
+  std::vector<vtkm::Particle> s;
+  for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
+    s.push_back(vtkm::Particle(pts[i], i));
+  auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
+
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff, coeff_1D, coeff_2D;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp;//, AsCurlBHat_rzp, curl_nb_rzp;
+  ds.GetField("As_ff").GetData().AsArrayHandle(As_ff);
+  ds.GetField("B_RZP").GetData().AsArrayHandle(B_rzp);
+  ds.GetField("B_RZP_Norm").GetData().AsArrayHandle(B_Norm_rzp);
+  ds.GetField("dAs_ff_rzp").GetData().AsArrayHandle(dAs_ff_rzp);
+  //ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
+  //ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(curl_nb_rzp);
+  ds.GetField("coeff_1D").GetData().AsArrayHandle(coeff_1D);
+  ds.GetField("coeff_2D").GetData().AsArrayHandle(coeff_2D);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> tracesArr;
+  outRZ.Allocate(numPunc*pts.size());
+  outTP.Allocate(numPunc*pts.size());
+  outID.Allocate(numPunc*pts.size());
+
+  vtkm::cont::Timer timer;
+  timer.Start();
+  auto start = std::chrono::steady_clock::now();
+  if (whichWorklet == 0)
+  {
     PoincareWorklet worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
     worklet.UseBOnly = useBOnly;
     worklet.UseHighOrder = useHighOrder;
-
-    vtkm::cont::Invoker invoker;
-    std::vector<vtkm::Particle> s;
-    for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
-      s.push_back(vtkm::Particle(pts[i], i));
-    auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
-
-    vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff, coeff_1D, coeff_2D;
-    vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp;//, AsCurlBHat_rzp, curl_nb_rzp;
-    ds.GetField("As_ff").GetData().AsArrayHandle(As_ff);
-    ds.GetField("B_RZP").GetData().AsArrayHandle(B_rzp);
-    ds.GetField("B_RZP_Norm").GetData().AsArrayHandle(B_Norm_rzp);
-    ds.GetField("dAs_ff_rzp").GetData().AsArrayHandle(dAs_ff_rzp);
-    //ds.GetField("AsCurlBHat_RZP").GetData().AsArrayHandle(AsCurlBHat_rzp);
-    //ds.GetField("curl_nb_rzp").GetData().AsArrayHandle(curl_nb_rzp);
-    ds.GetField("coeff_1D").GetData().AsArrayHandle(coeff_1D);
-    ds.GetField("coeff_2D").GetData().AsArrayHandle(coeff_2D);
-
-    vtkm::cont::ArrayHandle<vtkm::Vec3f> tracesArr;
-    outRZ.Allocate(numPunc*pts.size());
-    outTP.Allocate(numPunc*pts.size());
-    outID.Allocate(numPunc*pts.size());
 
     if (traces != nullptr)
     {
@@ -882,39 +885,54 @@ Poincare(const vtkm::cont::DataSet& ds,
       tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
 
-    vtkm::cont::Timer timer;
-    timer.Start();
-    auto start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
             B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
-    auto end = std::chrono::steady_clock::now();
-    timer.Stop();
-    std::chrono::duration<double> elapsed_seconds = end-start;
+  }
+  else
+  {
+    PoincareWorklet2 worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
+    worklet.UseBOnly = useBOnly;
+    worklet.UseHighOrder = useHighOrder;
 
-    std::cout<<"PoincareTime= "<<elapsed_seconds.count()<<std::endl;
-    std::cout<<"vtkm::cont::Timer= "<<timer.GetElapsedTime()<<std::endl;
-    std::cout<<"outputRZ.size()= "<<outRZ.GetNumberOfValues()<<std::endl;
-    std::cout<<"outputTP.size()= "<<outTP.GetNumberOfValues()<<std::endl;
-    std::cout<<"punctureID.size()= "<<outID.GetNumberOfValues()<<std::endl;
-    //vtkm::cont::printSummary_ArrayHandle(output, std::cout);
-    //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);
-
-    std::vector<std::vector<vtkm::Vec3f>> res;
-    if (traces)
+    if (traces != nullptr)
     {
-      auto portal = tracesArr.ReadPortal();
-      vtkm::Id n = portal.GetNumberOfValues();
-      for (vtkm::Id i = 0; i < n; i++)
-      {
-        auto v = portal.Get(i);
-        if (v[2] > -1)
-          (*traces)[0].push_back(v);
-      }
+      std::vector<vtkm::Vec3f> t;
+      t.resize(pts.size()*worklet.MaxIter, {-100, -100, -100});
+      std::cout<<"TRACES: "<<t.size()<<std::endl;
+      tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
 
-    return;
+    invoker(worklet, seeds, locator, ds.GetCellSet(),
+            B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
+            coeff_1D, coeff_2D,
+            tracesArr, outRZ, outTP, outID);
+  }
+
+  auto end = std::chrono::steady_clock::now();
+  timer.Stop();
+  std::chrono::duration<double> elapsed_seconds = end-start;
+
+  std::cout<<"PoincareTime= "<<elapsed_seconds.count()<<std::endl;
+  std::cout<<"vtkm::cont::Timer= "<<timer.GetElapsedTime()<<std::endl;
+  std::cout<<"outputRZ.size()= "<<outRZ.GetNumberOfValues()<<std::endl;
+  std::cout<<"outputTP.size()= "<<outTP.GetNumberOfValues()<<std::endl;
+  std::cout<<"punctureID.size()= "<<outID.GetNumberOfValues()<<std::endl;
+  //vtkm::cont::printSummary_ArrayHandle(output, std::cout);
+  //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);
+
+  std::vector<std::vector<vtkm::Vec3f>> res;
+  if (traces)
+  {
+    auto portal = tracesArr.ReadPortal();
+    vtkm::Id n = portal.GetNumberOfValues();
+    for (vtkm::Id i = 0; i < n; i++)
+    {
+      auto v = portal.Get(i);
+      if (v[2] > -1)
+        (*traces)[0].push_back(v);
+    }
   }
 }
 
@@ -1328,7 +1346,7 @@ main(int argc, char** argv)
   std::string vField = args["--vField"][0];
 
   std::vector<vtkm::Vec3f> seeds;
-  bool useWorklet = std::atoi(args["--worklet"][0].c_str());
+  int whichWorklet = std::atoi(args["--worklet"][0].c_str());
   bool useTraces = std::atoi(args["--traces"][0].c_str());
   std::string outFileName = args["--output"][0];
   useTurb = true;
@@ -1748,7 +1766,7 @@ p11       2.329460849125147615, -0.073678279004152566
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
   vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
-  Poincare(ds, seeds, vField, stepSize, numPunc, useWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, (useTraces ? &traces : nullptr));
+  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, (useTraces ? &traces : nullptr));
 
   //std::cout<<"Convert to theta/psi"<<std::endl;
   //auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);
