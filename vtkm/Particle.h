@@ -97,11 +97,21 @@ public:
 
   VTKM_EXEC_CONT
   Particle(const vtkm::Particle& p)
-    : Pos(p.Pos)
+    : dpsi_dr(p.dpsi_dr)
+    , dpsi_dz(p.dpsi_dz)
+    , d2psi_drdz(p.d2psi_drdz)
+    , d2psi_d2r(p.d2psi_d2r)
+    , d2psi_d2z(p.d2psi_d2z)
+    , gradPsi_rzp(p.gradPsi_rzp)
+    , B0_rzp(p.B0_rzp)
+    , curlB_rzp(p.curlB_rzp)
+    , curl_nb_rzp(p.curl_nb_rzp)
+    , Pos(p.Pos)
     , ID(p.ID)
     , NumPunctures(p.NumPunctures)
     , NumRevolutions(p.NumRevolutions)
     , NumSteps(p.NumSteps)
+    , Psi(p.Psi)
     , Status(p.Status)
     , Time(p.Time)
   {
@@ -147,11 +157,14 @@ public:
     return out;
   }
 
+  vtkm::FloatDefault dpsi_dr=0, dpsi_dz=0, d2psi_drdz=0, d2psi_d2r=0, d2psi_d2z=0;
+  vtkm::Vec3f gradPsi_rzp, B0_rzp, curlB_rzp, curl_nb_rzp;
   vtkm::Vec3f Pos;
   vtkm::Id ID = -1;
   vtkm::Id NumPunctures = 0;   //Needs to go into a derived class.
   vtkm::Id NumRevolutions = 0; //Needs to go into a derived class.
   vtkm::Id NumSteps = 0;
+  vtkm::FloatDefault Psi = 0.0;
   vtkm::ParticleStatus Status;
   vtkm::FloatDefault Time = 0;
 };
