@@ -828,7 +828,7 @@ ConvertPuncturesToThetaPsi(const std::vector<std::vector<vtkm::Vec3f>>& puncture
 void
 Poincare(const vtkm::cont::DataSet& ds,
          std::vector<vtkm::Vec3f>& pts,
-         const std::string& vField,
+         const std::string& /*vField*/,
          vtkm::FloatDefault h,
          int numPunc,
          int whichWorklet,
@@ -1640,7 +1640,7 @@ pIn     2.728835848680459        0.2190207369512611        6.183185307179587
     else
     {
       int n = std::stoi(vals[0]);
-      if (n >= allSeeds.size())
+      if (n >= (int)allSeeds.size())
         std::cout<<"Bad seed!!! #allseeds= "<<allSeeds.size()<<std::endl;
 
       seeds = {allSeeds[n]};
