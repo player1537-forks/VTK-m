@@ -60,6 +60,8 @@ using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 
 #include "Poincare.h"
 #include "Poincare2.h"
+#include "Poincare3.h"
+#include "ComputeB.h"
 
 template <typename T>
 std::ostream& operator<< (std::ostream& out, const std::vector<T>& v)
@@ -838,6 +840,7 @@ Poincare(const vtkm::cont::DataSet& ds,
          vtkm::cont::ArrayHandle<vtkm::Vec2f>& outTP,
          vtkm::cont::ArrayHandle<vtkm::Id>& outID,
          bool quickTest,
+         vtkm::Id BGridSize,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
@@ -869,7 +872,6 @@ Poincare(const vtkm::cont::DataSet& ds,
   outID.Allocate(numPunc*pts.size());
 
   vtkm::cont::Timer timer;
-  timer.Start();
   auto start = std::chrono::steady_clock::now();
   if (whichWorklet == 0)
   {
@@ -885,12 +887,14 @@ Poincare(const vtkm::cont::DataSet& ds,
       tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
 
+    timer.Start();
+    start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
             B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
   }
-  else
+  else if (whichWorklet == 1)
   {
     PoincareWorklet2 worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
     worklet.UseBOnly = useBOnly;
@@ -904,12 +908,90 @@ Poincare(const vtkm::cont::DataSet& ds,
       tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
 
+    timer.Start();
+    start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
             B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
   }
+  else if (whichWorklet == 2)
+  {
+    /* N = 128
+       B0: [-0.0203529,-0.00366229,-0.239883] [-0.0203388,-0.0036626,-0.239886] 1.42779e-05
+       curlB0: [0,-1.38778e-17,-0.0750265] [0,-9.04278e-18,-0.0749931] 3.34226e-05
+       curlNB0: [-0.0188931,-0.330013,-0.304966] [-0.0188503,-0.33007,-0.304813] 0.000168853
+       gradPsi: [-0.0101055,0.0561605,0] [-0.010099,0.0561215,0] 3.96151e-05
+    */
 
+    //Precompute B
+    vtkm::Id2 dims(BGridSize, BGridSize);
+    vtkm::FloatDefault dR = (eq_max_r-eq_min_r) / static_cast<vtkm::FloatDefault>(BGridSize-1);
+    vtkm::FloatDefault dZ = (eq_max_z-eq_min_z) / static_cast<vtkm::FloatDefault>(BGridSize-1);
+    vtkm::Vec2f origin(eq_min_r, eq_min_z);
+    vtkm::Vec2f spacing(dR, dZ);
+    auto grid = vtkm::cont::DataSetBuilderUniform::Create(dims, origin, spacing);
+    std::cout<<"R: "<<eq_min_r<<" "<<eq_max_r<<std::endl;
+    std::cout<<"Z: "<<eq_min_z<<" "<<eq_max_z<<std::endl;
+
+    vtkm::cont::CellLocatorUniformGrid locatorB;
+    locatorB.SetCellSet(grid.GetCellSet());
+    locatorB.SetCoordinates(grid.GetCoordinateSystem());
+    locatorB.Update();
+
+    std::cout<<"Precomputing BGrid with resolution of "<<dims<<std::endl;
+    ComputeBWorklet computeB;
+
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> B0, CurlB0, CurlNB0, GradPsi;
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> Psi;
+    invoker(computeB,
+            grid.GetCoordinateSystem(),
+            grid.GetCellSet(),
+            locatorB,
+            As_ff,
+            dAs_ff_rzp,
+            coeff_1D,
+            coeff_2D,
+            Psi,
+            B0,
+            CurlB0,
+            CurlNB0,
+            GradPsi);
+    std::cout<<"... BGrid compute done."<<std::endl;
+
+    /*
+    grid.AddField(vtkm::cont::make_FieldPoint("Psi", Psi));
+    grid.AddField(vtkm::cont::make_FieldPoint("B0", B0));
+    grid.AddField(vtkm::cont::make_FieldPoint("CurlB0", CurlB0));
+    grid.AddField(vtkm::cont::make_FieldPoint("CurlNB0", CurlNB0));
+    grid.AddField(vtkm::cont::make_FieldPoint("GradPsi", GradPsi));
+    vtkm::io::VTKDataSetWriter writer("bgrid.vtk");
+    writer.WriteDataSet(grid);
+    grid.PrintSummary(std::cout);
+    */
+
+    PoincareWorklet3 worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
+    worklet.UseBOnly = useBOnly;
+    worklet.UseHighOrder = useHighOrder;
+
+    if (traces != nullptr)
+    {
+      std::vector<vtkm::Vec3f> t;
+      t.resize(pts.size()*worklet.MaxIter, {-100, -100, -100});
+      std::cout<<"TRACES: "<<t.size()<<std::endl;
+      tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
+    }
+
+    timer.Start();
+    start = std::chrono::steady_clock::now();
+    invoker(worklet, seeds, locator, locatorB,
+            ds.GetCellSet(), grid.GetCellSet(),
+            Psi, B0, CurlB0, CurlNB0, GradPsi,
+            As_ff, dAs_ff_rzp,
+            coeff_1D, coeff_2D,
+            tracesArr, outRZ, outTP, outID);
+
+  }
   auto end = std::chrono::steady_clock::now();
   timer.Stop();
   std::chrono::duration<double> elapsed_seconds = end-start;
@@ -1356,6 +1438,9 @@ main(int argc, char** argv)
   bool quickTest = false;
   if (args.find("--quickTest") != args.end())
     quickTest = true;
+  vtkm::Id BGridSize = 512;
+  if (args.find("--BGridSize") != args.end())
+    BGridSize = std::atoi(args["--BGridSize"][0].c_str());
 
   auto ds = ReadData(args);
   //ds.PrintSummary(std::cout);
@@ -1766,7 +1851,7 @@ p11       2.329460849125147615, -0.073678279004152566
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
   vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
-  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, (useTraces ? &traces : nullptr));
+  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, (useTraces ? &traces : nullptr));
 
   //std::cout<<"Convert to theta/psi"<<std::endl;
   //auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);

@@ -59,6 +59,9 @@ jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | 
 #define DO_TRACES 0
 
 //timers.
+namespace internal2
+{
+#if 0
 class FuncTimer
 {
 public:
@@ -82,6 +85,14 @@ double ptLocT = 0, evalBicubT=0;
 double evalVT = 0, evalST = 0;
 double ffPtT0 = 0, ffPtT1 = 0;
 double getC2DT = 0;
+
+#ifdef TIME_STUFF
+#define FT(x) internal2::FuncTimer tt(&x);
+#else
+#define FT(x)
+#endif
+#endif
+};
 /*
 auto start = std::chrono::steady_clock::now();
 auto end = std::chrono::steady_clock::now();
@@ -93,6 +104,7 @@ ffPtT += dT.count();
 //-----------------------------------------------------------------------------
 class PoincareWorklet2 : public vtkm::worklet::WorkletMapField
 {
+#if 0
   void Print(const std::string& nm, double T, double TT) const
   {
     std::cout<<nm<<"  "<<std::setprecision(5)<<T<<"   "<<std::setprecision(5)<<(T/TT)<<std::endl;
@@ -124,6 +136,7 @@ class PoincareWorklet2 : public vtkm::worklet::WorkletMapField
     this->Print(" getCoeff2d  :", getC2DT, operatorT);
 #endif
   }
+#endif
 public:
   using ControlSignature = void(FieldInOut particles,
                                 ExecObject locator,
@@ -144,7 +157,7 @@ public:
 
   ~PoincareWorklet2()
   {
-    this->PrintTimers();
+    //this->PrintTimers();
   }
 
   PoincareWorklet2(vtkm::Id maxPunc,
@@ -196,8 +209,6 @@ public:
                   const Coeff_2DType& Coeff_2D,
                   vtkm::Matrix<vtkm::FloatDefault, 4, 4>& coeff) const
   {
-    FuncTimer tt(&getC2DT);
-
     vtkm::Id idx = offset;
     for (vtkm::Id ii = 0; ii < 4; ii++)
       for (vtkm::Id jj = 0; jj < 4; jj++)
@@ -219,10 +230,8 @@ public:
                   vtkm::Vec3f& gradPsi_rzp) const
   */
   {
-    FuncTimer tt(&highOrderBT);
-
-    vtkm::FloatDefault R = pRPZ.Pos[0], Z = pRPZ.Pos[2], P = pRPZ.Pos[1];
-    vtkm::Vec3f ptRZ(R,Z,0);
+    vtkm::FloatDefault R = pRPZ.Pos[0], Z = pRPZ.Pos[2];
+    //vtkm::Vec3f ptRZ(R,Z,0);
 
     int r_i = this->GetIndex(R, this->nr, this->rmin, this->dr_inv);
     int z_i = this->GetIndex(Z, this->nz, this->zmin, this->dz_inv);
@@ -311,7 +320,7 @@ public:
     jacobian_rzp[PIP][PIP] = 0.0;
 
     //std::cout<<"High order B: "<<std::endl;
-    vtkm::Vec3f ppp(R,Z,P);
+    //vtkm::Vec3f ppp(R,Z,P);
     //std::cout<<"   p_rzp  = "<<ppp<<std::endl;
     //std::cout<<"   B0_rzp = "<<B0_rzp<<std::endl;
     //std::cout<<"   B0mag = "<<vtkm::Magnitude(B0_rzp)<<"  "<<(1.0/vtkm::Magnitude(B0_rzp))<<std::endl;
@@ -425,8 +434,6 @@ public:
                             OutputType2D& outputTP,
                             IdType punctureID) const
   {
-    FuncTimer tt(&operatorT);
-
     if (this->QuickTest)
     {
       for (vtkm::Id p = 0; p < this->MaxPunc; p++)
@@ -527,8 +534,6 @@ public:
                    const Coeff_2DType& Coeff_2D,
                    vtkm::Vec3f& res) const
   {
-    FuncTimer tt(&rk4T);
-
     vtkm::Vec3f k1, k2, k3, k4;
     //k1 = F(p)
     //k2 = F(p+hk1/2)
@@ -574,8 +579,6 @@ public:
         const vtkm::Vec<vtkm::Id, 3>& vId,
         const vtkm::Vec3f& param) const
   {
-    FuncTimer tt(&evalST);
-
     vtkm::VecVariable<vtkm::FloatDefault, 3> vals;
     vals.Append(sPortal.Get(vId[0]+offset));
     vals.Append(sPortal.Get(vId[1]+offset));
@@ -600,7 +603,6 @@ public:
         const vtkm::Vec3f& param,
         const vtkm::Vec<vtkm::Id, 3>& vId) const
   {
-    FuncTimer tt(&evalVT);
     //std::cout<<"    ******** vid= "<<vId[0]<<" "<<vId[1]<<" "<<vId[2]<<std::endl;
     //std::cout<<"    ******** vec= "<<vPortal.Get(vId[0])<<" "<<vPortal.Get(vId[1])<<" "<<vPortal.Get(vId[2])<<std::endl;
     vtkm::VecVariable<vtkm::Vec3f, 3> vals;
@@ -621,8 +623,6 @@ public:
              vtkm::Vec3f& param,
              vtkm::Vec<vtkm::Id, 3>& vIds) const
   {
-    FuncTimer tt(&ptLocT);
-
     vtkm::Id cellId;
     vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param);
     if (status != vtkm::ErrorCode::Success)
@@ -665,7 +665,6 @@ public:
                     vtkm::FloatDefault &f00, vtkm::FloatDefault &f10, vtkm::FloatDefault &f01,
                     vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02) const
   {
-    FuncTimer tt(&evalBicubT);
     double dx = x - xc;
     double dy = y - yc;
 
@@ -858,7 +857,6 @@ public:
                    const Coeff_1DType& coeff_1D,
                    const Coeff_2DType& coeff_2D) const
   {
-    FuncTimer tt(&getBT), *tt2;
     /*
     vtkm::FloatDefault psi;
     vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, gradPsi_rzp;
@@ -866,7 +864,6 @@ public:
     */
     this->HighOrderB(pRPZ, coeff_1D, coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
 
-    tt2 = new FuncTimer(&getBT0);
     //This gives is the time derivative: Br = dR/dt, Bz= dZ/dt, B_phi/R = dphi/dt
     //We need with respect to phi:
     // dR/dphi = dR/dt / (dphi/dt) = Br / B_phi * R
@@ -877,8 +874,6 @@ public:
     B0_rpz[2]/=pRPZ.B0_rzp[2];
     B0_rpz[0] *= pRPZ.Pos[0];
     B0_rpz[2] *= pRPZ.Pos[0];
-
-    delete tt2;
 
     return B0_rpz;
   }
@@ -947,9 +942,6 @@ DRP: field_following_pos2() i=             2
                             const Coeff_2DType& coeff_2D,
                             vtkm::Vec3f& x_ff_rpz) const
   {
-    FuncTimer tt(&ffPtT), *tt2;
-
-    tt2 = new FuncTimer(&ffPtT0);
     vtkm::FloatDefault R = pt_rpz[0];
     vtkm::FloatDefault Phi = pt_rpz[1];
     vtkm::FloatDefault Z = pt_rpz[2];
@@ -973,9 +965,6 @@ DRP: field_following_pos2() i=             2
     vtkm::Vec3f ptOnMidPlane_rpz;
     bool b;
     midPlane.Intersect(ray_rpz, RP_T, ptOnMidPlane_rpz, b);
-    delete tt2;
-
-    tt2 = new FuncTimer(&ffPtT1);
 
     //Now, do it using RK4 and two steps.
     vtkm::FloatDefault h = (PhiMid-Phi) / 2.0;
@@ -1011,7 +1000,6 @@ DRP: field_following_pos2() i=             2
 
     //std::cout<<"  **** rk4 method: "<<p0<<std::endl;
     x_ff_rpz = p0.Pos;
-    delete tt2;
 
     /*
     //correct
@@ -1038,8 +1026,6 @@ DRP: field_following_pos2() i=             2
                          const Coeff_1DType& coeff_1D,
                          const Coeff_2DType& coeff_2D) const
   {
-    FuncTimer tt(&deltaBT);
-
     auto R = pRPZ.Pos[0];
     auto Phi = pRPZ.Pos[1];
     auto Z = pRPZ.Pos[2];
@@ -1049,12 +1035,8 @@ DRP: field_following_pos2() i=             2
     this->GetPlaneIdx(Phi, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
     vtkm::Vec3f B0_rpz(B0_rzp[0], B0_rzp[2], B0_rzp[1]);
 
-    FuncTimer *ttt = new FuncTimer(&deltaBTaa);
     vtkm::Vec3f ff_pt_rpz;
     this->CalcFieldFollowingPt({R,phiN,Z}, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
-    delete ttt;
-
-    ttt = new FuncTimer(&deltaBTa);
 
     //Now, interpolate between Phi_i and Phi_i+1
     vtkm::FloatDefault T01 = (phiN - Phi0) / (Phi1-Phi0);
@@ -1084,22 +1066,17 @@ DRP: field_following_pos2() i=             2
     rvec[1] =         (1.0-basis) * gammaPsi *   gradPsi_rzp[1];
     zvec[0] =         (1.0-basis) * gammaPsi * (-gradPsi_rzp[1]);
     zvec[1] = basis + (1.0-basis) * gammaPsi *   gradPsi_rzp[0];
-    delete ttt;
 
     //Get the vectors in the ff coordinates.
     //auto dAs_ff_rzp = EvalVector(ds, locator, {x_ff_rzp, x_ff_rzp}, "dAs_ff_rzp", offsets);
     //auto dAs_ff0_rzp = dAs_ff_rzp[0];
     //auto dAs_ff1_rzp = dAs_ff_rzp[1];
 
-    ttt = new FuncTimer(&deltaBTbb);
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
     this->PtLoc(x_ff_rzp, locator, cellSet, x_ff_param, x_ff_vids);
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
-    delete ttt;
-
-    ttt = new FuncTimer(&deltaBTb);
 
     vtkm::FloatDefault wphi[2] = {T10, T01}; //{T01, T10};
     vtkm::Vec3f gradAs_rpz;
@@ -1121,7 +1098,6 @@ DRP: field_following_pos2() i=             2
     //project using bfield.
     //gradAs.Phi = (gradAs.Phi * BMag - gradAs.R*B0_pos.R - gradAs.Z*B0_pos.Z) / B0_pos.Phi
     gradAs_rpz[1] = (gradAs_rpz[1]*BMag -gradAs_rpz[0]*B0_rzp[0] - gradAs_rpz[2]*B0_rzp[1]) / B0_rzp[2];
-    delete ttt;
 
     //auto As_ff = InterpScalar(ds, locator, {x_ff_rzp, x_ff_rzp}, "As_ff", offsets);
     //vtkm::FloatDefault As_ff0 = As_ff[0];
@@ -1130,7 +1106,6 @@ DRP: field_following_pos2() i=             2
     auto As_ff0 = this->EvalS(AsPhiFF, offsets[0], x_ff_vids, x_ff_param);
     auto As_ff1 = this->EvalS(AsPhiFF, offsets[1], x_ff_vids, x_ff_param);
 
-    ttt = new FuncTimer(&deltaBTc);
     vtkm::FloatDefault As = wphi[0]*As_ff0 + wphi[1]*As_ff1;
     auto AsCurl_bhat_rzp = As * curl_nb_rzp;
 
@@ -1140,7 +1115,6 @@ DRP: field_following_pos2() i=             2
     vtkm::Vec3f gradAs_rzp(gradAs_rpz[0], gradAs_rpz[2], gradAs_rpz[1]);
     vtkm::Vec3f deltaB_rzp = AsCurl_bhat_rzp + vtkm::Cross(gradAs_rzp, bhat_rzp);
 
-    delete ttt;
     return deltaB_rzp;
   }
 
@@ -1156,8 +1130,6 @@ DRP: field_following_pos2() i=             2
                      const Coeff_2DType& coeff_2D,
                      vtkm::Vec3f& res) const
   {
-    FuncTimer tt(&evaluateT);
-
     //std::cout<<"    HighOrderEval: "<<pRPZ.Pos<<std::endl;
     auto R = pRPZ.Pos[0];
 

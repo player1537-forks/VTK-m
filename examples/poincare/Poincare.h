@@ -58,10 +58,64 @@ jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | 
 
 #define DO_TRACES 0
 
+namespace internal
+{
+#if 0
+class FuncTimer
+{
+public:
+  FuncTimer(double *t)
+  {
+    this->T = t;
+    this->start = std::chrono::steady_clock::now();
+  }
+  ~FuncTimer()
+  {
+    this->end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> dT = this->end-this->start;
+    *this->T += dT.count();
+  }
+  struct std::chrono::time_point<std::chrono::_V2::steady_clock, std::chrono::duration<long int, std::ratio<1, 1000000000> > > start, end;
+  double *T;
+};
+double operatorT = 0, rk4T = 0, evalT = 0, evalBT = 0, evalB1T = 0, ffPtT = 0, deltaBT=0;
+double evalBicubT = 0;
+double ptLocT = 0;
+
+#ifdef TIME_STUFF
+#define FT(x) internal::FuncTimer tt(&x);
+#else
+#define FT(x);
+#endif
+#endif
+};
+
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 class PoincareWorklet : public vtkm::worklet::WorkletMapField
 {
+#if 0
+  void Print(const std::string& nm, double T, double TT) const
+  {
+    std::cout<<nm<<"  "<<std::setprecision(5)<<T<<"   "<<std::setprecision(5)<<(T/TT)<<std::endl;
+  }
+  void PrintTimers() const
+  {
+#ifndef VTKM_CUDA
+    std::cout<<"Timers************************"<<std::endl;
+    this->Print("operator()   :", internal::operatorT, internal::operatorT);
+    this->Print(" rk4         :", internal::rk4T, internal::operatorT);
+    this->Print(" eval        :", internal::evalT, internal::operatorT);
+    this->Print(" deltaB      :", internal::deltaBT, internal::operatorT);
+    this->Print(" ffPt        :", internal::ffPtT, internal::operatorT);
+    this->Print(" evalB      :", internal::evalBT, internal::operatorT);
+    this->Print(" ptLoc       :", internal::ptLocT, internal::operatorT);
+    this->Print(" evalBicub   :", internal::evalBicubT, internal::operatorT);
+#endif
+  }
+#endif
+
 public:
   using ControlSignature = void(FieldInOut particles,
                                 ExecObject locator,
@@ -79,6 +133,11 @@ public:
                                 WholeArrayInOut punctureID);
   using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13);
   using InputDomain = _1;
+
+  ~PoincareWorklet()
+  {
+    //this->PrintTimers();
+  }
 
   PoincareWorklet(vtkm::Id maxPunc,
                   vtkm::FloatDefault planeVal,
@@ -135,7 +194,6 @@ public:
                   vtkm::FloatDefault& PSI,
                   vtkm::Vec3f& gradPsi_rzp) const
   {
-    //printf("  worklet %d\n", __LINE__);
     vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2], P = ptRPZ[1];
 
 //    std::cout<<"***************************************"<<std::endl;
@@ -612,7 +670,6 @@ public:
                     vtkm::FloatDefault &f00, vtkm::FloatDefault &f10, vtkm::FloatDefault &f01,
                     vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02) const
   {
-    //printf("  worklet %d\n", __LINE__);
     double dx = x - xc;
     double dy = y - yc;
 
