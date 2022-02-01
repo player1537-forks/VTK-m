@@ -63,7 +63,7 @@ using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 //#define VALGRIND
 #include "Poincare.h"
 #include "Poincare2.h"
-#include "Poincare3.h"
+//#include "Poincare3.h"
 #include "ComputeB.h"
 #include "ComputeBCell.h"
 
@@ -1000,7 +1000,7 @@ Poincare(const vtkm::cont::DataSet& ds,
     writer.WriteDataSet(grid);
     grid.PrintSummary(std::cout);
     */
-
+#if 0
     PoincareWorklet3 worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
     worklet.UseBOnly = useBOnly;
     worklet.UseHighOrder = useHighOrder;
@@ -1021,6 +1021,7 @@ Poincare(const vtkm::cont::DataSet& ds,
             As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
+#endif
   }
   auto end = std::chrono::steady_clock::now();
   timer.Stop();

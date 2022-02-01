@@ -137,6 +137,20 @@ class PoincareWorklet2 : public vtkm::worklet::WorkletMapField
 #endif
   }
 #endif
+
+  class ParticleInfo
+  {
+  public:
+    ParticleInfo() = default;
+    ParticleInfo(const ParticleInfo&) = default;
+    ParticleInfo& operator=(const ParticleInfo&) = default;
+
+    vtkm::Id3 PrevCell = {-1,-1,-1};
+    vtkm::FloatDefault Psi = 0;
+    vtkm::FloatDefault dpsi_dr=0, dpsi_dz=0, d2psi_drdz=0, d2psi_d2r=0, d2psi_d2z=0;
+    vtkm::Vec3f gradPsi_rzp, B0_rzp, curlB_rzp, curl_nb_rzp;
+  };
+
 public:
   using ControlSignature = void(FieldInOut particles,
                                 ExecObject locator,
@@ -218,20 +232,12 @@ public:
 
   template <typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
-  bool HighOrderB(vtkm::Particle& pRPZ,
+  bool HighOrderB(const vtkm::Vec3f& ptRPZ,
+                  ParticleInfo& pInfo,
                   const Coeff_1DType& Coeff_1D,
                   const Coeff_2DType& Coeff_2D) const
-  /*
-                  vtkm::Vec3f& B0_rzp,
-                  vtkm::Vec<vtkm::Vec3f, 3>& jacobian_rzp,
-                  vtkm::Vec3f& curlB_rzp,
-                  vtkm::Vec3f& curl_nb_rzp,
-                  vtkm::FloatDefault& PSI,
-                  vtkm::Vec3f& gradPsi_rzp) const
-  */
   {
-    vtkm::FloatDefault R = pRPZ.Pos[0], Z = pRPZ.Pos[2];
-    //vtkm::Vec3f ptRZ(R,Z,0);
+    vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2];
 
     int r_i = this->GetIndex(R, this->nr, this->rmin, this->dr_inv);
     int z_i = this->GetIndex(Z, this->nz, this->zmin, this->dz_inv);
@@ -266,32 +272,32 @@ public:
 
     double psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
     this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z);
-    pRPZ.Psi = psi;
-    pRPZ.dpsi_dr = dpsi_dr;
-    pRPZ.dpsi_dz = dpsi_dz;
-    pRPZ.d2psi_drdz = d2psi_drdz;
-    pRPZ.d2psi_d2r = d2psi_d2r;
-    pRPZ.d2psi_d2z = d2psi_d2z;
+    pInfo.Psi = psi;
+    pInfo.dpsi_dr = dpsi_dr;
+    pInfo.dpsi_dz = dpsi_dz;
+    pInfo.d2psi_drdz = d2psi_drdz;
+    pInfo.d2psi_d2r = d2psi_d2r;
+    pInfo.d2psi_d2z = d2psi_d2z;
     //PSI = psi;
-    pRPZ.gradPsi_rzp[0] = pRPZ.dpsi_dr;
-    pRPZ.gradPsi_rzp[1] = pRPZ.dpsi_dz;
-    pRPZ.gradPsi_rzp[2] = 0;
+    pInfo.gradPsi_rzp[0] = dpsi_dr;
+    pInfo.gradPsi_rzp[1] = dpsi_dz;
+    pInfo.gradPsi_rzp[2] = 0;
     /*
     std::cout<<" psi= "<<psi<<std::endl;
     std::cout<<" dpsi_dr = "<<dpsi_dr<<std::endl;
     std::cout<<" dpsi_dz = "<<dpsi_dz<<std::endl;
     */
 
-    vtkm::FloatDefault fld_I = this->I_interpol(pRPZ.Psi, 0, Coeff_1D);
-    vtkm::FloatDefault fld_dIdpsi = this->I_interpol(pRPZ.Psi, 1, Coeff_1D);
+    vtkm::FloatDefault fld_I = this->I_interpol(pInfo.Psi, 0, Coeff_1D);
+    vtkm::FloatDefault fld_dIdpsi = this->I_interpol(pInfo.Psi, 1, Coeff_1D);
 
     vtkm::FloatDefault over_r = 1/R;
     vtkm::FloatDefault over_r2 = over_r*over_r;
-    vtkm::FloatDefault Br = -pRPZ.dpsi_dz * over_r;
-    vtkm::FloatDefault Bz = pRPZ.dpsi_dr * over_r;
+    vtkm::FloatDefault Br = -pInfo.dpsi_dz * over_r;
+    vtkm::FloatDefault Bz = pInfo.dpsi_dr * over_r;
     vtkm::FloatDefault Bp = fld_I * over_r;
 
-    pRPZ.B0_rzp = vtkm::Vec3f(Br, Bz, Bp);
+    pInfo.B0_rzp = vtkm::Vec3f(Br, Bz, Bp);
 
     //Set the jacobian.
     const int PIR = 0;
@@ -305,18 +311,18 @@ public:
     vtkm::FloatDefault bp_sign = 1.0;
 
     // R-derivatives depend on the geometry
-    jacobian_rzp[PIR][PIR] = ( pRPZ.dpsi_dz * over_r2 - pRPZ.d2psi_drdz * over_r) * bp_sign;
-    jacobian_rzp[PIR][PIZ] = (-pRPZ.dpsi_dr * over_r2 + pRPZ.d2psi_d2r  * over_r) * bp_sign;
-    jacobian_rzp[PIR][PIP] = pRPZ.dpsi_dr * fld_dIdpsi * over_r - fld_I * over_r2;
+    jacobian_rzp[PIR][PIR] = ( pInfo.dpsi_dz * over_r2 - pInfo.d2psi_drdz * over_r) * bp_sign;
+    jacobian_rzp[PIR][PIZ] = (-pInfo.dpsi_dr * over_r2 + pInfo.d2psi_d2r  * over_r) * bp_sign;
+    jacobian_rzp[PIR][PIP] = pInfo.dpsi_dr * fld_dIdpsi * over_r - fld_I * over_r2;
 
     // Z and phi derivatives do not change between toroidal and cylindrical geometry
-    jacobian_rzp[PIZ][PIR] = -pRPZ.d2psi_d2z * over_r * bp_sign;
+    jacobian_rzp[PIZ][PIR] = -pInfo.d2psi_d2z * over_r * bp_sign;
     jacobian_rzp[PIP][PIR] = 0.0 * bp_sign;
 
-    jacobian_rzp[PIZ][PIZ] = pRPZ.d2psi_drdz * over_r * bp_sign;
+    jacobian_rzp[PIZ][PIZ] = pInfo.d2psi_drdz * over_r * bp_sign;
     jacobian_rzp[PIP][PIZ] = 0.0 * bp_sign;
 
-    jacobian_rzp[PIZ][PIP] = fld_dIdpsi * pRPZ.dpsi_dz * over_r;
+    jacobian_rzp[PIZ][PIP] = fld_dIdpsi * pInfo.dpsi_dz * over_r;
     jacobian_rzp[PIP][PIP] = 0.0;
 
     //std::cout<<"High order B: "<<std::endl;
@@ -361,9 +367,9 @@ public:
     curl_B(3)  = fld%dbrdz - fld%dbzdr
     */
     //vtkm::Vec3f curlB_rzp;
-    pRPZ.curlB_rzp[0] = dBz_dp * over_r - dBp_dz;
-    pRPZ.curlB_rzp[1] = Bp*over_r + dBp_dr - dBr_dp*over_r;
-    pRPZ.curlB_rzp[2] = dBr_dz - dBz_dr;
+    pInfo.curlB_rzp[0] = dBz_dp * over_r - dBp_dz;
+    pInfo.curlB_rzp[1] = Bp*over_r + dBp_dr - dBr_dp*over_r;
+    pInfo.curlB_rzp[2] = dBr_dz - dBz_dr;
     //std::cout<<"curl_B_rzp= "<<curlB_rzp<<std::endl;
 
     //calculate curl_nb
@@ -374,7 +380,7 @@ public:
     curl_nb(3) = curl_B(3)*over_B + (fld%bz   * dbdr - fld%br   * dbdz) * over_B2
     */
 
-    vtkm::FloatDefault Bmag = vtkm::Magnitude(pRPZ.B0_rzp);
+    vtkm::FloatDefault Bmag = vtkm::Magnitude(pInfo.B0_rzp);
     vtkm::FloatDefault over_B = 1./Bmag, over_B2 = over_B*over_B;
 
     /*
@@ -400,9 +406,9 @@ public:
 
 
     //vtkm::Vec3f curl_nb_rzp;
-    pRPZ.curl_nb_rzp[0] = pRPZ.curlB_rzp[0] * over_B + ( Bp * dBdz)*over_B2;
-    pRPZ.curl_nb_rzp[1] = pRPZ.curlB_rzp[1] * over_B + (-Bp * dBdr)*over_B2;
-    pRPZ.curl_nb_rzp[2] = pRPZ.curlB_rzp[2] * over_B + (Bz*dBdr - Br*dBdz)*over_B2;
+    pInfo.curl_nb_rzp[0] = pInfo.curlB_rzp[0] * over_B + ( Bp * dBdz)*over_B2;
+    pInfo.curl_nb_rzp[1] = pInfo.curlB_rzp[1] * over_B + (-Bp * dBdr)*over_B2;
+    pInfo.curl_nb_rzp[2] = pInfo.curlB_rzp[2] * over_B + (Bz*dBdr - Br*dBdz)*over_B2;
 
     /*
     std::cout<<"XXXXXX_B_rpz= "<<res<<std::endl;
@@ -434,6 +440,11 @@ public:
                             OutputType2D& outputTP,
                             IdType punctureID) const
   {
+#ifdef VALGRIND
+    CALLGRIND_START_INSTRUMENTATION;
+    CALLGRIND_TOGGLE_COLLECT;
+#endif
+
     if (this->QuickTest)
     {
       for (vtkm::Id p = 0; p < this->MaxPunc; p++)
@@ -449,13 +460,14 @@ public:
 
     DBG("Begin: "<<particle<<std::endl);
 
+    ParticleInfo pInfo;
     while (true)
     {
       //printf("  worklet %d\n", __LINE__);
       vtkm::Vec3f newPos;
       DBG("\n\n\n*********************************************"<<std::endl);
       DBG("   "<<particleRPZ.Pos<<" #s= "<<particleRPZ.NumSteps<<std::endl);
-      if (!this->TakeRK4Step(particleRPZ, locator, cellSet,
+      if (!this->TakeRK4Step(particleRPZ.Pos, pInfo, locator, cellSet,
                              B_RZP, B_Norm_RZP,
                              AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, newPos))
       {
@@ -519,11 +531,16 @@ public:
 #ifndef VTKM_CUDA
     std::cout<<"Particle done: "<<idx<<std::endl;
 #endif
+#ifdef VALGRIND
+    CALLGRIND_TOGGLE_COLLECT;
+    CALLGRIND_STOP_INSTRUMENTATION;
+#endif
   }
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
-  bool TakeRK4Step(vtkm::Particle& particleRPZ,
+  bool TakeRK4Step(const vtkm::Vec3f& ptRPZ,
+                   ParticleInfo& pInfo,
                    const LocatorType& locator,
                    const CellSetType& cellSet,
                    const BFieldType& B_RZP,
@@ -543,30 +560,29 @@ public:
 
     //std::cout<<"TakeRK4Step: "<<particleRPZ<<std::endl;
 
-    vtkm::Particle p0, tmp;
-    p0.Pos = particleRPZ.Pos;
+    vtkm::Vec3f p0 = ptRPZ, tmp = ptRPZ;
+
     DBG("    ****** K1"<<std::endl);
-    if (!this->Evaluate(p0, locator, cellSet, B_RZP, B_Norm_RZP, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1))
+    if (!this->Evaluate(tmp, pInfo, locator, cellSet, B_RZP, B_Norm_RZP, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1))
       return false;
-    tmp.Pos = p0.Pos + k1*this->StepSize_2;
-    //std::cout<<" K1: "<<p0.Pos<<" --> "<<tmp.Pos<<" k1= "<<k1<<std::endl;
+    tmp = p0 + k1*this->StepSize_2;
 
     DBG("    ****** K2"<<std::endl);
-    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2))
+    if (!this->Evaluate(tmp, pInfo, locator, cellSet, B_RZP, B_Norm_RZP, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2))
       return false;
-    tmp.Pos = p0.Pos + k2*this->StepSize_2;
+    tmp = p0 + k2*this->StepSize_2;
 
     DBG("    ****** K3"<<std::endl);
-    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3))
+    if (!this->Evaluate(tmp, pInfo, locator, cellSet, B_RZP, B_Norm_RZP, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3))
       return false;
-    tmp.Pos = p0.Pos + k3*this->StepSize;
+    tmp = p0 + k3*this->StepSize;
 
     DBG("    ****** K4"<<std::endl);
-    if (!this->Evaluate(tmp, locator, cellSet, B_RZP, B_Norm_RZP, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4))
+    if (!this->Evaluate(tmp, pInfo, locator, cellSet, B_RZP, B_Norm_RZP, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4))
       return false;
 
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
-    res = p0.Pos + this->StepSize * vec;
+    res = p0 + this->StepSize * vec;
 
     return true;
   }
@@ -617,21 +633,22 @@ public:
 
   template <typename LocatorType, typename CellSetType>
   VTKM_EXEC
-  bool PtLoc(const vtkm::Vec3f& ptRZ,
-             const LocatorType& locator,
-             const CellSetType& cs,
-             vtkm::Vec3f& param,
-             vtkm::Vec<vtkm::Id, 3>& vIds) const
+  vtkm::Id PtLoc(const vtkm::Vec3f& ptRZ,
+                 const LocatorType& locator,
+                 const CellSetType& cs,
+                 vtkm::Vec3f& param,
+                 vtkm::Vec<vtkm::Id, 3>& vIds,
+                 vtkm::Id3& prevCell) const
   {
     vtkm::Id cellId;
-    vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param);
+    vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param, prevCell);
     if (status != vtkm::ErrorCode::Success)
     {
       printf("Find Cell failed! pt= %lf %lf %lf\n", ptRZ[0], ptRZ[1], ptRZ[2]);
 #ifndef VTKM_CUDA
       std::cout<<"Point not found: "<<ptRZ<<std::endl;
 #endif
-      return false;
+      return -1;
     }
 
     //vtkm::VecVariable<vtkm::Id, 3> tmp;
@@ -640,7 +657,7 @@ public:
     vIds[1] = tmp[1];
     vIds[2] = tmp[2];
 
-    return true;
+    return cellId;
   }
 
   VTKM_EXEC
@@ -853,7 +870,8 @@ public:
 
   template <typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
-  vtkm::Vec3f GetB(vtkm::Particle& pRPZ,
+  vtkm::Vec3f GetB(const vtkm::Vec3f& ptRPZ,
+                   ParticleInfo& pInfo,
                    const Coeff_1DType& coeff_1D,
                    const Coeff_2DType& coeff_2D) const
   {
@@ -862,18 +880,18 @@ public:
     vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, gradPsi_rzp;
     vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
     */
-    this->HighOrderB(pRPZ, coeff_1D, coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
+    this->HighOrderB(ptRPZ, pInfo, coeff_1D, coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
 
     //This gives is the time derivative: Br = dR/dt, Bz= dZ/dt, B_phi/R = dphi/dt
     //We need with respect to phi:
     // dR/dphi = dR/dt / (dphi/dt) = Br / B_phi * R
     // same for z;
 
-    vtkm::Vec3f B0_rpz(pRPZ.B0_rzp[0], pRPZ.B0_rzp[2], pRPZ.B0_rzp[1]);
-    B0_rpz[0]/=pRPZ.B0_rzp[2];
-    B0_rpz[2]/=pRPZ.B0_rzp[2];
-    B0_rpz[0] *= pRPZ.Pos[0];
-    B0_rpz[2] *= pRPZ.Pos[0];
+    vtkm::Vec3f B0_rpz(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
+    B0_rpz[0] /= pInfo.B0_rzp[2];
+    B0_rpz[2] /= pInfo.B0_rzp[2];
+    B0_rpz[0] *= ptRPZ[0];
+    B0_rpz[2] *= ptRPZ[0];
 
     return B0_rpz;
   }
@@ -935,6 +953,7 @@ DRP: field_following_pos2() i=             2
   template <typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
   bool CalcFieldFollowingPt(const vtkm::Vec3f& pt_rpz,
+                            ParticleInfo& pInfo,
                             const vtkm::Vec3f& B0_rpz,
                             const vtkm::FloatDefault& Phi0,
                             const vtkm::FloatDefault& Phi1,
@@ -978,28 +997,28 @@ DRP: field_following_pos2() i=             2
     //k4 = F(p+hk3)
     //Yn+1 = Yn + 1/6 h (k1+2k2+2k3+k4)
     vtkm::Vec3f k1, k2, k3, k4;
-    vtkm::Particle p0, tmp;
+    vtkm::Vec3f p0, tmp;
 
-    p0.Pos = {R,Phi,Z}; //pt_rpz
+    p0 = {R,Phi,Z}; //pt_rpz
     for (int i = 0; i < 2; i++)
     {
-      k1 = this->GetB(p0, coeff_1D, coeff_2D);
-      tmp.Pos = p0.Pos + k1*h_2;
+      k1 = this->GetB(p0, pInfo, coeff_1D, coeff_2D);
+      tmp = p0 + k1*h_2;
 
-      k2 = this->GetB(tmp, coeff_1D, coeff_2D);
-      tmp.Pos = p0.Pos + k2*h_2;
+      k2 = this->GetB(tmp, pInfo, coeff_1D, coeff_2D);
+      tmp = p0 + k2*h_2;
 
-      k3 = this->GetB(tmp, coeff_1D, coeff_2D);
-      tmp.Pos = p0.Pos + k3*h;
+      k3 = this->GetB(tmp, pInfo, coeff_1D, coeff_2D);
+      tmp = p0 + k3*h;
 
-      k4 = this->GetB(tmp, coeff_1D, coeff_2D);
+      k4 = this->GetB(tmp, pInfo, coeff_1D, coeff_2D);
 
       vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4) / 6.0;
-      p0.Pos = p0.Pos + h * vec;
+      p0 = p0 + h * vec;
     }
 
     //std::cout<<"  **** rk4 method: "<<p0<<std::endl;
-    x_ff_rpz = p0.Pos;
+    x_ff_rpz = p0;
 
     /*
     //correct
@@ -1015,7 +1034,8 @@ DRP: field_following_pos2() i=             2
 
   template <typename LocatorType, typename CellSetType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
-  vtkm::Vec3f CalcDeltaB(vtkm::Particle& pRPZ,
+  vtkm::Vec3f CalcDeltaB(const vtkm::Vec3f& ptRPZ,
+                         ParticleInfo& pInfo,
                          vtkm::Vec3f& B0_rzp,
                          vtkm::Vec3f& GRADPSI_rzp,
                          vtkm::Vec3f& curl_nb_rzp,
@@ -1026,9 +1046,9 @@ DRP: field_following_pos2() i=             2
                          const Coeff_1DType& coeff_1D,
                          const Coeff_2DType& coeff_2D) const
   {
-    auto R = pRPZ.Pos[0];
-    auto Phi = pRPZ.Pos[1];
-    auto Z = pRPZ.Pos[2];
+    auto R = ptRPZ[0];
+    auto Phi = ptRPZ[1];
+    auto Z = ptRPZ[2];
 
     vtkm::Id planeIdx0, planeIdx1, numRevs;
     vtkm::FloatDefault phiN, Phi0, Phi1, T;
@@ -1036,7 +1056,7 @@ DRP: field_following_pos2() i=             2
     vtkm::Vec3f B0_rpz(B0_rzp[0], B0_rzp[2], B0_rzp[1]);
 
     vtkm::Vec3f ff_pt_rpz;
-    this->CalcFieldFollowingPt({R,phiN,Z}, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
+    this->CalcFieldFollowingPt({R,phiN,Z}, pInfo, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
 
     //Now, interpolate between Phi_i and Phi_i+1
     vtkm::FloatDefault T01 = (phiN - Phi0) / (Phi1-Phi0);
@@ -1074,7 +1094,7 @@ DRP: field_following_pos2() i=             2
 
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
-    this->PtLoc(x_ff_rzp, locator, cellSet, x_ff_param, x_ff_vids);
+    pInfo.PrevCell = this->PtLoc(x_ff_rzp, locator, cellSet, x_ff_param, x_ff_vids, pInfo.PrevCell);
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
 
@@ -1121,7 +1141,8 @@ DRP: field_following_pos2() i=             2
 
   template <typename LocatorType, typename CellSetType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
-  bool HighOrderEval(vtkm::Particle& pRPZ,
+  bool HighOrderEval(const vtkm::Vec3f& ptRPZ,
+                     ParticleInfo& pInfo,
                      const LocatorType& locator,
                      const CellSetType& cellSet,
                      const AsFieldType& AsPhiFF,
@@ -1130,22 +1151,20 @@ DRP: field_following_pos2() i=             2
                      const Coeff_2DType& coeff_2D,
                      vtkm::Vec3f& res) const
   {
-    //std::cout<<"    HighOrderEval: "<<pRPZ.Pos<<std::endl;
-    auto R = pRPZ.Pos[0];
+    auto R = ptRPZ[0];
 
     //res is R,P,Z
     vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, GRADPSI_rzp;
     //vtkm::Vec<vtkm::Vec3f, 3> jacobian;
-    if (!this->HighOrderB(pRPZ, coeff_1D, coeff_2D)) //, B0_rzp, jacobian, curlB_rzp, curl_nb_rzp, psi, GRADPSI_rzp))
+    if (!this->HighOrderB(ptRPZ, pInfo, coeff_1D, coeff_2D)) //, B0_rzp, jacobian, curlB_rzp, curl_nb_rzp, psi, GRADPSI_rzp))
       return false;
     //vtkm::FloatDefault psi = pRPZ.Psi;
-    B0_rzp = pRPZ.B0_rzp;
-    curlB_rzp = pRPZ.curlB_rzp;
-    curl_nb_rzp = pRPZ.curl_nb_rzp;
-    GRADPSI_rzp = pRPZ.gradPsi_rzp;
+    B0_rzp = pInfo.B0_rzp;
+    curlB_rzp = pInfo.curlB_rzp;
+    curl_nb_rzp = pInfo.curl_nb_rzp;
+    GRADPSI_rzp = pInfo.gradPsi_rzp;
 
 
-    //printf("  worklet %d\n", __LINE__);
     if (this->UseBOnly)
     {
       B0_rzp[2] /= R;
@@ -1155,7 +1174,7 @@ DRP: field_following_pos2() i=             2
     }
 
     vtkm::Vec3f deltaB_rzp;
-    deltaB_rzp = this->CalcDeltaB(pRPZ, B0_rzp, GRADPSI_rzp, curl_nb_rzp,
+    deltaB_rzp = this->CalcDeltaB(ptRPZ, pInfo, B0_rzp, GRADPSI_rzp, curl_nb_rzp,
                                   locator, cellSet,
                                   AsPhiFF, DAsPhiFF_RZP, coeff_1D, coeff_2D);
     deltaB_rzp[2] /= R;
@@ -1330,7 +1349,8 @@ DRP: field_following_pos2() i=             2
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
-  bool Evaluate(vtkm::Particle& pRPZ,
+  bool Evaluate(const vtkm::Vec3f& ptRPZ,
+                ParticleInfo& pInfo,
                 const LocatorType& locator,
                 const CellSetType& cellSet,
                 const BFieldType& /*B_RZP*/,
@@ -1342,10 +1362,8 @@ DRP: field_following_pos2() i=             2
                 const Coeff_2DType& Coeff_2D,
                 vtkm::Vec3f& res) const
   {
-    //printf("  worklet %d\n", __LINE__);
-    //std::cout<<"  Evaluate: "<<pRPZ.Pos<<std::endl;
     if (this->UseHighOrder)
-      return this->HighOrderEval(pRPZ, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, res);
+      return this->HighOrderEval(ptRPZ, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, res);
 
 #if 0
     auto R = ptRPZ[0];

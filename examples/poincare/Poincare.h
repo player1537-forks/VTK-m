@@ -437,6 +437,11 @@ public:
                             OutputType2D& outputTP,
                             IdType punctureID) const
   {
+#ifdef VALGRIND
+    CALLGRIND_START_INSTRUMENTATION;
+    CALLGRIND_TOGGLE_COLLECT;
+#endif
+
     if (this->QuickTest)
     {
       for (vtkm::Id p = 0; p < this->MaxPunc; p++)
@@ -526,7 +531,10 @@ public:
 #ifndef VTKM_CUDA
     std::cout<<"Particle done: "<<idx<<std::endl;
 #endif
-    //printf("operator() DONE\n");
+#ifdef VALGRIND
+    CALLGRIND_TOGGLE_COLLECT;
+    CALLGRIND_STOP_INSTRUMENTATION;
+#endif
   }
 
   template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>

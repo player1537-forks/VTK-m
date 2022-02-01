@@ -11,12 +11,10 @@
 //-----------------------------------------------------------------------------
 class ComputeBWorklet : public vtkm::worklet::WorkletMapField
 {
+  using FloatPortal = typename vtkm::cont::ArrayHandle<vtkm::FloatDefault>::ReadPortalType;
+  using VecPortal = typename vtkm::cont::ArrayHandle<vtkm::Vec3f>::ReadPortalType;
 public:
   using ControlSignature = void(FieldIn Coords,
-                                WholeCellSetIn<> cellSet,
-                                ExecObject locator,
-                                WholeArrayIn As_phi_ff,
-                                WholeArrayIn dAs_phi_ff_RZP,
                                 WholeArrayIn coeff_1D,
                                 WholeArrayIn coeff_2D,
                                 FieldOut Psi,
@@ -25,7 +23,7 @@ public:
                                 FieldOut CurlNB0,
                                 FieldOut GradPsi);
 
-  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12);
+  using ExecutionSignature = void(_1, _2, _3, _4, _5, _6, _7, _8);
   using InputDomain = _1;
 
   ~ComputeBWorklet()
@@ -53,13 +51,8 @@ public:
     this->one_d_cub_dpsi_inv = 1.0 / ((this->max_psi-this->min_psi)/vtkm::FloatDefault(this->ncoeff));
   }
 
-  template <typename CoordsType, typename CellSetType, typename LocatorType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
-  VTKM_EXEC void operator()(const vtkm::Id& /*Idx*/,
-                            const CoordsType& CoordsRZ,
-                            const CellSetType& /*CellSet*/,
-                            const LocatorType& /*Locator*/,
-                            const AsFieldType& /*AsPhiFF*/,
-                            const DAsFieldType& /*DAsPhiFF_RZP*/,
+  template <typename CoordsType, typename Coeff_1DType, typename Coeff_2DType>
+  VTKM_EXEC void operator()(const CoordsType& CoordsRZ,
                             const Coeff_1DType& Coeff_1D,
                             const Coeff_2DType& Coeff_2D,
                             vtkm::FloatDefault& Psi,
@@ -76,6 +69,7 @@ public:
 
     vtkm::Vec3f ptRPZ(R,0,Z);
     vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
+
     this->HighOrderB(ptRPZ, Coeff_1D, Coeff_2D,
                      B0, jacobian_rzp, CurlB0, CurlNB0, Psi, GradPsi);
 
@@ -316,6 +310,7 @@ public:
     #ifndef VTKM_CUDA
     //Check divergence.
     auto divergence = dBr_dr + Br/R + dBz_dz;
+    //std::cout<<"Div= "<<divergence<<std::endl;
     if (vtkm::Abs(divergence) > 1e-16)
     {
       std::cout<<std::endl;
