@@ -43,7 +43,6 @@
 #include <mpi.h>
 
 //#define PRINT_STUFF
-
 #ifdef PRINT_STUFF
 #define DBG(x) std::cout<<x
 #else

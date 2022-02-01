@@ -28,11 +28,8 @@
 #include <vtkm/worklet/testing/GenerateTestDataSets.h>
 
 #include <vtkm/cont/CellLocatorGeneral.h>
-
 #include <vtkm/filter/Gradient.h>
-
 #include <vtkm/io/VTKDataSetWriter.h>
-
 #include <fides/DataSetReader.h>
 
 #include <adios2.h>
@@ -49,7 +46,6 @@
 #else
 #define DBG(x)
 #endif
-
 
 /*
 radius values: max range: 2.5 3.7
@@ -402,6 +398,23 @@ ComputeV(vtkm::cont::DataSet& ds)
   std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 }
 
+//-----------------------------------------------------------------------------
+class NormalizeWorklet : public vtkm::worklet::WorkletMapField
+{
+public:
+  using ControlSignature = void(FieldIn input,
+                                FieldOut output);
+  using ExecutionSignature = void(_1, _2);
+  using InputDomain = _1;
+
+  template <typename VectorType>
+  VTKM_EXEC void operator()(const VectorType& input,
+                            VectorType& output) const
+  {
+    output = vtkm::Normal(input);
+  }
+};
+
 void
 ReadOther(adiosS* stuff,
           vtkm::cont::DataSet& ds,
@@ -477,6 +490,7 @@ ReadVec(adiosS* stuff,
       int vidx = (isB ? i : (p*numNodes+i));
       //vtkm::Vec3f v(tmp[vidx*3+0], tmp[vidx*3+2], tmp[vidx*3+1]);
       vtkm::Vec3f v(tmp[vidx*3+0], tmp[vidx*3+1], tmp[vidx*3+2]);
+
       vec.push_back(v);
       if (p == 0)
         vec2d.push_back(v);
@@ -492,7 +506,38 @@ ReadVec(adiosS* stuff,
   if (add3D)
     ds.AddField(vtkm::cont::make_FieldPoint(vname,vtkm::cont::make_ArrayHandle(vec, vtkm::CopyFlag::On)));
   else
+  {
     ds.AddField(vtkm::cont::make_FieldPoint(vname+"2D",vtkm::cont::make_ArrayHandle(vec2d, vtkm::CopyFlag::On)));
+    if (isB)
+    {
+      vtkm::cont::ArrayHandle<vtkm::Vec3f> b, bhat;
+      vtkm::cont::Invoker invoker;
+      ds.GetField("B2D").GetData().AsArrayHandle(b);
+      invoker(NormalizeWorklet{}, b, bhat);
+      ds.AddField(vtkm::cont::make_FieldPoint("B2D_Norm",bhat));
+
+      vtkm::filter::Gradient gradient;
+      gradient.SetComputePointGradient(true);
+      gradient.SetComputeVorticity(true);
+      gradient.SetActiveField("B2D_Norm");
+      auto tmpDS = gradient.Execute(ds);
+
+      vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBNorm;
+      tmpDS.GetField("Vorticity").GetData().AsArrayHandle(curlBNorm);
+      ds.AddField(vtkm::cont::make_FieldPoint("Curl_B2D_Norm", curlBNorm));
+
+      //Add B3D.
+      std::vector<vtkm::Vec3f> B3D;
+      auto portal = b.ReadPortal();
+      for (vtkm::Id p = 0; p < numPlanes; p++)
+        for (vtkm::Id n = 0; n < numNodes; n++)
+          B3D.push_back(portal.Get(n));
+      ds.AddField(vtkm::cont::make_Field("B3D",
+                                         vtkm::cont::Field::Association::WHOLE_MESH,
+                                         B3D,
+                                         vtkm::CopyFlag::On));
+    }
+  }
 }
 
 vtkm::cont::DataSet
@@ -560,7 +605,8 @@ ReadMesh3D(adiosS* meshStuff, bool addExtra)
       double R = rz[i*2 +0];
       double Z = rz[i*2 +1];
 
-      vtkm::Vec3f pt(R,Z,phi);
+      //vtkm::Vec3f pt(R,Z,phi);
+      vtkm::Vec3f pt(R,phi,Z);
       coords.push_back(pt);
     }
     phi += dPhi;
@@ -624,67 +670,278 @@ public:
   }
 };
 
-void
-InterpVector(const vtkm::cont::DataSet& ds,
-             const vtkm::cont::CellLocatorGeneral& locator,
-             const std::vector<vtkm::Vec3f>& pts,
-             const std::string& vName,
-             std::vector<vtkm::Vec3f>& out,
-             bool is3D = false)
+static bool Exists(const std::string& fname)
 {
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> points;
-  std::vector<vtkm::Id> offset(pts.size(), 0);
-  if (is3D)
-  {
-    vtkm::FloatDefault phiSpacing = vtkm::TwoPi() / (vtkm::FloatDefault)(numPlanes);
+  std::ifstream ifile;
+  ifile.open(fname);
+  if (ifile)
+    return true;
+  return false;
+}
 
-    auto pts2 = pts;
-    for (std::size_t i = 0; i < pts.size(); i++)
+void WriteHeader(const std::string& fname, const std::string& header)
+{
+  std::ofstream f(fname, std::ofstream::out);
+  f<<header<<std::endl;
+  f.close();
+}
+
+void
+SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
+           const std::vector<std::vector<vtkm::Vec3f>>& punctures,
+           const std::string& tracesNm="./traces.txt",
+           const std::string& puncNm="./punctures.txt",
+           const std::string& puncThetaPsiNm="./punctures.theta_psi.txt")
+{
+  bool tExists = Exists(tracesNm);
+  bool pExists = Exists(puncNm);
+  bool ptpExists = Exists(puncThetaPsiNm);
+  std::cout<<"EXISTS: "<<tExists<<" "<<pExists<<" "<<ptpExists<<std::endl;
+
+  //Write headers.
+  if (!tExists)
+    WriteHeader(tracesNm, "ID, R, Z, T");
+  if (!pExists)
+    WriteHeader(puncNm, "ID, R, Z, DUMMY");
+  if (!ptpExists)
+    WriteHeader(puncThetaPsiNm, "ID, THETA, PSI, DUMMY");
+
+  std::ofstream outTraces, outPunc, outPuncPsiTheta;
+
+  outTraces.open(tracesNm, std::ofstream::app);
+  outPunc.open(puncNm, std::ofstream::app);
+  outPuncPsiTheta.open(puncThetaPsiNm, std::ofstream::app);
+
+  //write traces
+  for (int i = 0; i < (int)traces.size(); i++)
+  {
+    for (const auto& pt : traces[i])
     {
-      //std::cout<<"Wrap around check: line= "<<__LINE__<<std::endl;
-      vtkm::Id off = static_cast<vtkm::Id>(vtkm::Floor(pts2[i][1] / phiSpacing));
-      pts2[i][1] = pts2[i][2];
-      pts2[i][2] = 0;
-      offset[i] = off * numNodes;
-//      std::cout<<"******* Offset:  "<<pts2[i]<<" "<<off<<" --> "<<offset[i]<<std::endl;
+      auto R = pt[0];
+      auto Z = pt[2];
+      auto PHI_N = pt[1];
+      while (PHI_N < 0)
+        PHI_N += vtkm::TwoPi();
+
+      outTraces<<i<<", "<<R<<", "<<Z<<", "<<PHI_N<<std::endl;
     }
-    points = vtkm::cont::make_ArrayHandle(pts2, vtkm::CopyFlag::On);
   }
-  else
-    points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
 
-  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
-  vtkm::cont::Invoker invoker;
-
-  //Find the cell on the RZ plane.
-  invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
-
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> V;
-  ds.GetField(vName).GetData().AsArrayHandle(V);
-
-  auto cPortal = cellIds.ReadPortal();
-  auto pPortal = pcoords.ReadPortal();
-  auto vPortal = V.ReadPortal();
-  auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
-
-  for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
+  //write punctures
+  for (int i = 0; i < (int)punctures.size(); i++)
   {
-    vtkm::Id vIds[3];
-    vtkm::Id cid = cPortal.Get(i);
-    cs.GetCellPointIds(cid, vIds);
-    vtkm::VecVariable<vtkm::Vec3f, 3> vals;
-//    std::cout<<"CID: "<<cid<<":: "<<vIds[0]<<" "<<vIds[1]<<" "<<vIds[2]<<std::endl;
-//    std::cout<<"  vals: "<<vPortal.Get(vIds[0]+offset[i])<<" "<<vPortal.Get(vIds[1]+offset[i])<<" "<<vPortal.Get(vIds[2]+offset[i])<<std::endl;
-    for (vtkm::Id j = 0; j < 3; j++)
-      vals.Append(vPortal.Get(vIds[j]+offset[i]));
+    for (const auto& p : punctures[i])
+      outPunc<<i<<", "<<p[0]<<" "<<p[2]<<std::endl;
 
-    vtkm::Vec3f v;
-    vtkm::exec::CellInterpolate(vals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), v);
-    out.push_back(v);
-//    std::cout<<"    "<<vals[0]<<" "<<vals[1]<<" "<<vals[2]<<std::endl;
-//    std::cout<<" -----> "<<v<<std::endl;
+    auto thetaPsi = ConvertToThetaPsi(punctures[i]);
+    for (const auto& p : thetaPsi)
+      outPuncPsiTheta<<i<<", "<<p[0]<<", "<<p[1]<<", 0"<<std::endl;
   }
+}
+
+void
+CalcAsCurlBHat(vtkm::cont::DataSet& ds)
+{
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> curlBhat;
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> As;
+
+  ds.GetField("Curl_B2D_Norm").GetData().AsArrayHandle(curlBhat);
+  ds.GetField("As_phi_ff").GetData().AsArrayHandle(As);
+
+  vtkm::Id numAs = As.GetNumberOfValues();
+
+  auto cbPortal = curlBhat.ReadPortal();
+  auto asPortal = As.ReadPortal();
+
+  //Dim: (numPlanes, numNodes, idx)
+  std::vector<std::vector<std::vector<vtkm::Vec3f>>> As_curlBhat;
+  As_curlBhat.resize(numPlanes);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    As_curlBhat[p].resize(2);
+    for (int i = 0; i < 2; i++)
+      As_curlBhat[p][i].resize(numNodes);
+  }
+
+  //Do some easy indexing.
+  vtkm::Id idx = 0;
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int n = 0; n < numNodes; n++)
+    {
+      vtkm::Vec3f cBhat = cbPortal.Get(n);
+      for (int i = 0; i < 2; i++)
+      {
+        auto val = asPortal.Get(idx) * cBhat;
+        As_curlBhat[p][i][n] = val;
+        idx++;
+      }
+    }
+  }
+
+  //flatten to 1d index.
+  idx = 0;
+  std::vector<vtkm::Vec3f> arr(numAs);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int i = 0; i < 2; i++)
+    {
+      for (int n = 0; n < numNodes; n++)
+      {
+        vtkm::Vec3f val = As_curlBhat[p][i][n];
+        arr[idx] = val;
+        idx++;
+      }
+    }
+  }
+
+  ds.AddField(vtkm::cont::make_Field("AsCurlBHat",
+                                     vtkm::cont::Field::Association::WHOLE_MESH,
+                                     arr,
+                                     vtkm::CopyFlag::On));
+}
+
+void
+CalcGradAs(vtkm::cont::DataSet& ds)
+{
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> dAsAH;
+  ds.GetField("dAs_phi_ff").GetData().AsArrayHandle(dAsAH);
+  int nVals = dAsAH.GetNumberOfValues()/3;
+
+  //Dim: (numPlanes, numNodes, idx)
+  std::vector<std::vector<std::vector<vtkm::Vec3f>>> dAs_ff;
+  dAs_ff.resize(numPlanes);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    dAs_ff[p].resize(2);
+    for (int i = 0; i < 2; i++)
+      dAs_ff[p][i].resize(numNodes);
+  }
+
+
+  int idx = 0;
+  auto dAsPortal = dAsAH.ReadPortal();
+
+  for (int p = 0; p < numPlanes; p++)
+    for (int n = 0; n < numNodes; n++)
+    {
+      for (int c = 0; c < 3; c++) //vec coords
+      {
+        for (int i = 0; i < 2; i++) //idx
+        {
+          vtkm::FloatDefault val = dAsPortal.Get(idx);
+          idx++;
+          dAs_ff[p][i][n][c] = val;
+        }
+      }
+    }
+
+
+  //B is R,Z,Phi
+  std::cout<<"****************************************************************   Get R,Z,Phi thing right....."<<std::endl;
+  //calculate gradPsi;
+  std::vector<vtkm::Vec3f> gradPsi;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B0;
+  ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
+  ds.GetField("B2D").GetData().AsArrayHandle(B0);
+  gradPsi.resize(numNodes);
+  auto cPortal = coords.ReadPortal();
+  auto b0Portal = B0.ReadPortal();
+  for (int n = 0; n < numNodes; n++)
+  {
+    auto b = b0Portal.Get(n);
+    auto pt = cPortal.Get(n);
+    vtkm::Vec3f gv(b[2] * pt[0], -b[0]*pt[0], 0);
+    gradPsi[n] = gv;
+  }
+
+  std::vector<std::vector<std::vector<vtkm::Vec3f>>> VEC;
+  VEC.resize(numPlanes);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    VEC[p].resize(2);
+    for (int i = 0; i < 2; i++)
+      VEC[p][i].resize(numNodes);
+  }
+
+  vtkm::FloatDefault basis = 0.0f;
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int i = 0; i < 2; i++)
+    {
+      for (int n = 0; n < numNodes; n++)
+      {
+        vtkm::Vec3f gPsi = gradPsi[n];
+        vtkm::Vec3f dAs = dAs_ff[p][i][n];
+        vtkm::FloatDefault gammaPsi = 1.0f/vtkm::Magnitude(gPsi);
+
+        vtkm::Vec3f rvec(0,0,0), zvec(0,0,0);
+        rvec[0] = basis + (1.0-basis) * gammaPsi *   gPsi[0];
+        rvec[1] =         (1.0-basis) * gammaPsi *   gPsi[1];
+        zvec[0] = basis + (1.0-basis) * gammaPsi * (-gPsi[1]);
+        zvec[1] =         (1.0-basis) * gammaPsi *   gPsi[0];
+
+        vtkm::Vec3f vec;
+        vec[0] = rvec[0] * dAs[0] + zvec[0] * dAs[2];
+        vec[1] = rvec[1] * dAs[0] + zvec[1] * dAs[2];
+        vec[2] = dAs[1];
+
+        auto B = b0Portal.Get(n);
+        auto Bmag = vtkm::Magnitude(B);
+
+        //parallel derivative to phi derivative
+        vec[2] = (vec[2]*Bmag - vec[0]*B[0] - vec[1]*B[1]) / B[2];
+        VEC[p][i][n] = vec;
+      }
+    }
+  }
+
+
+  //flatten to 1d index
+  idx = 0;
+  std::vector<vtkm::Vec3f> arr(nVals);
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int i = 0; i < 2; i++)
+    {
+      for (int n = 0; n < numNodes; n++)
+      {
+        vtkm::Vec3f val = VEC[p][i][n];
+        arr[idx] = val;
+        idx++;
+      }
+    }
+  }
+
+  ds.AddField(vtkm::cont::make_Field("gradAs",
+                                     vtkm::cont::Field::Association::WHOLE_MESH,
+                                     arr,
+                                     vtkm::CopyFlag::On));
+}
+
+void
+Dump3DStuff(const vtkm::cont::DataSet& ds3D, const vtkm::cont::DataSet& ds2D)
+{
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> B0;
+  ds2D.GetField("B2D").GetData().AsArrayHandle(B0);
+  auto bPortal = B0.ReadPortal();
+
+  std::vector<vtkm::Vec3f> B3d(numPlanes*numNodes);
+  int idx = 0;
+  for (int p = 0; p < numPlanes; p++)
+  {
+    for (int n = 0; n < numNodes; n++)
+    {
+      B3d[idx] = bPortal.Get(n);
+      idx++;
+    }
+  }
+
+  auto out = ds3D;
+
+  out.AddField(vtkm::cont::make_FieldPoint("B", vtkm::cont::make_ArrayHandle(B3d, vtkm::CopyFlag::On)));
+  vtkm::io::VTKDataSetWriter writer("ds3D.vtk");
+  writer.WriteDataSet(out);
 }
 
 std::vector<vtkm::Vec3f>
@@ -747,51 +1004,6 @@ EvalVector(const vtkm::cont::DataSet& ds,
   return EvalVector(ds, locator, pts, vName, offset);
 }
 
-
-void
-InterpScalar(const vtkm::cont::DataSet& ds,
-             const vtkm::cont::CellLocatorGeneral& locator,
-             const std::vector<vtkm::Vec3f>& pts,
-             const std::string& vName,
-             std::vector<vtkm::FloatDefault>& out)
-{
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> points;
-  std::vector<vtkm::Id> offset(pts.size(), 0);
-
-  points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
-
-  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
-  vtkm::cont::Invoker invoker;
-
-  invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
-
-  vtkm::cont::ArrayHandle<vtkm::FloatDefault> V;
-  ds.GetField(vName).GetData().AsArrayHandle(V);
-
-  auto cPortal = cellIds.ReadPortal();
-  auto pPortal = pcoords.ReadPortal();
-  auto vPortal = V.ReadPortal();
-  auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
-
-  for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
-  {
-    vtkm::Id vIds[3];
-    vtkm::Id cid = cPortal.Get(i);
-    cs.GetCellPointIds(cid, vIds);
-    vtkm::VecVariable<vtkm::FloatDefault, 3> vals;
-    //std::cout<<cid<<":: "<<vIds[0]<<" "<<vIds[1]<<" "<<vIds[2]<<std::endl;
-    for (vtkm::Id j = 0; j < 3; j++)
-      vals.Append(vPortal.Get(vIds[0]));
-
-    vtkm::FloatDefault v;
-    vtkm::exec::CellInterpolate(vals, pPortal.Get(i), vtkm::CellShapeTagTriangle(), v);
-    out.push_back(v);
-    //std::cout<<"    "<<vals[0]<<" "<<vals[1]<<" "<<vals[2]<<std::endl;
-    //std::cout<<" -----> "<<interp<<std::endl;
-  }
-}
-
 void
 Evaluate(const vtkm::cont::DataSet& ds,
          const vtkm::cont::CellLocatorGeneral& locator,
@@ -804,21 +1016,23 @@ Evaluate(const vtkm::cont::DataSet& ds,
   return;
   */
 
+/*
   vtkm::FloatDefault phiSpacing = vtkm::TwoPi() / (vtkm::FloatDefault)(numPlanes);
-  /*
   std::cout<<"\n\n********************************************************"<<std::endl;
   std::cout<<"phiSpacing= "<<phiSpacing<<std::endl;
   std::cout<<"NumPlanes= "<<numPlanes<<" spacing= "<<phiSpacing<<std::endl;
   std::cout<<"Plane, Phi"<<std::endl;
   for (int i = 0; i < numPlanes; i++)
     std::cout<<i<<", "<<((float)i * phiSpacing)<<"  deg= "<<(i*phiSpacing*57.92958)<<std::endl;
+*/
+
   std::cout<<"** pts= "<<pts<<std::endl;
-  */
 
   for (const auto& x : pts)
   {
     auto pt = x;
     vtkm::FloatDefault phi = pt[1];
+    std::cout<<"   Evaluate: "<<pt<<" phi= "<<phi<<std::endl;
 
     vtkm::Id planeIdx0, planeIdx1, numRevs;
     vtkm::FloatDefault phiN, Phi0, Phi1, T;
@@ -852,84 +1066,13 @@ Evaluate(const vtkm::cont::DataSet& ds,
     std::vector<vtkm::Vec3f> P2 = { {ptOnPlane0[0], ptOnPlane0[2], 0}, {ptOnPlane1[0], ptOnPlane1[2], 0} };
     std::vector<int> offsets = {planeIdx0 * numNodes, planeIdx1 * numNodes};
 //    std::cout<<"   Eval X @ "<<P2<<std::endl;
-    auto X = EvalVector(ds, locator, P2, "X", offsets);
+    auto X = EvalVector(ds, locator, P2, "B3D", offsets);
 
     auto res = vtkm::Lerp(X[0], X[1], dist0i);
     res[1] /= pt[0];
 
     res = res+B;
     output.push_back(res);
-    continue;
-
-#if 0
-
-    int  numRevs = vtkm::Floor(vtkm::Abs(phi / vtkm::TwoPi()));
-    vtkm::FloatDefault rem = std::fmod(phi, vtkm::TwoPi());
-
-    auto idxfloat = rem/phiSpacing;
-    vtkm::Id planeIdx = static_cast<vtkm::Id>(vtkm::Floor(rem / phiSpacing));
-    std::cout<<"   Evaluate("<<pt<<")  #rev= "<<numRevs<<" rem= "<<rem<<" planeIdx= "<<planeIdx<<" ("<<idxfloat<<") -->";
-
-    if (planeIdx < 0)
-      planeIdx += numPlanes;
-    std::cout<<planeIdx<<std::endl;
-
-    vtkm::Id planeIdx0 = planeIdx, planeIdx1 = planeIdx+1;
-    vtkm::FloatDefault Phi0 = static_cast<vtkm::FloatDefault>(planeIdx0) * phiSpacing;
-    vtkm::FloatDefault Phi1 = static_cast<vtkm::FloatDefault>(planeIdx1) * phiSpacing;
-    if (planeIdx == numPlanes-1)
-    {
-      planeIdx0 = 0;
-      planeIdx1 = planeIdx;
-      Phi0 = vtkm::TwoPi();
-      Phi1 = static_cast<vtkm::FloatDefault>(planeIdx1) * phiSpacing;
-    }
-
-    vtkm::Vec3f ptRZ(pt[0], pt[2], 0);
-    std::cout<<"POINT: "<<pt<<" --> "<<ptRZ<<" Planes: "<<Phi0<<" "<<Phi1<<" ("<<planeIdx0<<" "<<planeIdx1<<")"<<std::endl;
-    std::vector<vtkm::Vec3f> P = {ptRZ};
-    std::vector<vtkm::Vec3f> B0 = EvalVector(ds, locator, P, "B2D");
-    std::vector<vtkm::FloatDefault> As;
-    InterpScalar(ds, locator, P, "apars", As);
-    auto B = B0[0];
-    //std::cout<<"    B= "<<B<<std::endl;
-
-    vtkm::Vec3f rayPt(pt[0], rem, pt[2]);
-    Ray3f ray0(rayPt, -B), ray1(rayPt, B);
-//    std::cout<<"Ray: "<<rayPt<<" "<<B<<std::endl;
-    vtkm::Plane<> Plane0({0,Phi0,0}, {0,-1,0}), Plane1({0,Phi1,0}, {0,-1,0});
-
-    vtkm::Vec3f ptOnPlane0, ptOnPlane1;
-    vtkm::FloatDefault T0, T1;
-    bool tmp;
-    Plane0.Intersect(ray0, T0, ptOnPlane0, tmp);
-    Plane1.Intersect(ray1, T1, ptOnPlane1, tmp);
-
-//    std::cout<<"PtOnPlane0: "<<ptOnPlane0<<" T0= "<<T0<<std::endl;
-//    std::cout<<"PtOnPlane1: "<<ptOnPlane1<<" T1= "<<T1<<std::endl;
-//    std::cout<<"pt: "<<pt<<std::endl;
-
-    auto dist01 = vtkm::Magnitude(ptOnPlane1-ptOnPlane0);
-    auto dist0i = vtkm::Magnitude(pt-ptOnPlane0) / dist01;
-    auto disti1 = vtkm::Magnitude(pt-ptOnPlane1) / dist01;
-
-//    std::cout<<"dist01= "<<dist01<<" :: "<<dist0i<<" "<<disti1<<std::endl;
-
-    //Eval X(p0_rz, p1_rz)
-    std::vector<vtkm::Vec3f> P2 = { {ptOnPlane0[0], ptOnPlane0[2], 0}, {ptOnPlane1[0], ptOnPlane1[2], 0} };
-    std::vector<int> offsets = {planeIdx0 * numNodes, planeIdx1 * numNodes};
-//    std::cout<<"   Eval X @ "<<P2<<std::endl;
-    auto X = EvalVector(ds, locator, P2, "X", offsets);
-
-    auto res = vtkm::Lerp(X[0], X[1], dist0i);
-//    std::cout<<"*************lerp "<<dist0i<<" *********RES= "<<res<<std::endl;
-   //res = res * XScale;
-    res = res+B;
-    //std::cout<<"       res+B= "<<res<<std::endl;
-
-    res = B;
-    output.push_back(res);
-#endif
   }
 }
 
@@ -964,6 +1107,7 @@ RK4(const vtkm::cont::DataSet& ds,
   std::vector<vtkm::Vec3f> newPts(pts.size());
   for (std::size_t i = 0; i < pts.size(); i++)
   {
+    std::cout<<"######### RK4: "<<k1[i]<<" "<<k2[i]<<" "<<k3[i]<<" "<<k4[i]<<std::endl;
     newPts[i] = pts[i] + h_6*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
     //std::cout<<"*******************  RK4: "<<pts[i]<<" ==========> "<<newPts[i]<<std::endl;
 
@@ -1059,102 +1203,98 @@ Poincare(const vtkm::cont::DataSet& ds,
 }
 
 void
-CalcX(vtkm::cont::DataSet& ds)
+DoSomePoinc(vtkm::cont::DataSet& ds,
+            vtkm::cont::DataSet ds3D)
 {
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> B, Bs, X;
+  //DeltaB = As * curl(Bhat) + grad_As x bhat
+  //Advect: DeltaB + B0
 
-  bool isB2D = ds.HasField("B2D");
+  ds.PrintSummary(std::cout);
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> AsCurlBhat, gradAs, B0;
+  ds.GetField("AsCurlBHat").GetData().AsArrayHandle(AsCurlBhat);
+  ds.GetField("gradAs").GetData().AsArrayHandle(gradAs);
+  ds.GetField("B2D").GetData().AsArrayHandle(B0);
 
-  if (isB2D)
-    ds.GetField("B2D").GetData().AsArrayHandle(B);
-  else
-    ds.GetField("B").GetData().AsArrayHandle(B);
+  std::vector<vtkm::Vec3f> vField((numPlanes * numNodes), vtkm::Vec3f(1,0,0));
+  auto B = vField;
+  auto Bn = vField;
+  auto acb = vField;
+  auto gas = vField;
 
-  ds.GetField("Bs").GetData().AsArrayHandle(Bs);
+  auto acbPortal = AsCurlBhat.ReadPortal();
+  auto gasPortal = gradAs.ReadPortal();
+  auto b0Portal = B0.ReadPortal();
 
-  X.Allocate(Bs.GetNumberOfValues());
-  auto BP = B.ReadPortal();
-  auto BsP = Bs.ReadPortal();
-  auto XP = X.WritePortal();
-
-  vtkm::Id idx = 0;
-  for (vtkm::Id p = 0; p < numPlanes; p++)
-    for (vtkm::Id i = 0; i < numNodes; i++, idx++)
-    {
-      vtkm::Id bidx = (isB2D ? i : idx);
-      XP.Set(idx, BsP.Get(idx)-BP.Get(bidx));
-    }
-
-  ds.AddField(vtkm::cont::make_FieldPoint("X", X));
-}
-
-static bool Exists(const std::string& fname)
-{
-  std::ifstream ifile;
-  ifile.open(fname);
-  if (ifile)
-    return true;
-  return false;
-}
-
-void WriteHeader(const std::string& fname, const std::string& header)
-{
-  std::ofstream f(fname, std::ofstream::out);
-  f<<header<<std::endl;
-  f.close();
-}
-
-void
-SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
-           const std::vector<std::vector<vtkm::Vec3f>>& punctures,
-           const std::string& tracesNm="./traces.txt",
-           const std::string& puncNm="./punctures.txt",
-           const std::string& puncThetaPsiNm="./punctures.theta_psi.txt")
-{
-  bool tExists = Exists(tracesNm);
-  bool pExists = Exists(puncNm);
-  bool ptpExists = Exists(puncThetaPsiNm);
-  std::cout<<"EXISTS: "<<tExists<<" "<<pExists<<" "<<ptpExists<<std::endl;
-
-  //Write headers.
-  if (!tExists)
-    WriteHeader(tracesNm, "ID, R, Z, T");
-  if (!pExists)
-    WriteHeader(puncNm, "ID, R, Z, DUMMY");
-  if (!ptpExists)
-    WriteHeader(puncThetaPsiNm, "ID, THETA, PSI, DUMMY");
-
-  std::ofstream outTraces, outPunc, outPuncPsiTheta;
-
-  outTraces.open(tracesNm, std::ofstream::app);
-  outPunc.open(puncNm, std::ofstream::app);
-  outPuncPsiTheta.open(puncThetaPsiNm, std::ofstream::app);
-
-  //write traces
-  for (int i = 0; i < (int)traces.size(); i++)
+  vtkm::Id idx = 0, idx2 = 0;
+  for (int p = 0; p < numPlanes; p++)
   {
-    for (const auto& pt : traces[i])
+    for (int i = 0; i < 2; i++)
     {
-      auto R = pt[0];
-      auto Z = pt[2];
-      auto PHI_N = pt[1];
-      while (PHI_N < 0)
-        PHI_N += vtkm::TwoPi();
+      for (int n = 0; n < numNodes; n++)
+      {
+        auto b = b0Portal.Get(n);
+        auto bn = vtkm::Normal(b);
 
-      outTraces<<i<<", "<<R<<", "<<Z<<", "<<PHI_N<<std::endl;
+        if (i == 0)
+        {
+          auto v1 = acbPortal.Get(idx);
+          auto v2 = gasPortal.Get(idx);
+          //auto cross = vtkm::Cross(v2, bn);
+          auto val  = v1 + vtkm::Cross(v2, bn) + b;
+
+          val = v1 + b;
+          vField[idx2] = val;
+          B[idx2] = b;
+          Bn[idx2] = bn;
+          acb[idx2] = v1;
+          gas[idx2] = v2;
+
+//          if (vtkm::Magnitude(v2) > 100)
+//            std::cout<<"************************ "<<val<<" :: "<<v1<<" "<<v2<<" "<<bn<<" "<<b<<std::endl;
+
+          idx2++;
+        }
+        idx++;
+      }
     }
   }
+  std::cout<<"Calc V: "<<idx2<<" "<<vField.size()<<std::endl;
 
-  //write punctures
-  for (int i = 0; i < (int)punctures.size(); i++)
+  //Now duplicate plane 0 to plane N.
+  for (int n = 0; n < numNodes; n++)
   {
-    for (const auto& p : punctures[i])
-      outPunc<<i<<", "<<p[0]<<" "<<p[2]<<std::endl;
-
-    auto thetaPsi = ConvertToThetaPsi(punctures[i]);
-    for (const auto& p : thetaPsi)
-      outPuncPsiTheta<<i<<", "<<p[0]<<", "<<p[1]<<", 0"<<std::endl;
+    vField.push_back(vField[n]);
+    B.push_back(B[n]);
+    Bn.push_back(Bn[n]);
+    acb.push_back(acb[n]);
+    gas.push_back(gas[n]);
   }
+
+
+  ds3D.AddField(vtkm::cont::make_FieldPoint("V", vtkm::cont::make_ArrayHandle(vField, vtkm::CopyFlag::On)));
+
+  if (0)
+  {
+    ds3D.AddField(vtkm::cont::make_FieldPoint("B", vtkm::cont::make_ArrayHandle(B, vtkm::CopyFlag::On)));
+    ds3D.AddField(vtkm::cont::make_FieldPoint("Bn", vtkm::cont::make_ArrayHandle(Bn, vtkm::CopyFlag::On)));
+    ds3D.AddField(vtkm::cont::make_FieldPoint("ACB", vtkm::cont::make_ArrayHandle(acb, vtkm::CopyFlag::On)));
+    ds3D.AddField(vtkm::cont::make_FieldPoint("GAS", vtkm::cont::make_ArrayHandle(gas, vtkm::CopyFlag::On)));
+
+    std::cout<<"Dumping file"<<std::endl;
+    vtkm::io::VTKDataSetWriter writer("dsWithV.vtk");
+    writer.WriteDataSet(ds3D);
+  }
+
+  ds.AddField(vtkm::cont::make_Field("V",
+                                     vtkm::cont::Field::Association::WHOLE_MESH,
+                                     vField, vtkm::CopyFlag::On));
+
+  /*
+  std::vector<vtkm::Vec3f> pts = {{3,3.14,0}};
+  std::vector<std::vector<vtkm::Vec3f>> traces(pts.size());
+  auto punctures = Poincare(ds, pts, 0.05, 2, &traces);
+  SaveOutput(traces, punctures);
+  */
 }
 
 vtkm::cont::DataSet
@@ -1191,6 +1331,13 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
   ReadOther(bfieldStuff, ds, "dAs_phi_ff");
   ReadVec(bfieldStuff, ds, "B", "/node_data[0]/values");
 
+  CalcAsCurlBHat(ds);
+  CalcGradAs(ds);
+
+  DoSomePoinc(ds, ReadMesh3D(meshStuff, true));
+
+  //Dump3DStuff(ReadMesh3D(meshStuff, false), ds);
+
   //ReadVec(bfieldStuff, ds, "B", "/node_data[0]/values");
   //ReadVec(bfield_allStuff, ds, "Bs", "Bs", true);
   //CalcX(ds);
@@ -1225,9 +1372,10 @@ public:
                                 WholeArrayIn Coords,
                                 WholeArrayIn B0vec,
                                 WholeArrayIn As_phi_ff,
+                                WholeArrayIn dAs_phi_ff,
                                 WholeArrayInOut output,
                                 WholeArrayInOut traces);
-  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8);
+  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9);
   using InputDomain = _1;
 
   PoincareWorklet(vtkm::Id maxPunc, vtkm::FloatDefault planeVal, vtkm::FloatDefault stepSize)
@@ -1243,7 +1391,7 @@ public:
     this->StepSize_6 = this->StepSize / 6.0;
   }
 
-  template <typename LocatorType, typename CellSetType, typename CoordsType, typename BFieldType, typename AsFieldType, typename OutputType>
+  template <typename LocatorType, typename CellSetType, typename CoordsType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename OutputType>
   VTKM_EXEC void operator()(const vtkm::Id& idx,
                             vtkm::Particle& particle,
                             const LocatorType& locator,
@@ -1251,6 +1399,7 @@ public:
                             const CoordsType& /*coords*/,
                             const BFieldType& B0Field,
                             const AsFieldType& AsPhiFF,
+                            const DAsFieldType& DAsPhiFF,
                             OutputType& output,
 #ifdef DO_TRACES
                             OutputType& traces) const
@@ -1264,7 +1413,7 @@ public:
       vtkm::Vec3f newPos;
       DBG("\n\n\n*********************************************"<<std::endl);
       DBG("   "<<particle.Pos<<" #s= "<<particle.NumSteps<<std::endl);
-      if (!this->TakeRK4Step(particle, locator, cellSet, B0Field, AsPhiFF, newPos))
+      if (!this->TakeRK4Step(particle, locator, cellSet, B0Field, AsPhiFF, DAsPhiFF, newPos))
         break;
       DBG("     *** Step--> "<<newPos<<std::endl);
       vtkm::Id numRevs0 = vtkm::Floor(vtkm::Abs(particle.Pos[1] / vtkm::TwoPi()));
@@ -1292,34 +1441,35 @@ public:
     }
   }
 
-  template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType>
+  template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType>
   bool TakeRK4Step(vtkm::Particle& particle,
                    const LocatorType& locator,
                    const CellSetType& cellSet,
                    const BFieldType& B0Field,
                    const AsFieldType& AsPhiFF,
+                   const DAsFieldType& DAsPhiFF,
                    vtkm::Vec3f& res) const
   {
     vtkm::Vec3f tmp, k1, k2, k3, k4, p0;
 
     p0 = particle.Pos;
     DBG("    ****** K1"<<std::endl);
-    if (!this->Evaluate(p0, locator, cellSet, B0Field, AsPhiFF, k1))
+    if (!this->Evaluate(p0, locator, cellSet, B0Field, AsPhiFF, DAsPhiFF, k1))
       return false;
     tmp = p0 + k1*this->StepSize_2;
 
     DBG("    ****** K2"<<std::endl);
-    if (!this->Evaluate(tmp, locator, cellSet, B0Field, AsPhiFF, k2))
+    if (!this->Evaluate(tmp, locator, cellSet, B0Field, AsPhiFF, DAsPhiFF, k2))
       return false;
     tmp = p0 + k2*this->StepSize_2;
 
     DBG("    ****** K3"<<std::endl);
-    if (!this->Evaluate(tmp, locator, cellSet, B0Field, AsPhiFF, k3))
+    if (!this->Evaluate(tmp, locator, cellSet, B0Field, AsPhiFF, DAsPhiFF, k3))
       return false;
     tmp = p0 + k3*this->StepSize_2;
 
     DBG("    ****** K4"<<std::endl);
-    if (!this->Evaluate(tmp, locator, cellSet, B0Field, AsPhiFF, k4))
+    if (!this->Evaluate(tmp, locator, cellSet, B0Field, AsPhiFF, DAsPhiFF, k4))
       return false;
     tmp = p0 + k4*this->StepSize;
 
@@ -1328,19 +1478,21 @@ public:
     return true;
   }
 
-  template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType>
+  template <typename LocatorType, typename CellSetType, typename BFieldType, typename AsFieldType, typename DAsFieldType>
   bool Evaluate(vtkm::Vec3f& pos,
                 const LocatorType& locator,
                 const CellSetType& cellSet,
                 const BFieldType& B0Field,
                 const AsFieldType& AsPhiFF,
+                const DAsFieldType& dAsPhiFF,
                 vtkm::Vec3f& res) const
   {
-    vtkm::FloatDefault xxx = AsPhiFF.Get(0);
+    std::cout<<" ####################### offset0 > offset1.    how to  handle (47,0)"<<std::endl;
+    //vtkm::FloatDefault xxx = AsPhiFF.Get(0);
 
     //auto x = AsPhiFF.Get(0);
     vtkm::Id offset = 0;
-    vtkm::Vec3f B0;
+    vtkm::Vec3f B0; //R, Phi, Z
     if (!this->EvaluateVec(pos,
                            locator,
                            cellSet,
@@ -1350,6 +1502,7 @@ public:
     {
       return false;
     }
+    std::cout<<"  ********$$$$$$$$$$$$$$$$ B0= "<<B0<<std::endl;
 
     vtkm::Id planeIdx0, planeIdx1, numRevs;
     vtkm::FloatDefault phiN, Phi0, Phi1, T;
@@ -1397,6 +1550,7 @@ public:
     }
 
     //Get nodeIndices for the triangle.
+    //********************************************* assumes offset0 < offset1 !!!!
     auto indices = cellSet.GetIndices(cellId);
     // As_phi_ff: (nPlanes, nNodes, 0:1)
     //Offset for phi_i
@@ -1407,8 +1561,8 @@ public:
 
     //Evaluate As_phi_ff at the P0 and P1.
     vtkm::FloatDefault vals0[3], vals1[3];
-//    for(int k = 0; k < 3; k++) vals0[k] = AsPhiFF.Get(indices[k]+offset0);
-//    for(int k = 0; k < 3; k++) vals1[k] = AsPhiFF.Get(indices[k]+offset1);
+    for(int k = 0; k < 3; k++) vals0[k] = AsPhiFF.Get(indices[k]+offset0);
+    for(int k = 0; k < 3; k++) vals1[k] = AsPhiFF.Get(indices[k]+offset1);
 
     vtkm::VecVariable<vtkm::FloatDefault, 3> vals;
     for (int k = 0; k < 3; k++) vals.Append(vals0[k]*T01 + vals1[k]*T10);
@@ -1417,82 +1571,42 @@ public:
     vtkm::exec::CellInterpolate(vals, pcoords, vtkm::CellShapeTagTriangle(), As_ff);
 
     DBG("         As_ff at pt: "<<As_ff<<std::endl);
-    //Calculate B0 on Plane0 and Plane1
-    vtkm::Vec3f B0_0, B0_1;
-    if (!this->EvaluateVec(ptOnPlane0, locator, cellSet, B0Field, 0, B0_0) ||
-        this->EvaluateVec(ptOnPlane1, locator, cellSet, B0Field, 0, B0_1))
-    {
-      return false;
-    }
+    DBG("          vals= "<<vals[0]<<" "<<vals[1]<<" "<<vals[2]<<" pcoords= "<<pcoords<<std::endl);
+    //Calculate gradpsi
+    //We evaluated B0 up above.
+    // gradPsi = (dPsi/dR, dPsi/dZ) = (B0.z * R, -B0.r * R)
+    vtkm::Vec3f gradPsi(B0[2] * pos[0], -B0[0]*pos[0], 0);
+    std::cout<<"              gradPsi= "<<gradPsi<<std::endl;
+//    DBG("           gradPsi= "<<gradPsi<<std::end);
+
+    vtkm::FloatDefault gammaPsi = 1.0f/vtkm::Magnitude(gradPsi);
+    vtkm::FloatDefault basis = 0.0f;
+
+    vtkm::Vec3f rvec(0,0,0), zvec(0,0,0);
+    rvec[0] = basis + (1.0-basis) * gammaPsi *   gradPsi[0];
+    rvec[1] =         (1.0-basis) * gammaPsi *   gradPsi[1];
+    zvec[0] = basis + (1.0-basis) * gammaPsi * (-gradPsi[1]);
+    zvec[1] =         (1.0-basis) * gammaPsi *   gradPsi[0];
+
+    std::cout<<"        rvec= "<<rvec<<" zvec= "<<zvec<<std::endl;
+
+    vtkm::Id voffset0 = planeIdx0 * this->NumNodes * 3;
+    vtkm::Id voffset1 = planeIdx1 * this->NumNodes * 3 + this->NumNodes * 3;
+
+    vtkm::Vec3f dAs0[3], dAs1[3];
+    for (int k = 0; k < 3; k++)
+      for (int l = 0; l < 3; l++)
+      {
+        dAs0[l][k] = dAsPhiFF.Get(voffset0 + indices[l] + k);
+        dAs1[l][k] = dAsPhiFF.Get(voffset1 + indices[l] + k);
+      }
+
+
+    //vtkm::Vec3f vec;
+    //vec[0] =
 
     res = {0,-.2,0};
     return true;
-
-
-#if 0
-    vtkm::Id offset = 0;
-    vtkm::Vec3f B0;
-    if (!this->EvaluateVec(pos,
-                           locator,
-                           cellSet,
-                           B0Field,
-                           offset,
-                           B0))
-    {
-      return false;
-    }
-    if (this->UseBOnly)
-    {
-      res = B0;
-      return true;
-    }
-
-    DBG("   Evaluate: "<<pos<<std::endl);
-    DBG("   B= "<<B0<<std::endl);
-
-    vtkm::Id planeIdx0, planeIdx1, numRevs;
-    vtkm::FloatDefault phiN, Phi0, Phi1, T;
-    auto phi = pos[1];
-    this->GetPlaneIdx(phi, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
-    DBG("   phiN="<<phiN<<" planes: ("<<planeIdx0<<" "<<planeIdx1<<") :: "<<Phi0<<" "<<Phi1<<" T= "<<T<<std::endl);
-
-    //Calculate X
-    vtkm::Vec3f X(0,0,0);
-
-    vtkm::Vec3f rayPt(pos[0], phiN, pos[2]);
-    Ray3f ray0(rayPt, -B0), ray1(rayPt, B0);
-    vtkm::Plane<> Plane0({0,Phi0,0}, {0,-1,0}), Plane1({0,Phi1,0}, {0,-1,0});
-    DBG("   Ray= "<<rayPt<<" --> "<<B0<<std::endl);
-
-    vtkm::Vec3f ptOnPlane0, ptOnPlane1;
-    vtkm::FloatDefault T0, T1;
-    bool tmp;
-    Plane0.Intersect(ray0, T0, ptOnPlane0, tmp);
-    Plane1.Intersect(ray1, T1, ptOnPlane1, tmp);
-    DBG("     P0, P1= "<<ptOnPlane0<<" "<<ptOnPlane1<<std::endl);
-
-    vtkm::Vec3f ptN(pos[0], phiN, pos[2]);
-    auto dist01 = vtkm::Magnitude(ptOnPlane1-ptOnPlane0);
-    auto dist0i = vtkm::Magnitude(ptN-ptOnPlane0) / dist01;
-    //auto disti1 = vtkm::Magnitude(ptN-ptOnPlane1) / dist01;
-    DBG("     dist01= "<<dist01<<" 0i= "<<dist0i<<" 1i= "<<disti1<<std::endl);
-
-    //Eval X(p0_rz, p1_rz)
-    vtkm::Vec3f p0(ptOnPlane0[0], ptOnPlane0[2], 0), p1(ptOnPlane1[0], ptOnPlane1[2], 0);
-    vtkm::Vec3f X0, X1;
-    offset = planeIdx0 * numNodes;
-    if (!this->EvaluateVec(p0, locator, cellSet, XField, offset, X0))
-      return false;
-    offset = planeIdx1 * numNodes;
-    if (!this->EvaluateVec(p1, locator, cellSet, XField, offset, X1))
-      return false;
-
-    X = vtkm::Lerp(X0, X1, dist0i);
-    DBG("     X0,X1= "<<X0<<", "<<X1<<"  LERP= "<<X<<std::endl);
-
-    res = B0 + X;
-    return true;
-#endif
   }
 
   vtkm::Vec3f
@@ -1591,8 +1705,10 @@ public:
 
     out[0] = vec[0];
     out[1] = vec[2];
+    /*
     if (this->UseCylindrical)
       out[1] /= posRZ[0];
+    */
     out[2] = vec[1];
 
     DBG("          EvaluateVec("<<pos<<") off= "<<offset<<" = "<<vec<<"  divByR= "<<out<<std::endl);
@@ -1697,14 +1813,16 @@ Poinc(const vtkm::cont::DataSet& ds,
 
   vtkm::cont::ArrayHandle<vtkm::Vec3f> B0;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_phi_ff; // (nPlanes, nNodes, 0:1)
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> dAs_phi_ff; // (nPlanes, nNodes, 3, 0:1)
   ds.GetField("B2D").GetData().AsArrayHandle(B0);
   ds.GetField("As_phi_ff").GetData().AsArrayHandle(As_phi_ff);
+  ds.GetField("dAs_phi_ff").GetData().AsArrayHandle(dAs_phi_ff);
 
   PoincareWorklet worklet(numPunc, 1.0, h);
   //worklet.UseCylindrical = false;
 
   std::vector<vtkm::Particle> s;
-  for (vtkm::Id i = 0; i < pts.size(); i++)
+  for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
     s.push_back(vtkm::Particle(pts[i], i));
 
   auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
@@ -1721,7 +1839,7 @@ Poinc(const vtkm::cont::DataSet& ds,
   traces = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
 #endif
 
-  invoker(worklet, seeds, locator, ds.GetCellSet(), ds.GetCoordinateSystem(), B0, As_phi_ff, output, traces);
+  invoker(worklet, seeds, locator, ds.GetCellSet(), ds.GetCoordinateSystem(), B0, As_phi_ff, dAs_phi_ff, output, traces);
 
   std::ofstream ot("traces.txt"), punc("punc.txt"), puncTP("punc.theta_psi.txt");
   ot<<"ID,R,Z,T"<<std::endl;
@@ -1770,6 +1888,136 @@ Poinc(const vtkm::cont::DataSet& ds,
   return output;
 }
 
+vtkm::Vec3f
+EvalVector(const vtkm::cont::DataSet& ds,
+           const vtkm::cont::CellLocatorGeneral& locator,
+           const vtkm::Vec3f& pt,
+           const std::string& vName,
+           const int& offset)
+{
+  std::vector<vtkm::Vec3f> pts = {pt};
+  auto points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::Off);
+  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
+  vtkm::cont::Invoker invoker;
+
+//  std::cout<<"EvalVector("<<vName<<"): "<<pts<<" offset= "<<offset<<std::endl;
+  //Find the cell on the RZ plane.
+  invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> V;
+  ds.GetField(vName).GetData().AsArrayHandle(V);
+
+  auto cPortal = cellIds.ReadPortal();
+  auto pPortal = pcoords.ReadPortal();
+  auto vPortal = V.ReadPortal();
+  auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
+
+  vtkm::Id vIds[3];
+  vtkm::Id cid = cPortal.Get(0);
+  cs.GetCellPointIds(cid, vIds);
+  vtkm::VecVariable<vtkm::Vec3f, 3> vals;
+  vals.Append(vPortal.Get(vIds[0]+offset));
+  vals.Append(vPortal.Get(vIds[1]+offset));
+  vals.Append(vPortal.Get(vIds[2]+offset));
+
+  vtkm::Vec3f v;
+  vtkm::exec::CellInterpolate(vals, pPortal.Get(0), vtkm::CellShapeTagTriangle(), v);
+  v = vtkm::Vec3f(v[0], v[2], v[1]);
+
+  return v;
+}
+
+vtkm::Vec3f
+EvalVector(const vtkm::cont::DataSet& ds,
+           const vtkm::cont::CellLocatorGeneral& locator,
+           const vtkm::Vec3f& pt,
+           const std::string& vName)
+{
+  return EvalVector(ds, locator, pt, vName, 0);
+}
+
+void
+TestGradient(const vtkm::cont::DataSet& inDS)
+{
+  vtkm::cont::CellLocatorGeneral locator;
+  locator.SetCellSet(inDS.GetCellSet());
+  locator.SetCoordinates(inDS.GetCoordinateSystem());
+  locator.Update();
+
+  vtkm::filter::Gradient grad;
+  grad.SetComputePointGradient(true);
+  grad.SetActiveField("B2D");
+  grad.SetOutputFieldName("gradB");
+  auto ds = grad.Execute(inDS);
+  ds.PrintSummary(std::cout);
+
+  //R,Z,Phi
+  std::vector<vtkm::Vec3f> pts = {{3,0,0}, {2.5,0,0}};
+  auto points = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::On);
+
+  vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> pcoords;
+  vtkm::cont::Invoker invoker;
+  invoker(FindCellWorklet{}, points, ds.GetCellSet(), locator, cellIds, pcoords);
+
+  std::vector<vtkm::Vec3f> gradRes;
+  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::Vec3f, 3>> gradB;
+
+  ds.GetField("gradB").GetData().AsArrayHandle(gradB);
+  auto vPortal = gradB.ReadPortal();
+  auto cs = ds.GetCellSet().Cast<vtkm::cont::CellSetSingleType<>>();
+
+  for (int i = 0; i < (int)pts.size(); i++)
+  {
+    vtkm::Id vIds[3];
+    vtkm::Id cid = cellIds.ReadPortal().Get(i);
+    cs.GetCellPointIds(cid, vIds);
+
+    vtkm::VecVariable<vtkm::Vec3f, 3> interpVals;
+    for (int j = 0; j < 3; j++) //grad component
+    {
+      vtkm::Vec<vtkm::Vec3f, 3> X;
+      for (int k = 0; k < 3; k++) //triangle verts
+      {
+        auto grad_j = vPortal.Get(vIds[k])[j];
+        X[j] = grad_j;
+      }
+      vtkm::Vec3f val;
+      vtkm::exec::CellInterpolate(X, pcoords.ReadPortal().Get(i), vtkm::CellShapeTagTriangle(), val);
+      interpVals.Append(val);
+    }
+    std::cout<<i<<": pt= "<<pts[i]<<" gradB= "<<interpVals[0]<<" "<<interpVals[1]<<" "<<interpVals[2]<<std::endl;
+    gradRes.push_back(interpVals[0]);
+    gradRes.push_back(interpVals[1]);
+    gradRes.push_back(interpVals[2]);
+  }
+
+
+  vtkm::FloatDefault dR = 0.00001, dZ = 0.00001, dPhi = 0.00001;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> B;
+  ds.GetField("B2D").GetData().AsArrayHandle(B);
+
+  //do with sampling....
+  for (int i = 0; i < (int)pts.size(); i++)
+  {
+    auto p = pts[i];
+    auto pr = p + vtkm::Vec3f(dR,0,0);
+    auto pz = p + vtkm::Vec3f(0,dZ,0);
+    auto v = EvalVector(ds, locator, p, "B2D");
+    auto vr = EvalVector(ds, locator, pr, "B2D");
+    auto vz = EvalVector(ds, locator, pz, "B2D");
+    auto pphi = p+(v*dPhi);
+    pphi[2] = 0;
+    auto vphi = EvalVector(ds, locator, pphi, "B2D");
+
+    auto gradR = (v - vr) / dR;
+    auto gradZ = (v - vz) / dZ;
+    auto gradPhi = (v - vphi) / dPhi;
+
+    std::cout<<i<<": pt= "<<p<<" gradB= "<<gradR<<" "<<gradZ<<" "<<gradPhi<<std::endl;
+  }
+}
 
 int main(int argc, char** argv)
 {
@@ -1821,6 +2069,7 @@ int main(int argc, char** argv)
     //first point in traces.v2
     seeds = {{3.029365, 6.183185, 0.020600}};
 
+#if 0
     //seeds from jong.py
     seeds = {
       {3.351443, 0.0, -0.451649},
@@ -1850,9 +2099,14 @@ int main(int argc, char** argv)
       {2.071176, 0.025, -0.245765}
 */
     };
+#endif
   }
 
-  Poinc(ds, seeds, stepSize, numPunc);
+  std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
+  auto punctures = Poincare(ds, seeds, stepSize, numPunc, &traces);
+  SaveOutput(traces, punctures);
+
+  //Poinc(ds, seeds, stepSize, numPunc);
 
 #if 0
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());

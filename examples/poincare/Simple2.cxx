@@ -39,7 +39,13 @@
 #include <random>
 #include <chrono>
 #include <variant>
+#include <filesystem>
 #include <mpi.h>
+
+/*
+radius values: max range: 2.5 3.7
+for interesting psi: 3.5  3.7
+/*
 
 /*
 TODO:
@@ -1115,7 +1121,7 @@ Poincare(const vtkm::cont::DataSet& ds,
   std::vector<bool> pointMask(pts.size(), true);
 
   if (traces)
-    for (int i = 0; i < pts.size(); i++)
+    for (int i = 0; i < (int)pts.size(); i++)
       (*traces)[i].push_back(pts[i]);
 
   auto thetaPsi = ConvertToThetaPsi(pts);
@@ -1247,10 +1253,249 @@ CalcX(vtkm::cont::DataSet& ds)
   ds.AddField(vtkm::cont::make_FieldPoint("X", X));
 }
 
+static bool Exists(const std::string& fname)
+{
+  std::ifstream ifile;
+  ifile.open(fname);
+  if (ifile)
+    return true;
+  return false;
+}
+
+void WriteHeader(const std::string& fname, const std::string& header)
+{
+  std::ofstream f(fname, std::ofstream::out);
+  f<<header<<std::endl;
+  f.close();
+}
+
+void
+SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
+           const std::vector<std::vector<vtkm::Vec3f>>& punctures,
+           const std::string& tracesNm="./traces.txt",
+           const std::string& puncNm="./punctures.txt",
+           const std::string& puncThetaPsiNm="./punctures.theta_psi.txt")
+{
+  bool tExists = Exists(tracesNm);
+  bool pExists = Exists(puncNm);
+  bool ptpExists = Exists(puncThetaPsiNm);
+  std::cout<<"EXISTS: "<<tExists<<" "<<pExists<<" "<<ptpExists<<std::endl;
+
+  //Write headers.
+  if (!tExists)
+    WriteHeader(tracesNm, "ID, R, Z, T");
+  if (!pExists)
+    WriteHeader(puncNm, "ID, R, Z, DUMMY");
+  if (!ptpExists)
+    WriteHeader(puncThetaPsiNm, "ID, THETA, PSI, DUMMY");
+
+  std::ofstream outTraces, outPunc, outPuncPsiTheta;
+
+  outTraces.open(tracesNm, std::ofstream::app);
+  outPunc.open(puncNm, std::ofstream::app);
+  outPuncPsiTheta.open(puncThetaPsiNm, std::ofstream::app);
+
+  //write traces
+  for (int i = 0; i < (int)traces.size(); i++)
+  {
+    for (const auto& pt : traces[i])
+    {
+      auto R = pt[0];
+      auto Z = pt[2];
+      auto PHI_N = pt[1];
+      while (PHI_N < 0)
+        PHI_N += vtkm::TwoPi();
+
+      outTraces<<i<<", "<<R<<", "<<Z<<", "<<PHI_N<<std::endl;
+    }
+  }
+
+  //write punctures
+  for (int i = 0; i < (int)punctures.size(); i++)
+  {
+    for (const auto& p : punctures[i])
+      outPunc<<i<<", "<<p[0]<<" "<<p[2]<<std::endl;
+
+    auto thetaPsi = ConvertToThetaPsi(punctures[i]);
+    for (const auto& p : thetaPsi)
+      outPuncPsiTheta<<i<<", "<<p[0]<<", "<<p[1]<<", 0"<<std::endl;
+  }
+}
+
+vtkm::cont::DataSet
+ReadData(std::map<std::string, std::vector<std::string>>& args)
+{
+  std::map<std::string, std::string> adiosArgs;
+  adiosArgs["--dir"] = args["--dir"][0];
+
+  adios = new adios2::ADIOS;
+  adiosStuff["mesh"] = new adiosS(adios, "xgc.mesh.bp", "mesh", adiosArgs);
+  adiosStuff["data"] = new adiosS(adios, "xgc.3d.bp", "3d", adiosArgs);
+  adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "/node_data[0]/values", adiosArgs);
+  adiosStuff["bfield-all"] = new adiosS(adios, "xgc.bfield-all.bp", "Bs", adiosArgs);
+
+  auto meshStuff = adiosStuff["mesh"];
+  auto dataStuff = adiosStuff["data"];
+  auto bfieldStuff = adiosStuff["bfield"];
+  auto bfield_allStuff = adiosStuff["bfield-all"];
+  meshStuff->engine.BeginStep();
+  dataStuff->engine.BeginStep();
+  bfieldStuff->engine.BeginStep();
+  bfield_allStuff->engine.BeginStep();
+
+  dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &numPlanes, adios2::Mode::Sync);
+  meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_n"), &numNodes, adios2::Mode::Sync);
+  meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_t"), &numTri, adios2::Mode::Sync);
+
+  //Try and do everything in cylindrical coords and worklets.
+  auto ds = ReadMesh(meshStuff);
+  ReadScalar(dataStuff, ds, "dpot");
+  ReadScalar(dataStuff, ds, "apars", "apars", true);
+  ReadVec(bfieldStuff, ds, "B", "/node_data[0]/values");
+  ReadVec(bfield_allStuff, ds, "Bs", "Bs", true);
+  CalcX(ds);
+
+  if (0)
+  {
+    auto ds3d = ReadMesh3D(meshStuff, true);
+    ReadScalar(dataStuff, ds3d, "apars", "apars", true, true);
+    ReadVec(bfieldStuff, ds3d, "B", "/node_data[0]/values", true, true);
+    ReadVec(bfield_allStuff, ds3d, "Bs", "Bs", true, true);
+    //CalcX(ds3d);
+    vtkm::io::VTKDataSetWriter writer("debug.vtk");
+    writer.WriteDataSet(ds3d);
+  }
+
+  ds.PrintSummary(std::cout);
+//  vtkm::io::VTKDataSetWriter writer("debug.vtk");
+//  writer.WriteDataSet(ds);
+
+  return ds;
+}
+
 
 int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
+
+  auto opts = vtkm::cont::InitializeOptions::DefaultAnyDevice;
+  auto config = vtkm::cont::Initialize(argc, argv, opts);
+
+  std::map<std::string, std::vector<std::string>> args;
+  ParseArgs(argc, argv, args);
+
+  if (argc < 7)
+  {
+    std::cerr<<"Usage: "<<argv[0]<<" dataFile numSeeds maxPunctures stepSize poincVar [options]"<<std::endl;
+    std::cerr<<config.Usage<<std::endl;
+    return -1;
+  }
+
+  auto ds = ReadData(args);
+
+  vtkm::FloatDefault stepSize = std::atof(args["--stepSize"][0].c_str());
+  int numPunc = std::atoi(args["--numPunc"][0].c_str());
+
+  std::vector<vtkm::Vec3f> seeds;
+  if (args.find("--range") != args.end())
+  {
+    vtkm::Id numSeeds = std::stoi(args["--numSeeds"][0]);
+
+    auto vals = args["--range"];
+    vtkm::FloatDefault r0 = std::atof(vals[0].c_str());
+    vtkm::FloatDefault r1 = std::atof(vals[1].c_str());
+
+    vtkm::FloatDefault dr = (r1-r0) / (float)(numSeeds-1);
+    vtkm::FloatDefault r = r0;
+
+    for (vtkm::Id id = 0; id < numSeeds; id++, r+=dr)
+      seeds.push_back({r, .1, 0});
+  }
+  else if (args.find("--seed") != args.end())
+  {
+    auto vals = args["--seed"];
+    vtkm::FloatDefault r = std::atof(vals[0].c_str());
+    vtkm::FloatDefault z = std::atof(vals[1].c_str());
+    vtkm::FloatDefault t = std::atof(vals[2].c_str());
+    seeds.push_back({r, t, z});
+  }
+  else
+  {
+    //first point in traces.v2
+    seeds = {{3.029365, 6.183185, 0.020600}};
+  }
+
+  std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
+  auto punctures = Poincare(ds, seeds, stepSize, numPunc, &traces);
+
+  SaveOutput(traces, punctures);
+
+#if 0
+  std::ofstream outPts, outPtsPsiTheta;
+
+  outPts.open("punctures.txt");
+  outPts<<"ID,R,Z,T"<<std::endl;
+  for (int i = 0; i < (int)punctures.size(); i++)
+    for (const auto& p : punctures[i])
+    {
+      outPts<<i<<", "<<p[0]<<","<<p[2]<<","<<p[1]<<std::endl;
+    }
+
+  std::ofstream outTraces, RZ, thetaPsi;
+  outTraces.open("traces.txt"), RZ.open("rz.txt"), thetaPsi.open("thetaPsi.txt");
+  outTraces<<"ID,R,Z,T,THETA,PSI"<<std::endl;
+  RZ<<"ID,R,Z,T"<<std::endl;
+  thetaPsi<<"ID,theta,psi,Z"<<std::endl;
+  for (int i = 0; i < (int)traces.size(); i++)
+  {
+    int idx = 0;
+    for (const auto& p : traces[i])
+    {
+      auto R = p[0];
+      auto Z = p[2];
+      auto PHI = p[1]; //std::fmod(p[1], vtkm::TwoPi());
+      int numRevs = 0;
+      auto PHI_N = PHI;
+      while (PHI_N < 0)
+      {
+        PHI_N += vtkm::TwoPi();
+        numRevs++;
+      }
+      //auto PHI_N = PHI + (numRevs*vtkm::TwoPi());
+//      PHI = p[1];
+//      if (PHI < 0) PHI = -PHI;
+      auto theta = vtkm::ATan2(Z-eq_axis_z, R-eq_axis_r);
+      if (theta < 0) theta += vtkm::TwoPi();
+      auto psi = vtkm::Sqrt(((R-eq_axis_r)*(R-eq_axis_r) + Z*Z));
+
+      outTraces<<idx<<", "<<R<<", "<<Z<<", "<<PHI_N<<", "<<theta<<", "<<psi<<std::endl;
+//      outTraces<<idx<<", "<<PHI<<" "<<PHI_N<<" nr= "<<numRevs<<std::endl;
+      RZ<<idx<<", "<<p[0]<<", "<<p[2]<<", 0"<<std::endl;
+      thetaPsi<<idx<<", "<<theta<<", "<<psi<<", 0"<<std::endl;
+      idx++;
+    }
+  }
+#endif
+
+  return 0;
+}
+
+
+/*
+XGC:
+3.029365, 0.020600, 6.183185
+3.029293, 0.021400, 6.180291
+
+
+
+mine:
+3.02936, 0.0206, 6.18318
+3.02934, 0.0209196, 6.17947
+
+delta= -0.000047, .0004804, .000821
+
+
+ */
 
 
 #if 0
@@ -1310,169 +1555,3 @@ int main(int argc, char** argv)
   }
   return 0;
 #endif
-
-  auto opts = vtkm::cont::InitializeOptions::DefaultAnyDevice;
-  auto config = vtkm::cont::Initialize(argc, argv, opts);
-
-  std::map<std::string, std::vector<std::string>> args;
-  ParseArgs(argc, argv, args);
-
-  if (argc < 7)
-  {
-    std::cerr<<"Usage: "<<argv[0]<<" dataFile numSeeds maxPunctures stepSize poincVar [options]"<<std::endl;
-    std::cerr<<config.Usage<<std::endl;
-    return -1;
-  }
-
-  std::map<std::string, std::string> adiosArgs;
-  adiosArgs["--dir"] = args["--dir"][0];
-  //XScale = std::stof(args["--xscale"][0].c_str());
-
-  adios = new adios2::ADIOS;
-  adiosStuff["mesh"] = new adiosS(adios, "xgc.mesh.bp", "mesh", adiosArgs);
-  adiosStuff["data"] = new adiosS(adios, "xgc.3d.bp", "3d", adiosArgs);
-  adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "/node_data[0]/values", adiosArgs);
-  adiosStuff["bfield-all"] = new adiosS(adios, "xgc.bfield-all.bp", "Bs", adiosArgs);
-
-  auto meshStuff = adiosStuff["mesh"];
-  auto dataStuff = adiosStuff["data"];
-  auto bfieldStuff = adiosStuff["bfield"];
-  auto bfield_allStuff = adiosStuff["bfield-all"];
-  meshStuff->engine.BeginStep();
-  dataStuff->engine.BeginStep();
-  bfieldStuff->engine.BeginStep();
-  bfield_allStuff->engine.BeginStep();
-
-  dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &numPlanes, adios2::Mode::Sync);
-  meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_n"), &numNodes, adios2::Mode::Sync);
-  meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_t"), &numTri, adios2::Mode::Sync);
-
-  //Try and do everything in cylindrical coords and worklets.
-  auto ds = ReadMesh(meshStuff);
-  ReadScalar(dataStuff, ds, "dpot");
-  ReadScalar(dataStuff, ds, "apars", "apars", true);
-  ReadVec(bfieldStuff, ds, "B", "/node_data[0]/values");
-  ReadVec(bfield_allStuff, ds, "Bs", "Bs", true);
-  CalcX(ds);
-
-  if (0)
-  {
-    auto ds3d = ReadMesh3D(meshStuff, true);
-    ReadScalar(dataStuff, ds3d, "apars", "apars", true, true);
-    ReadVec(bfieldStuff, ds3d, "B", "/node_data[0]/values", true, true);
-    ReadVec(bfield_allStuff, ds3d, "Bs", "Bs", true, true);
-    //CalcX(ds3d);
-    vtkm::io::VTKDataSetWriter writer("debug.vtk");
-    writer.WriteDataSet(ds3d);
-    return 0;
-  }
-
-  ds.PrintSummary(std::cout);
-
-//  vtkm::io::VTKDataSetWriter writer("debug.vtk");
-//  writer.WriteDataSet(ds);
-
-  //TestLocator(ds);
-  // {R,phi,Z}
-  std::vector<vtkm::Vec3f> pts =
-    {{2.0, 0.0, 0.0},
-     {2.0, 0.13, 0.0},
-     {2.0, 0.065, 0.0},
-     {2.0, 4.3829, 0.0}
-    };
-
-  pts = {{2, 3.14, 0}};
-  //first point
-  pts = {{2.871164, 6.183185, 0.219021}};
-
-  //first point in traces.v2
-  pts = {{3.029365, 6.183185, 0.020600}};
-
-/*
-  //just past first point
-  //pts = {{2.861759, 6.143427, 0.221794}};
-
-  //midpoint
-  pts = {{2.710551, 3.148580, -0.209959}};
-*/
-
-
-/*
-  pts ={{3, 1.99, 0}};
-  pts ={{3, vtkm::Pi()-.001, 0}};
-  pts ={{3, 0.001, 0}};
-  pts ={{3, -.0001, 0}};
-*/
-
-  //std::vector<vtkm::Vec3f> output;
-  //Evaluate(ds, pts, output);
-
-
-  vtkm::FloatDefault stepSize = std::atof(args["--stepSize"][0].c_str());
-  int numPunc = std::atoi(args["--numPunc"][0].c_str());
-  std::vector<std::vector<vtkm::Vec3f>> traces(pts.size());
-  auto punctures = Poincare(ds, pts, stepSize, numPunc, &traces);
-
-  std::ofstream outPts, outPtsPsiTheta;
-  outPts.open("punctures.txt");
-  outPts<<"ID,R,Z,T"<<std::endl;
-  for (int i = 0; i < (int)punctures.size(); i++)
-    for (const auto& p : punctures[i])
-    {
-      outPts<<i<<", "<<p[0]<<","<<p[2]<<","<<p[1]<<std::endl;
-    }
-
-  std::ofstream outTraces, RZ, thetaPsi;
-  outTraces.open("traces.txt"), RZ.open("rz.txt"), thetaPsi.open("thetaPsi.txt");
-  outTraces<<"ID,R,Z,T,THETA,PSI"<<std::endl;
-  RZ<<"ID,R,Z,T"<<std::endl;
-  thetaPsi<<"ID,theta,psi,Z"<<std::endl;
-  for (int i = 0; i < (int)traces.size(); i++)
-  {
-    int idx = 0;
-    for (const auto& p : traces[i])
-    {
-      auto R = p[0];
-      auto Z = p[2];
-      auto PHI = p[1]; //std::fmod(p[1], vtkm::TwoPi());
-      int numRevs = 0;
-      auto PHI_N = PHI;
-      while (PHI_N < 0)
-      {
-        PHI_N += vtkm::TwoPi();
-        numRevs++;
-      }
-      //auto PHI_N = PHI + (numRevs*vtkm::TwoPi());
-//      PHI = p[1];
-//      if (PHI < 0) PHI = -PHI;
-      auto theta = vtkm::ATan2(Z-eq_axis_z, R-eq_axis_r);
-      if (theta < 0) theta += vtkm::TwoPi();
-      auto psi = vtkm::Sqrt(((R-eq_axis_r)*(R-eq_axis_r) + Z*Z));
-
-      outTraces<<idx<<", "<<R<<", "<<Z<<", "<<PHI_N<<", "<<theta<<", "<<psi<<std::endl;
-//      outTraces<<idx<<", "<<PHI<<" "<<PHI_N<<" nr= "<<numRevs<<std::endl;
-      RZ<<idx<<", "<<p[0]<<", "<<p[2]<<", 0"<<std::endl;
-      thetaPsi<<idx<<", "<<theta<<", "<<psi<<", 0"<<std::endl;
-      idx++;
-    }
-  }
-
-  return 0;
-}
-
-
-/*
-XGC:
-3.029365, 0.020600, 6.183185
-3.029293, 0.021400, 6.180291
-
-
-
-mine:
-3.02936, 0.0206, 6.18318
-3.02934, 0.0209196, 6.17947
-
-delta= -0.000047, .0004804, .000821
-
-
- */

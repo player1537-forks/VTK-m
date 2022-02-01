@@ -26,6 +26,7 @@
 
 #include <vtkm/cont/CellLocatorGeneral.h>
 #include <vtkm/io/VTKDataSetWriter.h>
+#include <vtkm/cont/Algorithm.h>
 
 #include <adios2.h>
 
@@ -35,6 +36,7 @@
 #include <filesystem>
 #include <mpi.h>
 
+#include <valgrind/callgrind.h>
 
 /*
 radius values: max range: 2.5 3.7
@@ -58,10 +60,12 @@ int eq_mr = -1, eq_mz = -1;
 //  vtkm::FloatDefault eq_x_psi = 0.0697345, eq_x_r = 2.8, eq_x_z = -0.99988;
 using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 
+//#define VALGRIND
 #include "Poincare.h"
 #include "Poincare2.h"
 #include "Poincare3.h"
 #include "ComputeB.h"
+#include "ComputeBCell.h"
 
 template <typename T>
 std::ostream& operator<< (std::ostream& out, const std::vector<T>& v)
@@ -841,10 +845,15 @@ Poincare(const vtkm::cont::DataSet& ds,
          vtkm::cont::ArrayHandle<vtkm::Id>& outID,
          bool quickTest,
          vtkm::Id BGridSize,
+         vtkm::FloatDefault L1val,
+         vtkm::FloatDefault L2val,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
-  vtkm::cont::CellLocatorGeneral locator;
+  //vtkm::cont::CellLocatorGeneral locator;
+  vtkm::cont::CellLocatorTwoLevel locator;
+  locator.SetDensityL1(L1val);
+  locator.SetDensityL2(L2val);
   locator.SetCellSet(ds.GetCellSet());
   locator.SetCoordinates(ds.GetCoordinateSystem());
   locator.Update();
@@ -931,8 +940,10 @@ Poincare(const vtkm::cont::DataSet& ds,
     vtkm::Vec2f origin(eq_min_r, eq_min_z);
     vtkm::Vec2f spacing(dR, dZ);
     auto grid = vtkm::cont::DataSetBuilderUniform::Create(dims, origin, spacing);
-    std::cout<<"R: "<<eq_min_r<<" "<<eq_max_r<<std::endl;
-    std::cout<<"Z: "<<eq_min_z<<" "<<eq_max_z<<std::endl;
+    std::cout<<"origin= "<<origin<<std::endl;
+    std::cout<<"spacing= "<<spacing<<std::endl;
+    std::cout<<"R: "<<eq_min_r<<" "<<eq_max_r<<" dR= "<<dR<<std::endl;
+    std::cout<<"Z: "<<eq_min_z<<" "<<eq_max_z<<" dZ= "<<dZ<<std::endl;
 
     vtkm::cont::CellLocatorUniformGrid locatorB;
     locatorB.SetCellSet(grid.GetCellSet());
@@ -941,15 +952,14 @@ Poincare(const vtkm::cont::DataSet& ds,
 
     std::cout<<"Precomputing BGrid with resolution of "<<dims<<std::endl;
     ComputeBWorklet computeB;
+    ComputeBCellWorklet computeBCell;
 
+    vtkm::cont::Timer timer2;
+    timer2.Start();
     vtkm::cont::ArrayHandle<vtkm::Vec3f> B0, CurlB0, CurlNB0, GradPsi;
     vtkm::cont::ArrayHandle<vtkm::FloatDefault> Psi;
     invoker(computeB,
             grid.GetCoordinateSystem(),
-            grid.GetCellSet(),
-            locatorB,
-            As_ff,
-            dAs_ff_rzp,
             coeff_1D,
             coeff_2D,
             Psi,
@@ -957,7 +967,28 @@ Poincare(const vtkm::cont::DataSet& ds,
             CurlB0,
             CurlNB0,
             GradPsi);
+    timer2.Stop();
+
+    #if 1
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> B02, CurlB02, CurlNB02, GradPsi2;
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> Psi2;
+    vtkm::cont::ArrayHandle<vtkm::Id> DivergenceGood;
+    invoker(computeBCell,
+            grid.GetCellSet(),
+            grid.GetCoordinateSystem(),
+            coeff_1D,
+            coeff_2D,
+            Psi2,
+            B02,
+            CurlB02,
+            CurlNB02,
+            GradPsi2);
     std::cout<<"... BGrid compute done."<<std::endl;
+    std::cout<<"Grid build timer= "<<timer2.GetElapsedTime()<<std::endl;
+
+    //vtkm::Id divGood = vtkm::cont::Algorithm::Reduce(DivergenceGood, vtkm::Id(0)); //vtkm::Sum());
+    //std::cout<<"Div Good= "<<divGood<<std::endl;
+    #endif
 
     /*
     grid.AddField(vtkm::cont::make_FieldPoint("Psi", Psi));
@@ -990,7 +1021,6 @@ Poincare(const vtkm::cont::DataSet& ds,
             As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
-
   }
   auto end = std::chrono::steady_clock::now();
   timer.Stop();
@@ -1442,6 +1472,13 @@ main(int argc, char** argv)
   if (args.find("--BGridSize") != args.end())
     BGridSize = std::atoi(args["--BGridSize"][0].c_str());
 
+  vtkm::FloatDefault L1Val = 32.0, L2Val = 2.0;
+  if (args.find("--LocatorLevels") != args.end())
+  {
+    L1Val = std::atof(args["--LocatorLevels"][0].c_str());
+    L2Val = std::atof(args["--LocatorLevels"][1].c_str());
+  }
+
   auto ds = ReadData(args);
   //ds.PrintSummary(std::cout);
   //return 0;
@@ -1851,7 +1888,7 @@ p11       2.329460849125147615, -0.073678279004152566
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
   vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
-  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, (useTraces ? &traces : nullptr));
+  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, L1Val, L2Val, (useTraces ? &traces : nullptr));
 
   //std::cout<<"Convert to theta/psi"<<std::endl;
   //auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);
