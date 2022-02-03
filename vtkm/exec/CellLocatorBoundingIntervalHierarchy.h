@@ -118,6 +118,7 @@ public:
     }
     else
     {
+      printf("BIH CellNotFound:: %d\n", __LINE__);
       return vtkm::ErrorCode::CellNotFound;
     }
   }

@@ -154,6 +154,140 @@ public:
   }
 
   VTKM_EXEC
+vtkm::ErrorCode FindCell2(const FloatVec3& point,
+                          vtkm::Id& cellId,
+                          FloatVec3& parametric,
+                          vtkm::Id3& prevCell) const
+  {
+    using namespace vtkm::internal::cl_uniform_bins;
+
+    cellId = -1;
+
+    DimVec3 binId3 = static_cast<DimVec3>((point - this->TopLevel.Origin) / this->TopLevel.BinSize);
+    if (binId3[0] >= 0 && binId3[0] < this->TopLevel.Dimensions[0] && binId3[1] >= 0 &&
+        binId3[1] < this->TopLevel.Dimensions[1] && binId3[2] >= 0 &&
+        binId3[2] < this->TopLevel.Dimensions[2])
+    {
+      vtkm::Id binId = ComputeFlatIndex(binId3, this->TopLevel.Dimensions);
+
+      auto ldim = this->LeafDimensions.Get(binId);
+      if (!ldim[0] || !ldim[1] || !ldim[2])
+      {
+        printf("2L CellNotFound:: %d\n", __LINE__);
+        return vtkm::ErrorCode::CellNotFound;
+      }
+
+      auto leafGrid = ComputeLeafGrid(binId3, ldim, this->TopLevel);
+
+      DimVec3 leafId3 = static_cast<DimVec3>((point - leafGrid.Origin) / leafGrid.BinSize);
+      // precision issues may cause leafId3 to be out of range so clamp it
+      leafId3 = vtkm::Max(DimVec3(0), vtkm::Min(ldim - DimVec3(1), leafId3));
+
+      vtkm::Id leafStart = this->LeafStartIndex.Get(binId);
+      vtkm::Id leafId = leafStart + ComputeFlatIndex(leafId3, leafGrid.Dimensions);
+
+      vtkm::Id start = this->CellStartIndex.Get(leafId);
+      vtkm::Id end = start + this->CellCount.Get(leafId);
+      for (vtkm::Id i = start; i < end; ++i)
+      {
+        vtkm::Id cid = this->CellIds.Get(i);
+        auto indices = this->CellSet.GetIndices(cid);
+        auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
+        FloatVec3 pc;
+        bool inside;
+        VTKM_RETURN_ON_ERROR(
+          PointInsideCell(point, this->CellSet.GetCellShape(cid), pts, pc, inside));
+        if (inside)
+        {
+          prevCell[0] = start;
+          prevCell[1] = end;
+          prevCell[2] = cid;
+//          std::cout<<"FindCell: s/e= "<<start<<" "<<end<<" i= "<<i<<" prev= "<<prevCell<<std::endl;
+          cellId = cid;
+          parametric = pc;
+          return vtkm::ErrorCode::Success;
+        }
+      }
+    }
+
+    printf("2L CellNotFound:: %d\n", __LINE__);
+    return vtkm::ErrorCode::CellNotFound;
+  }
+
+  VTKM_EXEC
+  vtkm::ErrorCode FindCell(const FloatVec3& point,
+                            vtkm::Id& cellId,
+                            FloatVec3& parametric,
+                            vtkm::Id3& prevCell) const
+  {
+    //prevCell: (start, end, prevID)
+
+    if (prevCell[0] != -1)
+    {
+      //Check last cellId first.
+      auto indices = this->CellSet.GetIndices(prevCell[2]);
+      auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
+      FloatVec3 pc;
+      bool inside;
+      PointInsideCell(point, this->CellSet.GetCellShape(prevCell[2]), pts, pc, inside);
+      if (inside)
+      {
+        cellId = prevCell[2];
+//        std::cout<<"  Quick:: FindCell: "<<prevCell<<"  cid= "<<cellId<<std::endl;
+        parametric = pc;
+        return vtkm::ErrorCode::Success;
+      }
+
+//      std::cout<<"    QuickFail "<<prevCell<<std::endl;
+
+      //Check the rest of the cells in the bin, excluding the cell we just checked.
+      for (vtkm::Id i = prevCell[0]; i < prevCell[1]; i++)
+      {
+        vtkm::Id cid = this->CellIds.Get(i);
+        if (cid != prevCell[2])
+        {
+          auto indices = this->CellSet.GetIndices(cid);
+          auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
+          PointInsideCell(point, this->CellSet.GetCellShape(prevCell[2]), pts, pc, inside);
+          if (inside)
+          {
+//            std::cout<<"  "<<(i-prevCell[0])<<" -FindCell: "<<prevCell<<"  cid= "<<cid<<" len= "<<prevCell[1]-prevCell[0]<<std::endl;
+            prevCell[2] = cid;
+            cellId = cid;
+            parametric = pc;
+            return vtkm::ErrorCode::Success;
+          }
+        }
+      }
+    }
+
+//    std::cout<<" ***** No find: "<<prevCell<<std::endl;
+    return this->FindCell2(point, cellId, parametric, prevCell);
+#if 0
+    /*
+    if (prevCellId != -1)
+    {
+      FloatVec3 pc;
+      bool inside;
+
+      auto indices = this->CellSet.GetIndices(prevCellId);
+      auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
+      PointInsideCell(point, this->CellSet.GetCellShape(prevCellId), pts, pc, inside);
+      if (inside)
+      {
+        cellId = prevCellId;
+        parametric = pc;
+        return vtkm::ErrorCode::Success;
+      }
+    }
+    */
+
+    //Not in prev cell, so call the normal routine.
+    return this->FindCell(point, cellId, parametric);
+#endif
+  }
+
+  VTKM_EXEC
   vtkm::ErrorCode FindCell(const FloatVec3& point, vtkm::Id& cellId, FloatVec3& parametric) const
   {
     using namespace vtkm::internal::cl_uniform_bins;
@@ -170,6 +304,7 @@ public:
       auto ldim = this->LeafDimensions.Get(binId);
       if (!ldim[0] || !ldim[1] || !ldim[2])
       {
+        printf("2L CellNotFound:: %d\n", __LINE__);
         return vtkm::ErrorCode::CellNotFound;
       }
 
@@ -202,6 +337,7 @@ public:
       }
     }
 
+    printf("2L CellNotFound:: %d\n", __LINE__);
     return vtkm::ErrorCode::CellNotFound;
   }
 

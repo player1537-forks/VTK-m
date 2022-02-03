@@ -61,6 +61,14 @@ public:
   {
     return this->Locator.FindCell(point, cellId, parametric);
   }
+
+  VTKM_EXEC vtkm::ErrorCode FindCell(const vtkm::Vec3f& point,
+                                     vtkm::Id& cellId,
+                                     vtkm::Vec3f& parametric,
+                                     vtkm::Id& prevCellId) const override
+  {
+    return this->Locator.FindCell(point, cellId, parametric, prevCellId);
+  }
 };
 
 template <typename LocatorType>

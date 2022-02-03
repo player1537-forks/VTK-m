@@ -35,6 +35,19 @@ struct FindCellFunctor
   }
 };
 
+struct FindCellFunctor2
+{
+  template <typename Locator>
+  VTKM_EXEC vtkm::ErrorCode operator()(Locator&& locator,
+                                       const vtkm::Vec3f& point,
+                                       vtkm::Id& cellId,
+                                       vtkm::Vec3f& parametric,
+                                       vtkm::Id3& prevCell) const
+  {
+    return locator.FindCell(point, cellId, parametric, prevCell);
+  }
+};
+
 } // namespace detail
 
 template <typename... LocatorTypes>
@@ -57,6 +70,14 @@ public:
                                      vtkm::Vec3f& parametric) const
   {
     return this->Locators.CastAndCall(detail::FindCellFunctor{}, point, cellId, parametric);
+  }
+
+  VTKM_EXEC vtkm::ErrorCode FindCell(const vtkm::Vec3f& point,
+                                     vtkm::Id& cellId,
+                                     vtkm::Vec3f& parametric,
+                                     vtkm::Id3& prevCell) const
+  {
+    return this->Locators.CastAndCall(detail::FindCellFunctor2{}, point, cellId, parametric, prevCell);
   }
 
   VTKM_DEPRECATED(1.6, "Locators are no longer pointers. Use . operator.")
