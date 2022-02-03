@@ -139,7 +139,7 @@ public:
                   const Coeff_1DType& Coeff_1D,
                   const Coeff_2DType& Coeff_2D) const
   {
-    vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2], P = ptRPZ[1];
+    vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2];
     vtkm::Vec3f ptRZ(R,Z,0);
 
     int r_i = this->GetIndex(R, this->nr, this->rmin, this->dr_inv);

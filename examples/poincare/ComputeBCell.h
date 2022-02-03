@@ -54,7 +54,7 @@ public:
   }
 
   template <typename CoordType, typename VertexIndexType, typename Coeff_1DType, typename Coeff_2DType>
-  VTKM_EXEC void operator()(const vtkm::Id& cellId,
+  VTKM_EXEC void operator()(const vtkm::Id& /*cellId*/,
                             const vtkm::IdComponent& numPoints,
                             const VertexIndexType& ptIndices,
                             const CoordType& coords,
@@ -169,11 +169,6 @@ public:
                   vtkm::Vec3f& gradPsi_rzp) const
   {
     vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2], P = ptRPZ[1];
-
-//    std::cout<<"***************************************"<<std::endl;
-//    std::cout<<"HighOrderB"<<std::endl;
-//    std::cout<<" ptRPZ= "<<ptRPZ<<std::endl;
-
     vtkm::Vec3f ptRZ(R,Z,0);
 
     /*
@@ -239,8 +234,6 @@ public:
       for (vtkm::Id jj = 0; jj < 4; jj++)
       {
         acoeff[ii][jj] = Coeff_2D.Get(offset+idx);
-        //acoeff[jj][ii] = Coeff_2D.Get(offset+idx); //z,r
-        //std::cout<<"c_"<<ii<<jj<<"= "<<Coeff_2D.Get(offset+idx)<<std::endl;
         idx++;
       }
 
@@ -266,8 +259,6 @@ public:
     vtkm::FloatDefault Bp = fld_I * over_r;
 
     B0_rzp = vtkm::Vec3f(Br, Bz, Bp);
-    //std::cout<<"  ****** dPsi("<<R<<" "<<Z<<") = "<<dpsi_dr<<" "<<dpsi_dz<<std::endl;
-    //std::cout<<"  ********  B0= "<<Br<<" "<<Bz<<std::endl;
 
     //Set the jacobian.
     const int PIR = 0;

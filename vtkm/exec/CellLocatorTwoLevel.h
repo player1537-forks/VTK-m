@@ -246,9 +246,9 @@ vtkm::ErrorCode FindCell2(const FloatVec3& point,
         vtkm::Id cid = this->CellIds.Get(i);
         if (cid != prevCell[2])
         {
-          auto indices = this->CellSet.GetIndices(cid);
-          auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
-          PointInsideCell(point, this->CellSet.GetCellShape(prevCell[2]), pts, pc, inside);
+          auto indices2 = this->CellSet.GetIndices(cid);
+          auto pts2 = vtkm::make_VecFromPortalPermute(&indices2, this->Coords);
+          PointInsideCell(point, this->CellSet.GetCellShape(prevCell[2]), pts2, pc, inside);
           if (inside)
           {
 //            std::cout<<"  "<<(i-prevCell[0])<<" -FindCell: "<<prevCell<<"  cid= "<<cid<<" len= "<<prevCell[1]-prevCell[0]<<std::endl;

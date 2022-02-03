@@ -163,7 +163,7 @@ public:
                   const Coeff_1DType& Coeff_1D,
                   const Coeff_2DType& Coeff_2D) const
   {
-    vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2], P = ptRPZ[1];
+    vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2];
     vtkm::Vec3f ptRZ(R,Z,0);
 
     int r_i = this->GetIndex(R, this->nr, this->rmin, this->dr_inv);
@@ -317,21 +317,21 @@ public:
     return true;
   }
 
-  template <typename LocatorRZType, typename LocatorBType, typename CellSetRZType, typename CellSetBType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename PsiFieldType, typename Coeff_1DType, typename Coeff_2DType, typename OutputType, typename OutputType2D, typename IdType>
+  template <typename LocatorRZType, typename LocatorBType, typename CellSetRZType, typename CellSetBType, typename VecFieldType, typename AsFieldType, typename DAsFieldType, typename ScalarFieldType, typename Coeff_1DType, typename Coeff_2DType, typename OutputType, typename OutputType2D, typename IdType>
   VTKM_EXEC void operator()(const vtkm::Id& idx,
                             vtkm::Particle& particle,
                             const LocatorRZType& locatorRZ,
                             const LocatorBType& locatorB,
                             const CellSetRZType& cellSetRZ,
                             const CellSetBType& cellSetB,
-                            const BFieldType& B_RZP,
+                            const VecFieldType& B_RZP,
                             const AsFieldType& AsPhiFF,
                             const DAsFieldType& DAsPhiFF_RZP,
-                            const PsiFieldType& Psi,
-                            const BFieldType& Bcell_RZP,
-                            const BFieldType& Bcell_Curl_RZP,
-                            const BFieldType& Curlcell_NB_RZP,
-                            const BFieldType& GradPsicell_RZP,
+                            const ScalarFieldType& Psi,
+                            const VecFieldType& Bcell_RZP,
+                            const VecFieldType& Bcell_Curl_RZP,
+                            const VecFieldType& Curlcell_NB_RZP,
+                            const VecFieldType& GradPsicell_RZP,
                             const Coeff_1DType& Coeff_1D,
                             const Coeff_2DType& Coeff_2D,
                             OutputType& traces,
@@ -399,7 +399,7 @@ public:
         //vtkm::FloatDefault psi;
         //vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, gradPsi_rzp;
         //vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
-        this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
+        this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D);
         vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
         outputRZ.Set(i, vtkm::Vec2f(R, Z));
         outputTP.Set(i, vtkm::Vec2f(theta, pInfo.Psi/this->EqXPsi));
@@ -429,7 +429,7 @@ public:
 #endif
   }
 
-  template <typename LocatorRZType, typename CellSetRZType, typename LocatorBType, typename CellSetBType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename PsiFieldType, typename Coeff_1DType, typename Coeff_2DType>
+  template <typename LocatorRZType, typename CellSetRZType, typename LocatorBType, typename CellSetBType, typename VecFieldType, typename AsFieldType, typename DAsFieldType, typename ScalarFieldType, typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
   bool TakeRK4Step(const vtkm::Vec3f& ptRPZ,
                    ParticleInfo& pInfo,
@@ -437,14 +437,14 @@ public:
                    const LocatorBType& locatorB,
                    const CellSetRZType& cellSetRZ,
                    const CellSetBType& cellSetB,
-                   const BFieldType& B_RZP,
+                   const VecFieldType& B_RZP,
                    const AsFieldType& AsPhiFF,
                    const DAsFieldType& DAsPhiFF_RZP,
-                   const PsiFieldType& Psi,
-                   const BFieldType& Bcell_RZP,
-                   const BFieldType& Bcell_Curl_RZP,
-                   const BFieldType& Curlcell_NB_RZP,
-                   const BFieldType& GradPsicell_RZP,
+                   const ScalarFieldType& Psi,
+                   const VecFieldType& Bcell_RZP,
+                   const VecFieldType& Bcell_Curl_RZP,
+                   const VecFieldType& Curlcell_NB_RZP,
+                   const VecFieldType& GradPsicell_RZP,
                    const Coeff_1DType& Coeff_1D,
                    const Coeff_2DType& Coeff_2D,
                    vtkm::Vec3f& res) const
@@ -770,16 +770,12 @@ public:
                    const Coeff_1DType& coeff_1D,
                    const Coeff_2DType& coeff_2D) const
   {
-    //vtkm::FloatDefault psi;
-    //vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, gradPsi_rzp;
-    //vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
-    this->HighOrderB(pt_rpz, pInfo, coeff_1D, coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
+    this->HighOrderB(pt_rpz, pInfo, coeff_1D, coeff_2D);
 
     //This gives is the time derivative: Br = dR/dt, Bz= dZ/dt, B_phi/R = dphi/dt
     //We need with respect to phi:
     // dR/dphi = dR/dt / (dphi/dt) = Br / B_phi * R
     // same for z;
-
     vtkm::Vec3f B0_rpz(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
     B0_rpz[0] /= pInfo.B0_rzp[2];
     B0_rpz[2] /= pInfo.B0_rzp[2];
@@ -840,10 +836,8 @@ public:
     return true;
   }
 
-  template <typename CellSetType>
   VTKM_EXEC
   vtkm::Id CellLocUniform(const vtkm::Vec3f& ptRPZ,
-                          const CellSetType& cs,
                           vtkm::Vec3f* param=nullptr) const
   {
     vtkm::Id cellId = -1;
@@ -915,21 +909,21 @@ public:
     */
   }
 
-  template <typename LocatorBType, typename CellSetBType, typename PsiFieldType, typename BFieldType>
+  template <typename LocatorBType, typename CellSetBType, typename ScalarFieldType, typename VecFieldType>
   VTKM_EXEC
   bool EvalB(const vtkm::Vec3f& ptRPZ,
              const LocatorBType& locatorB,
              const CellSetBType& cellSetB,
-             const PsiFieldType& Psi,
-             const BFieldType& B_RZP,
-             const BFieldType& B_Curl_RZP,
-             const BFieldType& Curl_NB_RZP,
-             const BFieldType& GradPsi_RZP,
+             const ScalarFieldType& Psi,
+             const VecFieldType& B_RZP,
+             const VecFieldType& B_Curl_RZP,
+             const VecFieldType& Curl_NB_RZP,
+             const VecFieldType& GradPsi_RZP,
              ParticleInfo& pInfo) const
   {
     if (this->BCell)
     {
-      vtkm::Id cellId = this->CellLocUniform(ptRPZ, cellSetB);
+      vtkm::Id cellId = this->CellLocUniform(ptRPZ);
 
       if (cellId < 0)
       {
@@ -942,9 +936,6 @@ public:
       pInfo.curlB_rzp = B_Curl_RZP.Get(cellId);
       pInfo.curl_nb_rzp = Curl_NB_RZP.Get(cellId);
       pInfo.gradPsi_rzp = GradPsi_RZP.Get(cellId);
-
-      //std::cout<<std::setprecision(12)<<"   EvalerB pt=: "<<ptRPZ<<std::endl;
-      //std::cout<<"CellId= "<<cellId<<std::endl;
     }
     else
     {
@@ -952,7 +943,6 @@ public:
       vtkm::Vec3f ptRZ(ptRPZ[0], ptRPZ[2], 0);
       vtkm::Vec3f param;
       vtkm::Vec<vtkm::Id, 4> vIds;
-      //std::cout<<"ptRPZ= "<<ptRPZ<<" ptRZ= "<<ptRZ<<std::endl;
       this->PtLoc4(ptRZ, pInfo, locatorB, cellSetB, param, vIds);
 /*
       pInfo.Psi = this->EvalS4(Psi, vIds, param);
@@ -985,6 +975,49 @@ public:
     return true;
   }
 
+  template <typename LocatorBType, typename CellSetBType, typename VecFieldType>
+  VTKM_EXEC
+  bool EvalB(const vtkm::Vec3f& ptRPZ,
+             const LocatorBType& locatorB,
+             const CellSetBType& cellSetB,
+             const VecFieldType& B_RZP,
+             ParticleInfo& pInfo) const
+  {
+    if (this->BCell)
+    {
+      vtkm::Id cellId = this->CellLocUniform(ptRPZ);
+
+      if (cellId < 0)
+      {
+        std::cout<<"CellId Not found!!"<<std::endl;
+        return false;
+      }
+
+      pInfo.B0_rzp = B_RZP.Get(cellId);
+    }
+    else
+    {
+      ParticleInfo pInfo2;
+      vtkm::Vec3f ptRZ(ptRPZ[0], ptRPZ[2], 0);
+      vtkm::Vec3f param;
+      vtkm::Vec<vtkm::Id, 4> vIds;
+      this->PtLoc4(ptRZ, pInfo, locatorB, cellSetB, param, vIds);
+/*
+      pInfo.Psi = this->EvalS4(Psi, vIds, param);
+      pInfo.B0_rzp = this->EvalV4(B_RZP, vIds, param);
+      pInfo.curlB_rzp = this->EvalV4(B_Curl_RZP, vIds, param);
+      pInfo.curl_nb_rzp = this->EvalV4(Curl_NB_RZP, vIds, param);
+      pInfo.gradPsi_rzp = this->EvalV4(GradPsi_RZP, vIds, param);
+*/
+
+      vtkm::VecVariable<vtkm::Vec3f, 4> valsV;
+      for (int i = 0; i < 4; i++) valsV.Append(B_RZP.Get(vIds[i]));
+      vtkm::exec::CellInterpolate(valsV, param, vtkm::CellShapeTagQuad(), pInfo.B0_rzp);
+    }
+
+    return true;
+  }
+
   VTKM_EXEC
   void PrintDiffs(const vtkm::Vec3f& pt, const ParticleInfo& piA, const ParticleInfo& piB) const
   {
@@ -998,7 +1031,7 @@ public:
     <<"  B-comp gs: "<<piA.gradPsi_rzp<<" "<<piB.gradPsi_rzp<<" "<<vtkm::Magnitude(piA.gradPsi_rzp - piB.gradPsi_rzp)<<std::endl;
   }
 
-  template <typename LocatorRZType, typename LocatorBType, typename CellSetRZType, typename CellSetBType, typename BFieldType, typename AsFieldType, typename DAsFieldType, typename PsiFieldType, typename Coeff_1DType, typename Coeff_2DType>
+  template <typename LocatorRZType, typename LocatorBType, typename CellSetRZType, typename CellSetBType, typename VecFieldType, typename AsFieldType, typename DAsFieldType, typename ScalarFieldType, typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
   bool Evaluate(const vtkm::Vec3f& ptRPZ,
                 ParticleInfo& pInfo,
@@ -1006,14 +1039,14 @@ public:
                 const LocatorBType& locatorB,
                 const CellSetRZType& cellSetRZ,
                 const CellSetBType& cellSetB,
-                const BFieldType& /*B_RZP*/,
+                const VecFieldType& /*B_RZP*/,
                 const AsFieldType& AsPhiFF,
                 const DAsFieldType& DAsPhiFF_RZP,
-                const PsiFieldType& Psi,
-                const BFieldType& Bcell_RZP,
-                const BFieldType& Bcell_Curl_RZP,
-                const BFieldType& Curlcell_NB_RZP,
-                const BFieldType& GradPsicell_RZP,
+                const ScalarFieldType& Psi,
+                const VecFieldType& Bcell_RZP,
+                const VecFieldType& Bcell_Curl_RZP,
+                const VecFieldType& Curlcell_NB_RZP,
+                const VecFieldType& GradPsicell_RZP,
                 const Coeff_1DType& coeff_1D,
                 const Coeff_2DType& coeff_2D,
                 vtkm::Vec3f& res) const
@@ -1025,7 +1058,7 @@ public:
     /*
     //expensive B...
     ParticleInfo pInfoOld;
-    if (!this->HighOrderB(ptRPZ, pInfoOld, coeff_1D, coeff_2D)) //, B0_rzp, jacobian, curlB_rzp, curl_nb_rzp, psi, GRADPSI_rzp))
+    if (!this->HighOrderB(ptRPZ, pInfoOld, coeff_1D, coeff_2D))
       return false;
     */
 
