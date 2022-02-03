@@ -63,7 +63,7 @@ using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 //#define VALGRIND
 #include "Poincare.h"
 #include "Poincare2.h"
-//#include "Poincare3.h"
+#include "Poincare3.h"
 #include "ComputeB.h"
 #include "ComputeBCell.h"
 
@@ -845,6 +845,7 @@ Poincare(const vtkm::cont::DataSet& ds,
          vtkm::cont::ArrayHandle<vtkm::Id>& outID,
          bool quickTest,
          vtkm::Id BGridSize,
+         bool BGridCell,
          vtkm::FloatDefault L1val,
          vtkm::FloatDefault L2val,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
@@ -937,7 +938,7 @@ Poincare(const vtkm::cont::DataSet& ds,
     vtkm::Id2 dims(BGridSize, BGridSize);
     vtkm::FloatDefault dR = (eq_max_r-eq_min_r) / static_cast<vtkm::FloatDefault>(BGridSize-1);
     vtkm::FloatDefault dZ = (eq_max_z-eq_min_z) / static_cast<vtkm::FloatDefault>(BGridSize-1);
-    vtkm::Vec2f origin(eq_min_r, eq_min_z);
+    vtkm::Vec2f origin(eq_min_r, eq_min_z), maxPt(eq_max_r, eq_max_z);
     vtkm::Vec2f spacing(dR, dZ);
     auto grid = vtkm::cont::DataSetBuilderUniform::Create(dims, origin, spacing);
     std::cout<<"origin= "<<origin<<std::endl;
@@ -955,53 +956,73 @@ Poincare(const vtkm::cont::DataSet& ds,
     ComputeBCellWorklet computeBCell;
 
     vtkm::cont::Timer timer2;
-    timer2.Start();
     vtkm::cont::ArrayHandle<vtkm::Vec3f> B0, CurlB0, CurlNB0, GradPsi;
     vtkm::cont::ArrayHandle<vtkm::FloatDefault> Psi;
-    invoker(computeB,
-            grid.GetCoordinateSystem(),
-            coeff_1D,
-            coeff_2D,
-            Psi,
-            B0,
-            CurlB0,
-            CurlNB0,
-            GradPsi);
-    timer2.Stop();
 
-    #if 1
-    vtkm::cont::ArrayHandle<vtkm::Vec3f> B02, CurlB02, CurlNB02, GradPsi2;
-    vtkm::cont::ArrayHandle<vtkm::FloatDefault> Psi2;
-    vtkm::cont::ArrayHandle<vtkm::Id> DivergenceGood;
-    invoker(computeBCell,
-            grid.GetCellSet(),
-            grid.GetCoordinateSystem(),
-            coeff_1D,
-            coeff_2D,
-            Psi2,
-            B02,
-            CurlB02,
-            CurlNB02,
-            GradPsi2);
+    if (!BGridCell)
+    {
+      timer2.Start();
+      invoker(computeB,
+              grid.GetCoordinateSystem(),
+              coeff_1D,
+              coeff_2D,
+              Psi,
+              B0,
+              CurlB0,
+              CurlNB0,
+              GradPsi);
+      timer2.Stop();
+    }
+    else
+    {
+      timer2.Start();
+      invoker(computeBCell,
+              grid.GetCellSet(),
+              grid.GetCoordinateSystem(),
+              coeff_1D,
+              coeff_2D,
+              Psi,
+              B0,
+              CurlB0,
+              CurlNB0,
+              GradPsi);
+      timer2.Stop();
+    }
+
     std::cout<<"... BGrid compute done."<<std::endl;
     std::cout<<"Grid build timer= "<<timer2.GetElapsedTime()<<std::endl;
 
     //vtkm::Id divGood = vtkm::cont::Algorithm::Reduce(DivergenceGood, vtkm::Id(0)); //vtkm::Sum());
     //std::cout<<"Div Good= "<<divGood<<std::endl;
-    #endif
+
+    std::string fname;
+    if (BGridCell)
+    {
+      grid.AddField(vtkm::cont::make_FieldCell("Psi", Psi));
+      grid.AddField(vtkm::cont::make_FieldCell("B0", B0));
+      grid.AddField(vtkm::cont::make_FieldCell("CurlB0", CurlB0));
+      grid.AddField(vtkm::cont::make_FieldCell("CurlNB0", CurlNB0));
+      grid.AddField(vtkm::cont::make_FieldCell("GradPsi", GradPsi));
+      fname = "bgridCell.vtk";
+    }
+    else
+    {
+      grid.AddField(vtkm::cont::make_FieldPoint("Psi", Psi));
+      grid.AddField(vtkm::cont::make_FieldPoint("B0", B0));
+      grid.AddField(vtkm::cont::make_FieldPoint("CurlB0", CurlB0));
+      grid.AddField(vtkm::cont::make_FieldPoint("CurlNB0", CurlNB0));
+      grid.AddField(vtkm::cont::make_FieldPoint("GradPsi", GradPsi));
+      fname = "bgridPt.vtk";
+    }
 
     /*
-    grid.AddField(vtkm::cont::make_FieldPoint("Psi", Psi));
-    grid.AddField(vtkm::cont::make_FieldPoint("B0", B0));
-    grid.AddField(vtkm::cont::make_FieldPoint("CurlB0", CurlB0));
-    grid.AddField(vtkm::cont::make_FieldPoint("CurlNB0", CurlNB0));
-    grid.AddField(vtkm::cont::make_FieldPoint("GradPsi", GradPsi));
-    vtkm::io::VTKDataSetWriter writer("bgrid.vtk");
+    vtkm::io::VTKDataSetWriter writer(fname.c_str());
     writer.WriteDataSet(grid);
     grid.PrintSummary(std::cout);
     */
-#if 0
+
     PoincareWorklet3 worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
+    worklet.SetBGrid(origin, spacing, maxPt, dims, BGridCell);
     worklet.UseBOnly = useBOnly;
     worklet.UseHighOrder = useHighOrder;
 
@@ -1015,13 +1036,19 @@ Poincare(const vtkm::cont::DataSet& ds,
 
     timer.Start();
     start = std::chrono::steady_clock::now();
+    invoker(worklet, seeds, locator, locatorB, ds.GetCellSet(), grid.GetCellSet(),
+            B_rzp, /*B_Norm_rzp,*/ /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
+            Psi, B0, CurlB0, CurlNB0,  GradPsi,
+            coeff_1D, coeff_2D,
+            tracesArr, outRZ, outTP, outID);
+    /* old worklet3
     invoker(worklet, seeds, locator, locatorB,
             ds.GetCellSet(), grid.GetCellSet(),
             Psi, B0, CurlB0, CurlNB0, GradPsi,
             As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
-#endif
+    */
   }
   auto end = std::chrono::steady_clock::now();
   timer.Stop();
@@ -1470,8 +1497,13 @@ main(int argc, char** argv)
   if (args.find("--quickTest") != args.end())
     quickTest = true;
   vtkm::Id BGridSize = 512;
+  bool BGridCell = true;
   if (args.find("--BGridSize") != args.end())
+  {
     BGridSize = std::atoi(args["--BGridSize"][0].c_str());
+    BGridCell = std::atoi(args["--BGridSize"][1].c_str());
+  }
+  std::cout<<"Grid: "<<BGridSize<<" "<<BGridCell<<std::endl;
 
   vtkm::FloatDefault L1Val = 32.0, L2Val = 2.0;
   if (args.find("--LocatorLevels") != args.end())
@@ -1889,7 +1921,7 @@ p11       2.329460849125147615, -0.073678279004152566
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
   vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
-  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, L1Val, L2Val, (useTraces ? &traces : nullptr));
+  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, BGridCell, L1Val, L2Val, (useTraces ? &traces : nullptr));
 
   //std::cout<<"Convert to theta/psi"<<std::endl;
   //auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);

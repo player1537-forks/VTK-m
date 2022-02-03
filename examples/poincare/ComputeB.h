@@ -23,7 +23,7 @@ public:
                                 FieldOut CurlNB0,
                                 FieldOut GradPsi);
 
-  using ExecutionSignature = void(_1, _2, _3, _4, _5, _6, _7, _8);
+  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8);
   using InputDomain = _1;
 
   ~ComputeBWorklet()
@@ -52,7 +52,8 @@ public:
   }
 
   template <typename CoordsType, typename Coeff_1DType, typename Coeff_2DType>
-  VTKM_EXEC void operator()(const CoordsType& CoordsRZ,
+  VTKM_EXEC void operator()(const vtkm::Id& idx,
+                            const CoordsType& CoordsRZ,
                             const Coeff_1DType& Coeff_1D,
                             const Coeff_2DType& Coeff_2D,
                             vtkm::FloatDefault& Psi,
@@ -70,8 +71,48 @@ public:
     vtkm::Vec3f ptRPZ(R,0,Z);
     vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
 
+    bool printIt = false;
+    /*
+    if (idx == 19957837)
+    {
+      printIt = true;
+      R = 3.3514430285644154;
+      Z = -0.45164880640275618;
+      ptRPZ[0] = R;
+      ptRPZ[2] = Z;
+    }
+    */
     this->HighOrderB(ptRPZ, Coeff_1D, Coeff_2D,
-                     B0, jacobian_rzp, CurlB0, CurlNB0, Psi, GradPsi);
+                     B0, jacobian_rzp, CurlB0, CurlNB0, Psi, GradPsi, printIt);
+
+    if (printIt)
+    {
+      std::cout<<"IDX: "<<idx<<std::endl;
+      std::cout<<std::setprecision(20)
+               <<"RZ: "<<R<<" "<<Z<<std::endl
+               <<"  psi: "<<Psi<<std::endl
+               <<"  B0 : "<<B0<<std::endl
+               <<"  CB : "<<CurlB0<<std::endl
+               <<"  CNB : "<<CurlNB0<<std::endl
+               <<"  GS  : "<<GradPsi<<std::endl;
+    }
+
+    if (false)
+    {
+      ptRPZ[0] = 3.35144302856442;
+      ptRPZ[2] = -0.451648806402756;
+      this->HighOrderB(ptRPZ, Coeff_1D, Coeff_2D,
+                       B0, jacobian_rzp, CurlB0, CurlNB0, Psi, GradPsi);
+      std::cout<<"IDX========================: "<<idx<<std::endl;
+      std::cout<<std::setprecision(20)
+               <<"RZ: "<<R<<" "<<Z<<std::endl
+               <<"  psi: "<<Psi<<std::endl
+               <<"  B0 : "<<B0<<std::endl
+               <<"  CB : "<<CurlB0<<std::endl
+               <<"  CNB : "<<CurlNB0<<std::endl
+               <<"  GS  : "<<GradPsi<<std::endl;
+    }
+
 
     //std::cout<<"ComputeB: "<<ptRPZ<<" "<<Psi<<" "<<B0<<" "<<CurlB0<<" "<<CurlNB0<<" "<<GradPsi<<std::endl;
     //ComputeB: [3.02936,0,0.0206] 0.00697323 [-0.00168909,0.0188064,-0.218501] [0,0,-0.138882] [-0.00220759,-0.304296,-0.659427] [0.0569713,0.00511687,0]
@@ -146,7 +187,8 @@ public:
                   vtkm::Vec3f& curlB_rzp,
                   vtkm::Vec3f& curl_nb_rzp,
                   vtkm::FloatDefault& PSI,
-                  vtkm::Vec3f& gradPsi_rzp) const
+                  vtkm::Vec3f& gradPsi_rzp,
+                  bool printIt=false) const
   {
     vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2];
     //vtkm::Vec3f ptRZ(R,Z,0);
@@ -183,7 +225,8 @@ public:
 */
 
     double psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
-    this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z);
+    this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_drdz, d2psi_d2r, d2psi_d2z, printIt);
+
     /*
     pRPZ.Psi = psi;
     pRPZ.dpsi_dr = dpsi_dr;
@@ -285,6 +328,16 @@ public:
     /*pRPZ.*/curlB_rzp[1] = Bp*over_r + dBp_dr - dBr_dp*over_r;
     /*pRPZ.*/curlB_rzp[2] = dBr_dz - dBz_dr;
     //std::cout<<"curl_B_rzp= "<<curlB_rzp<<std::endl;
+    if (printIt)
+    {
+      std::cout<<"  ComputeB"<<std::endl;
+      std::cout<<"   acoeff= "<<acoeff<<std::endl;
+      std::cout<<"   dBr_dz = "<<dBr_dz<<std::endl;
+      std::cout<<"   dBz_dr = "<<dBz_dr<<std::endl;
+      std::cout<<"    dpsi_dr= "<<dpsi_dr<<std::endl;
+      std::cout<<"    d2psi_d2r= "<<d2psi_d2r<<std::endl;
+      std::cout<<"    over_r/2 = "<<over_r<<" "<<over_r2<<std::endl<<std::endl;
+    }
 
     //calculate curl_nb
     /*
@@ -344,7 +397,8 @@ public:
                     const vtkm::FloatDefault& yc,
                     const vtkm::Matrix<vtkm::FloatDefault, 4, 4>& acoeff,
                     vtkm::FloatDefault &f00, vtkm::FloatDefault &f10, vtkm::FloatDefault &f01,
-                    vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02) const
+                    vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02,
+                    bool printIt = false) const
   {
     double dx = x - xc;
     double dy = y - yc;
@@ -377,11 +431,19 @@ public:
       f20 = f20 + dfx2[j]*yv[j];
     }
 
+    if (printIt) std::cout<<"RZ= "<<x<<" "<<y<<" RZc= "<<xc<<" "<<yc<<std::endl;
+    if (printIt) std::cout<<"f11= "<<f11<<std::endl;
+    if (printIt) std::cout<<"  fx= "<<fx[0]<<" "<<fx[1]<<" "<<fx[2]<<" "<<fx[3]<<std::endl;
+    if (printIt) std::cout<<"  yv= "<<yv[0]<<" "<<yv[1]<<" "<<yv[2]<<" "<<yv[3]<<std::endl;
+    if (printIt) std::cout<<" dfx= "<<dfx[0]<<" "<<dfx[1]<<" "<<dfx[2]<<" "<<dfx[3]<<std::endl;
+    if (printIt) std::cout<<"  dx= "<<dx<<std::endl;
+    if (printIt) std::cout<<"  dy= "<<dy<<std::endl;
     for (int j = 1; j < 4; j++)
     {
       dfy[j] = double(j)*yv[j-1];
       f01 = f01 + fx[j]*dfy[j];
       f11 = f11 + dfx[j]*dfy[j];
+      if (printIt) std::cout<<j<<": f11= "<<f11<<std::endl;
     }
 
     for (int j = 2; j < 4; j++)
@@ -528,7 +590,7 @@ public:
 */
 
     double psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
-    this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z);
+    this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_drdz, d2psi_d2r, d2psi_d2z, printIt);
     pRPZ.Psi = psi;
     pRPZ.dpsi_dr = dpsi_dr;
     pRPZ.dpsi_dz = dpsi_dz;

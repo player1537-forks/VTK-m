@@ -638,13 +638,14 @@ public:
   template <typename LocatorType, typename CellSetType>
   VTKM_EXEC
   bool PtLoc(const vtkm::Vec3f& ptRZ,
+             ParticleInfo& pInfo,
              const LocatorType& locator,
              const CellSetType& cs,
              vtkm::Vec3f& param,
              vtkm::Vec<vtkm::Id, 3>& vIds) const
   {
     vtkm::Id cellId;
-    vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param);
+    vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param, pInfo.PrevCell);
     if (status != vtkm::ErrorCode::Success)
     {
       printf("Find Cell failed! pt= %lf %lf %lf\n", ptRZ[0], ptRZ[1], ptRZ[2]);
@@ -1086,7 +1087,7 @@ DRP: field_following_pos2() i=             2
 
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
-    this->PtLoc(x_ff_rzp, locator, cellSet, x_ff_param, x_ff_vids);
+    this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, x_ff_param, x_ff_vids);
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
     //std::cout<<std::setprecision(12)<<"  dAs_ff "<<dAs_ff0_rzp<<" "<<dAs_ff1_rzp<<std::endl;
@@ -1205,7 +1206,6 @@ DRP: field_following_pos2() i=             2
                 const Coeff_2DType& Coeff_2D,
                 vtkm::Vec3f& res) const
   {
-    //printf("  worklet %d\n", __LINE__);
     if (this->UseHighOrder)
       return this->HighOrderEval(ptRPZ, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, res);
 

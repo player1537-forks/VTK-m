@@ -95,27 +95,6 @@ double ptLocT = 0;
 //-----------------------------------------------------------------------------
 class PoincareWorklet : public vtkm::worklet::WorkletMapField
 {
-#if 0
-  void Print(const std::string& nm, double T, double TT) const
-  {
-    std::cout<<nm<<"  "<<std::setprecision(5)<<T<<"   "<<std::setprecision(5)<<(T/TT)<<std::endl;
-  }
-  void PrintTimers() const
-  {
-#ifndef VTKM_CUDA
-    std::cout<<"Timers************************"<<std::endl;
-    this->Print("operator()   :", internal::operatorT, internal::operatorT);
-    this->Print(" rk4         :", internal::rk4T, internal::operatorT);
-    this->Print(" eval        :", internal::evalT, internal::operatorT);
-    this->Print(" deltaB      :", internal::deltaBT, internal::operatorT);
-    this->Print(" ffPt        :", internal::ffPtT, internal::operatorT);
-    this->Print(" evalB      :", internal::evalBT, internal::operatorT);
-    this->Print(" ptLoc       :", internal::ptLocT, internal::operatorT);
-    this->Print(" evalBicub   :", internal::evalBicubT, internal::operatorT);
-#endif
-  }
-#endif
-
 public:
   using ControlSignature = void(FieldInOut particles,
                                 ExecObject locator,
@@ -134,10 +113,6 @@ public:
   using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13);
   using InputDomain = _1;
 
-  ~PoincareWorklet()
-  {
-    //this->PrintTimers();
-  }
 
   PoincareWorklet(vtkm::Id maxPunc,
                   vtkm::FloatDefault planeVal,
@@ -201,7 +176,7 @@ public:
 //    std::cout<<" ptRPZ= "<<ptRPZ<<std::endl;
 
     vtkm::Vec3f ptRZ(R,Z,0);
-
+    //std::cout<<std::setprecision(12)<<"   HighOrderB pt=: "<<ptRPZ<<std::endl;
     /*
     if (0)
     {
@@ -276,6 +251,7 @@ public:
     gradPsi_rzp[0] = dpsi_dr;
     gradPsi_rzp[1] = dpsi_dz;
     gradPsi_rzp[2] = 0;
+    //std::cout<<std::setprecision(12)<<"   eval_bicub "<<PSI<<" "<<gradPsi_rzp<<std::endl;
     /*
     std::cout<<" psi= "<<psi<<std::endl;
     std::cout<<" dpsi_dr = "<<dpsi_dr<<std::endl;
@@ -417,6 +393,8 @@ public:
     std::cout<<"***************************************"<<std::endl;
     */
     //printf("  worklet %d\n", __LINE__);
+
+    //std::cout<<std::setprecision(12)<<"   eval_bicub1 "<<PSI<<" "<<gradPsi_rzp<<std::endl;
     return true;
   }
 
@@ -467,6 +445,7 @@ public:
     DBG("Begin: "<<particle<<std::endl);
     //printf("operator() BEGIN\n");
 
+    //std::cout<<std::setprecision(12)<<"Begin: "<<particle.Pos<<std::endl;
     while (true)
     {
       //printf("  worklet %d\n", __LINE__);
@@ -491,10 +470,10 @@ public:
       particle.Pos = newPos;
       particle.NumSteps++;
 
-      //printf("  worklet %d\n", __LINE__);
       if (this->SaveTraces)
         traces.Set(idx*this->MaxIter + particle.NumSteps, particle.Pos);
 
+      //std::cout<<std::setprecision(12)<<" Step: "<<particle.Pos<<std::endl;
       if (numRevs1 > numRevs0)
       {
         auto R = particle.Pos[0], Z = particle.Pos[2];
@@ -561,6 +540,7 @@ public:
     DBG("    ****** K1"<<std::endl);
     if (!this->Evaluate(p0, locator, cellSet, B_RZP, B_Norm_RZP, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1))
       return false;
+    //std::cout<<std::setprecision(12)<<"  k1: "<<k1<<std::endl;
     tmp = p0 + k1*this->StepSize_2;
 
     DBG("    ****** K2"<<std::endl);
@@ -1006,6 +986,8 @@ DRP: field_following_pos2() i=             2
     vtkm::Vec<vtkm::Vec3f, 3> jacobian;
     if (!this->HighOrderB(ptRPZ, coeff_1D, coeff_2D, B0_rzp, jacobian, curlB_rzp, curl_nb_rzp, psi, GRADPSI_rzp))
       return false;
+    //std::cout<<std::setprecision(12)<<"  b0: "<<B0_rzp<<std::endl;
+    //std::cout<<std::setprecision(12)<<"   "<<curlB_rzp<<" "<<curl_nb_rzp<<" "<<psi<<" "<<GRADPSI_rzp<<std::endl;
 
     //printf("  worklet %d\n", __LINE__);
     if (this->UseBOnly)
@@ -1024,6 +1006,7 @@ DRP: field_following_pos2() i=             2
     //printf("  worklet %d\n", __LINE__);
     vtkm::Vec3f ff_pt_rpz;
     this->CalcFieldFollowingPt({R,phiN,Z}, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
+    //std::cout<<std::setprecision(12)<<"  ff_pt "<<ff_pt_rpz<<std::endl;
 
     //Now, interpolate between Phi_i and Phi_i+1
     vtkm::FloatDefault T01 = (phiN - Phi0) / (Phi1-Phi0);
@@ -1055,8 +1038,10 @@ DRP: field_following_pos2() i=             2
     //dPsi/dZ = -B0_R * R;
     //vtkm::Vec3f gradPsi_rzp(B0_Z * x_ff_R, -B0_R * x_ff_R, 0);
     //use high order...
+    //std::cout<<std::setprecision(12)<<"  gradPsi0 "<<GRADPSI_rzp<<std::endl;
     vtkm::Vec3f gradPsi_rzp = GRADPSI_rzp;
     vtkm::FloatDefault gammaPsi = 1.0f/vtkm::Magnitude(gradPsi_rzp);
+    //std::cout<<std::setprecision(12)<<"  gradPsi "<<gradPsi_rzp<<" "<<gammaPsi<<std::endl;
 
     vtkm::Vec2f rvec(0,0), zvec(0,0);
     rvec[0] = basis + (1.0-basis) * gammaPsi *   gradPsi_rzp[0];
@@ -1074,6 +1059,7 @@ DRP: field_following_pos2() i=             2
     this->PtLoc(x_ff_rzp, locator, cellSet, x_ff_param, x_ff_vids);
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
+    //std::cout<<std::setprecision(12)<<"  dAs_ff "<<dAs_ff0_rzp<<" "<<dAs_ff1_rzp<<std::endl;
 
     vtkm::FloatDefault wphi[2] = {T10, T01}; //{T01, T10};
     vtkm::Vec3f gradAs_rpz;
@@ -1090,6 +1076,8 @@ DRP: field_following_pos2() i=             2
                     wphi[1] * dAs_ff1_rzp[2];
     gradAs_rpz[2] = wphi[0]*(rvec[1]*dAs_ff0_rzp[0] + zvec[1]*dAs_ff0_rzp[1]) +
                     wphi[1]*(rvec[1]*dAs_ff1_rzp[0] + zvec[1]*dAs_ff1_rzp[1]);
+    //std::cout<<std::setprecision(12)<<"  rzvec "<<rvec<<" "<<zvec<<std::endl;
+    //std::cout<<std::setprecision(12)<<"  gradAs_rpz "<<gradAs_rpz<<std::endl;
 
     vtkm::FloatDefault BMag = vtkm::Magnitude(B0_rzp);
     //project using bfield.
@@ -1159,9 +1147,11 @@ DRP: field_following_pos2() i=             2
     //std::cout<<"    gradAs_rzp= "<<gradAs_rzp<<std::endl;
     vtkm::Vec3f deltaB_rzp = AsCurl_bhat_rzp + vtkm::Cross(gradAs_rzp, bhat_rzp);
     //std::cout<<"    deltaB= "<<deltaB_rzp<<std::endl;
+    //std::cout<<std::setprecision(12)<<"  dB=: "<<AsCurl_bhat_rzp<<" "<<gradAs_rzp<<" "<<bhat_rzp<<std::endl;
 
     deltaB_rzp[2] /= R;
     B0_rzp[2] /= R;
+    //std::cout<<std::setprecision(12)<<"  dB: "<<deltaB_rzp<<std::endl;
 
     vtkm::Vec3f vec_rzp = B0_rzp + deltaB_rzp;
     vtkm::Vec3f vec_rpz(vec_rzp[0], vec_rzp[2], vec_rzp[1]);

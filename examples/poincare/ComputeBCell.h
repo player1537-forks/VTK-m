@@ -74,11 +74,22 @@ public:
       R += coordRZ[0];
       Z += coordRZ[1];
     }
+    auto div = 1/static_cast<vtkm::FloatDefault>(numPoints);
+    R *= div;
+    Z *= div;
 
     vtkm::Vec3f ptRPZ(R, 0, Z);
     vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
     this->HighOrderB(ptRPZ, Coeff_1D, Coeff_2D,
                      B0, jacobian_rzp, CurlB0, CurlNB0, Psi, GradPsi);
+
+    /*
+    if (cellId == 31174180) //5228208)
+    {
+      std::cout<<std::setprecision(20)
+        <<"ComputeB: "<<ptRPZ<<" :: "<<Psi<<" "<<B0<<" "<<CurlB0<<" "<<CurlNB0<<" "<<GradPsi<<std::endl;
+    }
+    */
 
     /*
     auto divergence = vtkm::Abs(jacobian_rzp[0][0] + B0[0]/ptRPZ[0] + jacobian_rzp[1][1]);
@@ -234,7 +245,7 @@ public:
       }
 
     double psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
-    this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+    this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_drdz, d2psi_d2r, d2psi_d2z);
     PSI = psi;
     gradPsi_rzp[0] = dpsi_dr;
     gradPsi_rzp[1] = dpsi_dz;
@@ -433,7 +444,7 @@ public:
 */
 
     double psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
-    this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z);
+    this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_drdz, d2psi_d2r, d2psi_d2z);
     /*
     pRPZ.Psi = psi;
     pRPZ.dpsi_dr = dpsi_dr;
