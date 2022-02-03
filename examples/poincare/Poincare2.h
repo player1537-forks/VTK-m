@@ -58,39 +58,6 @@ jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | 
 
 #define DO_TRACES 0
 
-namespace internal2
-{
-#if 0
-class FuncTimer
-{
-public:
-  FuncTimer(double *t)
-  {
-    this->T = t;
-    this->start = std::chrono::steady_clock::now();
-  }
-  ~FuncTimer()
-  {
-    this->end = std::chrono::steady_clock::now();
-    std::chrono::duration<double> dT = this->end-this->start;
-    *this->T += dT.count();
-  }
-  struct std::chrono::time_point<std::chrono::_V2::steady_clock, std::chrono::duration<long int, std::ratio<1, 1000000000> > > start, end;
-  double *T;
-};
-double operatorT = 0, rk4T = 0, evalT = 0, evalBT = 0, evalB1T = 0, ffPtT = 0, deltaBT=0;
-double evalBicubT = 0;
-double ptLocT = 0;
-
-#ifdef TIME_STUFF
-#define FT(x) internal::FuncTimer tt(&x);
-#else
-#define FT(x);
-#endif
-#endif
-};
-
-
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 class PoincareWorklet2 : public vtkm::worklet::WorkletMapField

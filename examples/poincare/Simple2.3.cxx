@@ -921,8 +921,7 @@ Poincare(const vtkm::cont::DataSet& ds,
     timer.Start();
     start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
-            B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
-            coeff_1D, coeff_2D,
+            As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
   }
   else if (whichWorklet == 2)
