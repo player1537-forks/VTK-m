@@ -27,6 +27,10 @@
 #include <vtkm/cont/CellLocatorGeneral.h>
 #include <vtkm/io/VTKDataSetWriter.h>
 #include <vtkm/cont/Algorithm.h>
+#ifdef VTKM_CUDA
+#include <vtkm/cont/cuda/internal/ScopedCudaStackSize.h>
+#include <vtkm/cont/cuda/internal/DeviceAdapterAlgorithmCuda.h>
+#endif
 
 #include <adios2.h>
 
@@ -35,8 +39,6 @@
 #include <variant>
 #include <filesystem>
 #include <mpi.h>
-
-#include <valgrind/callgrind.h>
 
 /*
 radius values: max range: 2.5 3.7
@@ -61,6 +63,11 @@ int eq_mr = -1, eq_mz = -1;
 using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 
 //#define VALGRIND
+#ifdef VALGRIND
+#include <valgrind/callgrind.h>
+shit();
+#endif
+
 #include "Poincare.h"
 #include "Poincare2.h"
 #include "Poincare3.h"
@@ -896,8 +903,14 @@ Poincare(const vtkm::cont::DataSet& ds,
       std::cout<<"TRACES: "<<t.size()<<std::endl;
       tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
+#ifdef VTKM_CUDA
+    // This worklet needs some extra space on CUDA.
+    vtkm::cont::cuda::internal::ScopedCudaStackSize stack(16 * 1024);
+    (void)stack;
+#endif // VTKM_CUDA
 
-    timer.Start();
+
+    //timer.Start();
     start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
             B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
@@ -918,7 +931,7 @@ Poincare(const vtkm::cont::DataSet& ds,
       tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
 
-    timer.Start();
+    //timer.Start();
     start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, ds.GetCellSet(),
             As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
@@ -1033,7 +1046,7 @@ Poincare(const vtkm::cont::DataSet& ds,
       tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
     }
 
-    timer.Start();
+    //timer.Start();
     start = std::chrono::steady_clock::now();
     invoker(worklet, seeds, locator, locatorB, ds.GetCellSet(), grid.GetCellSet(),
             B_rzp, /*B_Norm_rzp,*/ /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
@@ -1049,12 +1062,13 @@ Poincare(const vtkm::cont::DataSet& ds,
             tracesArr, outRZ, outTP, outID);
     */
   }
+  outID.SyncControlArray();
   auto end = std::chrono::steady_clock::now();
-  timer.Stop();
+  //timer.Stop();
   std::chrono::duration<double> elapsed_seconds = end-start;
 
   std::cout<<"PoincareTime= "<<elapsed_seconds.count()<<std::endl;
-  std::cout<<"vtkm::cont::Timer= "<<timer.GetElapsedTime()<<std::endl;
+  //std::cout<<"vtkm::cont::Timer= "<<timer.GetElapsedTime()<<std::endl;
   std::cout<<"outputRZ.size()= "<<outRZ.GetNumberOfValues()<<std::endl;
   std::cout<<"outputTP.size()= "<<outTP.GetNumberOfValues()<<std::endl;
   std::cout<<"punctureID.size()= "<<outID.GetNumberOfValues()<<std::endl;
@@ -1453,16 +1467,46 @@ SaveStuff(const vtkm::cont::DataSet& inDS)
   writer.WriteDataSet(ds);
 }
 
+int oneDBlocks = 16;
+int threadsPerBlock = 16;
+#ifdef VTKM_CUDA
+vtkm::cont::cuda::ScheduleParameters
+mySchedParams(char const* name,
+              int major,
+              int minor,
+              int multiProcessorCount,
+              int maxThreadsPerMultiProcessor,
+              int maxThreadsPerBlock)
+{
+  vtkm::cont::cuda::ScheduleParameters p;
+  p.one_d_blocks = oneDBlocks;
+  p.one_d_threads_per_block = threadsPerBlock;
+
+  return p;
+}
+#endif
+
 int
 main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
+  std::map<std::string, std::vector<std::string>> args;
+  ParseArgs(argc, argv, args);
+
+  if (args.find("--gpuParams") != args.end())
+  {
+    oneDBlocks = std::atoi(args["--gpuParams"][0].c_str());
+    threadsPerBlock = std::atoi(args["--gpuParams"][1].c_str());
+  }
+  std::cout<<"GPUParams: "<<oneDBlocks<<" "<<threadsPerBlock<<std::endl;
+
+#ifdef VTKM_CUDA
+  if (args.find("--gpu") != args.end())
+    vtkm::cont::cuda::InitScheduleParameters(mySchedParams);
+#endif
 
   auto opts = vtkm::cont::InitializeOptions::DefaultAnyDevice;
   auto config = vtkm::cont::Initialize(argc, argv, opts);
-
-  std::map<std::string, std::vector<std::string>> args;
-  ParseArgs(argc, argv, args);
 
   if (argc < 7)
   {
