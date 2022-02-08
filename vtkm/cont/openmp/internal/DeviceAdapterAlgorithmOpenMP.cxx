@@ -45,8 +45,22 @@ void DeviceAdapterAlgorithm<vtkm::cont::DeviceAdapterTagOpenMP>::ScheduleTask(
     return std::min(max, std::max(min, result));
   };
 
+  char *chunksEnv = getenv("CHUNKS");
+  char *chunk_minEnv = getenv("CHUNK_MIN");
+  char *chunk_maxEnv = getenv("CHUNK_MAX");
+
+  vtkm::Id chunks = 256, chunk_min = 1, chunk_max = 1024;
+  if (chunksEnv)
+  {
+    std::cout<<" **** "<<chunksEnv<<std::endl;
+    chunks = std::atoi(chunksEnv);
+    chunk_min = std::atoi(chunk_minEnv);
+    chunk_max = std::atoi(chunk_maxEnv);
+    std::cout<<"CHUNK_INFO= "<<chunks<<" "<<chunk_min<<" "<<chunk_max<<std::endl;
+  }
+
   // Figure out how to chunk the data:
-  const vtkm::Id chunkSize = computeChunkSize(size, 256, 1, 1024);
+  const vtkm::Id chunkSize = computeChunkSize(size, chunks, chunk_min, chunk_max);
   const vtkm::Id numChunks = (size + chunkSize - 1) / chunkSize;
 
   VTKM_OPENMP_DIRECTIVE(parallel for

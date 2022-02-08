@@ -763,13 +763,17 @@ public:
     return c;
   }
 
-  template <typename Coeff_1DType, typename Coeff_2DType>
+  template <typename LocatorBType, typename CellSetBType, typename VecFieldType>
   VTKM_EXEC
-  vtkm::Vec3f GetB(vtkm::Vec3f& pt_rpz,
+  vtkm::Vec3f GetB(const vtkm::Vec3f& pt_rpz,
                    ParticleInfo& pInfo,
-                   const Coeff_1DType& coeff_1D,
-                   const Coeff_2DType& coeff_2D) const
+                   const LocatorBType& locatorB,
+                   const CellSetBType& cellSetB,
+                   const VecFieldType& B_RZP) const
   {
+    this->EvalB(pt_rpz, locatorB, cellSetB, B_RZP, pInfo);
+    return pInfo.B0_rzp;
+    /*
     this->HighOrderB(pt_rpz, pInfo, coeff_1D, coeff_2D);
 
     //This gives is the time derivative: Br = dR/dt, Bz= dZ/dt, B_phi/R = dphi/dt
@@ -782,17 +786,19 @@ public:
     B0_rpz[0] *= pt_rpz[0];
     B0_rpz[2] *= pt_rpz[0];
     return B0_rpz;
+    */
   }
 
-  template <typename Coeff_1DType, typename Coeff_2DType>
+  template <typename LocatorBType, typename CellSetBType, typename VectorFieldType>
   VTKM_EXEC
   bool CalcFieldFollowingPt(const vtkm::Vec3f& pt_rpz,
                             const ParticleInfo& pInfo,
                             const vtkm::Vec3f& B0_rpz,
                             const vtkm::FloatDefault& Phi0,
                             const vtkm::FloatDefault& Phi1,
-                            const Coeff_1DType& coeff_1D,
-                            const Coeff_2DType& coeff_2D,
+                            const LocatorBType& locatorB,
+                            const CellSetBType& cellSetB,
+                            const VectorFieldType& B_RZP,
                             vtkm::Vec3f& x_ff_rpz) const
   {
     vtkm::FloatDefault R = pt_rpz[0];
@@ -817,16 +823,16 @@ public:
 
     for (int i = 0; i < 2; i++)
     {
-      k1 = this->GetB(p0, pInfo2, coeff_1D, coeff_2D);
+      k1 = this->GetB(p0, pInfo2, locatorB, cellSetB, B_RZP);
       tmp = p0 + k1*h_2;
 
-      k2 = this->GetB(tmp, pInfo2, coeff_1D, coeff_2D);
+      k2 = this->GetB(tmp, pInfo2, locatorB, cellSetB, B_RZP);
       tmp = p0 + k2*h_2;
 
-      k3 = this->GetB(tmp, pInfo2, coeff_1D, coeff_2D);
+      k3 = this->GetB(tmp, pInfo2, locatorB, cellSetB, B_RZP);
       tmp = p0 + k3*h;
 
-      k4 = this->GetB(tmp, pInfo2, coeff_1D, coeff_2D);
+      k4 = this->GetB(tmp, pInfo2, locatorB, cellSetB, B_RZP);
 
       vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4) / 6.0;
       p0 = p0 + h * vec;
@@ -862,15 +868,16 @@ public:
     return cellId;
   }
 
-  template <typename LocatorType, typename CellSetType>
+  template <typename LocatorBType, typename CellSetBType>
   VTKM_EXEC
-  bool PtLoc4(const vtkm::Vec3f& ptRZ,
-              ParticleInfo& pInfo,
-              const LocatorType& locator,
-              const CellSetType& cs,
+  bool PtLoc4(const vtkm::Vec3f& ptRPZ,
+              ParticleInfo& /*pInfo*/,
+              const LocatorBType& /*locator*/,
+              const CellSetBType& cs,
               vtkm::Vec3f& param,
               vtkm::Vec<vtkm::Id, 4>& vIds) const
   {
+#if 0
     vtkm::Id cellId;
     vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param, pInfo.PrevCell);
     if (status != vtkm::ErrorCode::Success)
@@ -890,8 +897,8 @@ public:
     vIds[3] = tmp[3];
 
     return true;
-    /*
-    vtkm::Id cellId = this->CellLocUniform(ptRZ, cs, &param);
+#else
+    vtkm::Id cellId = this->CellLocUniform(ptRPZ, &param);
     if (cellId < 0)
     {
 #ifndef VTKM_CUDA
@@ -906,7 +913,8 @@ public:
     vIds[2] = tmp[2];
     vIds[3] = tmp[3];
     return true;
-    */
+#endif
+
   }
 
   template <typename LocatorBType, typename CellSetBType, typename ScalarFieldType, typename VecFieldType>
@@ -940,18 +948,16 @@ public:
     else
     {
       ParticleInfo pInfo2;
-      vtkm::Vec3f ptRZ(ptRPZ[0], ptRPZ[2], 0);
       vtkm::Vec3f param;
       vtkm::Vec<vtkm::Id, 4> vIds;
-      this->PtLoc4(ptRZ, pInfo, locatorB, cellSetB, param, vIds);
-/*
+      this->PtLoc4(ptRPZ, pInfo, locatorB, cellSetB, param, vIds);
+
       pInfo.Psi = this->EvalS4(Psi, vIds, param);
       pInfo.B0_rzp = this->EvalV4(B_RZP, vIds, param);
       pInfo.curlB_rzp = this->EvalV4(B_Curl_RZP, vIds, param);
       pInfo.curl_nb_rzp = this->EvalV4(Curl_NB_RZP, vIds, param);
       pInfo.gradPsi_rzp = this->EvalV4(GradPsi_RZP, vIds, param);
-*/
-
+/*
       //std::cout<<"  PTIDs= "<<vIds[0]<<" "<<vIds[1]<<" "<<vIds[2]<<" "<<vIds[3]<<std::endl;
 
       vtkm::VecVariable<vtkm::FloatDefault, 4> valsS;
@@ -971,6 +977,7 @@ public:
       vtkm::exec::CellInterpolate(valsV, param, vtkm::CellShapeTagQuad(), pInfo.curl_nb_rzp);
       for (int i = 0; i < 4; i++) valsV[i] = GradPsi_RZP.Get(vIds[i]);
       vtkm::exec::CellInterpolate(valsV, param, vtkm::CellShapeTagQuad(), pInfo.gradPsi_rzp);
+*/
     }
     return true;
   }
@@ -997,22 +1004,17 @@ public:
     }
     else
     {
-      ParticleInfo pInfo2;
-      vtkm::Vec3f ptRZ(ptRPZ[0], ptRPZ[2], 0);
       vtkm::Vec3f param;
       vtkm::Vec<vtkm::Id, 4> vIds;
-      this->PtLoc4(ptRZ, pInfo, locatorB, cellSetB, param, vIds);
-/*
-      pInfo.Psi = this->EvalS4(Psi, vIds, param);
-      pInfo.B0_rzp = this->EvalV4(B_RZP, vIds, param);
-      pInfo.curlB_rzp = this->EvalV4(B_Curl_RZP, vIds, param);
-      pInfo.curl_nb_rzp = this->EvalV4(Curl_NB_RZP, vIds, param);
-      pInfo.gradPsi_rzp = this->EvalV4(GradPsi_RZP, vIds, param);
-*/
+      this->PtLoc4(ptRPZ, pInfo, locatorB, cellSetB, param, vIds);
 
+      pInfo.B0_rzp = this->EvalV4(B_RZP, vIds, param);
+
+      /*
       vtkm::VecVariable<vtkm::Vec3f, 4> valsV;
       for (int i = 0; i < 4; i++) valsV.Append(B_RZP.Get(vIds[i]));
       vtkm::exec::CellInterpolate(valsV, param, vtkm::CellShapeTagQuad(), pInfo.B0_rzp);
+      */
     }
 
     return true;
@@ -1047,8 +1049,8 @@ public:
                 const VecFieldType& Bcell_Curl_RZP,
                 const VecFieldType& Curlcell_NB_RZP,
                 const VecFieldType& GradPsicell_RZP,
-                const Coeff_1DType& coeff_1D,
-                const Coeff_2DType& coeff_2D,
+                const Coeff_1DType& /*coeff_1D*/,
+                const Coeff_2DType& /*coeff_2D*/,
                 vtkm::Vec3f& res) const
   {
     auto R = ptRPZ[0];
@@ -1091,7 +1093,7 @@ public:
     vtkm::Vec3f B0_rpz(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
 
     vtkm::Vec3f ff_pt_rpz;
-    this->CalcFieldFollowingPt({R,phiN,Z}, pInfo, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
+    this->CalcFieldFollowingPt({R,phiN,Z}, pInfo, B0_rpz, Phi0, Phi1, locatorB, cellSetB, Bcell_RZP, ff_pt_rpz);
 
     //Now, interpolate between Phi_i and Phi_i+1
     vtkm::FloatDefault T01 = (phiN - Phi0) / (Phi1-Phi0);
