@@ -935,7 +935,9 @@ public:
 
       if (cellId < 0)
       {
+#ifndef VTKM_CUDA
         std::cout<<"CellId Not found!!"<<std::endl;
+#endif
         return false;
       }
 
@@ -996,7 +998,9 @@ public:
 
       if (cellId < 0)
       {
+#ifndef VTKM_CUDA
         std::cout<<"CellId Not found!!"<<std::endl;
+#endif
         return false;
       }
 
@@ -1020,6 +1024,7 @@ public:
     return true;
   }
 
+#ifndef VTKM_CUDA
   VTKM_EXEC
   void PrintDiffs(const vtkm::Vec3f& pt, const ParticleInfo& piA, const ParticleInfo& piB) const
   {
@@ -1032,6 +1037,7 @@ public:
     <<"  B-comp cn: "<<piA.curl_nb_rzp<<" "<<piB.curl_nb_rzp<<" "<<vtkm::Magnitude(piA.curl_nb_rzp - piB.curl_nb_rzp)<<std::endl
     <<"  B-comp gs: "<<piA.gradPsi_rzp<<" "<<piB.gradPsi_rzp<<" "<<vtkm::Magnitude(piA.gradPsi_rzp - piB.gradPsi_rzp)<<std::endl;
   }
+#endif
 
   template <typename LocatorRZType, typename LocatorBType, typename CellSetRZType, typename CellSetBType, typename VecFieldType, typename AsFieldType, typename DAsFieldType, typename ScalarFieldType, typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC

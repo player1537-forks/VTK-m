@@ -85,6 +85,7 @@ public:
     this->HighOrderB(ptRPZ, Coeff_1D, Coeff_2D,
                      B0, jacobian_rzp, CurlB0, CurlNB0, Psi, GradPsi, printIt);
 
+#ifndef VTKM_CUDA
     if (printIt)
     {
       std::cout<<"IDX: "<<idx<<std::endl;
@@ -96,7 +97,9 @@ public:
                <<"  CNB : "<<CurlNB0<<std::endl
                <<"  GS  : "<<GradPsi<<std::endl;
     }
+#endif
 
+#ifndef VTKM_CUDA
     if (false)
     {
       ptRPZ[0] = 3.35144302856442;
@@ -112,7 +115,7 @@ public:
                <<"  CNB : "<<CurlNB0<<std::endl
                <<"  GS  : "<<GradPsi<<std::endl;
     }
-
+#endif
 
     //std::cout<<"ComputeB: "<<ptRPZ<<" "<<Psi<<" "<<B0<<" "<<CurlB0<<" "<<CurlNB0<<" "<<GradPsi<<std::endl;
     //ComputeB: [3.02936,0,0.0206] 0.00697323 [-0.00168909,0.0188064,-0.218501] [0,0,-0.138882] [-0.00220759,-0.304296,-0.659427] [0.0569713,0.00511687,0]
@@ -328,6 +331,7 @@ public:
     /*pRPZ.*/curlB_rzp[1] = Bp*over_r + dBp_dr - dBr_dp*over_r;
     /*pRPZ.*/curlB_rzp[2] = dBr_dz - dBz_dr;
     //std::cout<<"curl_B_rzp= "<<curlB_rzp<<std::endl;
+#ifndef VTKM_CUDA
     if (printIt)
     {
       std::cout<<"  ComputeB"<<std::endl;
@@ -338,6 +342,7 @@ public:
       std::cout<<"    d2psi_d2r= "<<d2psi_d2r<<std::endl;
       std::cout<<"    over_r/2 = "<<over_r<<" "<<over_r2<<std::endl<<std::endl;
     }
+#endif
 
     //calculate curl_nb
     /*
@@ -431,6 +436,7 @@ public:
       f20 = f20 + dfx2[j]*yv[j];
     }
 
+#ifndef VTKM_CUDA
     if (printIt) std::cout<<"RZ= "<<x<<" "<<y<<" RZc= "<<xc<<" "<<yc<<std::endl;
     if (printIt) std::cout<<"f11= "<<f11<<std::endl;
     if (printIt) std::cout<<"  fx= "<<fx[0]<<" "<<fx[1]<<" "<<fx[2]<<" "<<fx[3]<<std::endl;
@@ -438,12 +444,12 @@ public:
     if (printIt) std::cout<<" dfx= "<<dfx[0]<<" "<<dfx[1]<<" "<<dfx[2]<<" "<<dfx[3]<<std::endl;
     if (printIt) std::cout<<"  dx= "<<dx<<std::endl;
     if (printIt) std::cout<<"  dy= "<<dy<<std::endl;
+#endif
     for (int j = 1; j < 4; j++)
     {
       dfy[j] = double(j)*yv[j-1];
       f01 = f01 + fx[j]*dfy[j];
       f11 = f11 + dfx[j]*dfy[j];
-      if (printIt) std::cout<<j<<": f11= "<<f11<<std::endl;
     }
 
     for (int j = 2; j < 4; j++)
