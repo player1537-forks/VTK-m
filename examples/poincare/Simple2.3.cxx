@@ -1529,6 +1529,8 @@ main(int argc, char** argv)
 
   if (args.find("--gpu") != args.end())
       vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
+  if (args.find("--kokkos") != args.end())
+      vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagKokkos{});
   else if (args.find("--openmp") != args.end())
       vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagOpenMP{});
   else if (args.find("--serial") != args.end())
