@@ -141,20 +141,20 @@ public:
                                 const int& ideriv,
                                 const Coeff_1DType& coeff_1D) const
   {
-    double pn = psi * this->one_d_cub_dpsi_inv;
+    vtkm::FloatDefault pn = psi * this->one_d_cub_dpsi_inv;
     int ip=floor(pn);
     ip=std::min(std::max(ip,0),this->ncoeff-1);
-    double wp=pn-(double)(ip);
+    vtkm::FloatDefault wp=pn-(vtkm::FloatDefault)(ip);
 
     int idx = ip*4;
 
-    //double acoef[4];
+    //vtkm::FloatDefault acoef[4];
     //acoef[0] = one_d_cub_acoef(ip).coeff[0];
     //acoef[1] = one_d_cub_acoef(ip).coeff[1];
     //acoef[2] = one_d_cub_acoef(ip).coeff[2];
     //acoef[3] = one_d_cub_acoef(ip).coeff[3];
 
-    double acoef[4] = {coeff_1D.Get(idx+0),
+    vtkm::FloatDefault acoef[4] = {coeff_1D.Get(idx+0),
                        coeff_1D.Get(idx+1),
                        coeff_1D.Get(idx+2),
                        coeff_1D.Get(idx+3)};
@@ -227,7 +227,7 @@ public:
       }
 */
 
-    double psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
+    vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
     this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_drdz, d2psi_d2r, d2psi_d2z, printIt);
 
     /*
@@ -368,8 +368,12 @@ public:
     #ifndef VTKM_CUDA
     //Check divergence.
     auto divergence = dBr_dr + Br/R + dBz_dz;
-    //std::cout<<"Div= "<<divergence<<std::endl;
-    if (vtkm::Abs(divergence) > 1e-16)
+#ifdef VTKM_USE_DOUBLE_PRECISION
+    static const vtkm::FloatDefault divEps = 1e-16;
+#else
+    static const vtkm::FloatDefault divEps = 1e-8;
+#endif
+    if (vtkm::Abs(divergence) > divEps)
     {
       std::cout<<std::endl;
       std::cout<<"****************************************************** DIVERGENCE= "<<divergence<<std::endl;
@@ -405,28 +409,28 @@ public:
                     vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02,
                     bool printIt = false) const
   {
-    double dx = x - xc;
-    double dy = y - yc;
+    vtkm::FloatDefault dx = x - xc;
+    vtkm::FloatDefault dy = y - yc;
 
     //fortran code.
 
     f00 = f01 = f10 = f11 = f20 = f02 = 0.0f;
-    double xv[4] = {1, dx, dx*dx, dx*dx*dx};
-    double yv[4] = {1, dy, dy*dy, dy*dy*dy};
-    double fx[4] = {0,0,0,0};
-    double dfx[4] = {0,0,0,0};
-    double dfy[4] = {0,0,0,0};
-    double dfx2[4] = {0,0,0,0};
-    double dfy2[4] = {0,0,0,0};
+    vtkm::FloatDefault xv[4] = {1, dx, dx*dx, dx*dx*dx};
+    vtkm::FloatDefault yv[4] = {1, dy, dy*dy, dy*dy*dy};
+    vtkm::FloatDefault fx[4] = {0,0,0,0};
+    vtkm::FloatDefault dfx[4] = {0,0,0,0};
+    vtkm::FloatDefault dfy[4] = {0,0,0,0};
+    vtkm::FloatDefault dfx2[4] = {0,0,0,0};
+    vtkm::FloatDefault dfy2[4] = {0,0,0,0};
 
     for (int j=0; j<4; j++)
     {
       for (int i=0; i<4; i++)
         fx[j] = fx[j] + xv[i]*acoeff[i][j];
       for (int i=1; i<4; i++)
-        dfx[j] = dfx[j] + double(i)*xv[i-1]*acoeff[i][j];
+        dfx[j] = dfx[j] + vtkm::FloatDefault(i)*xv[i-1]*acoeff[i][j];
       for (int i=2; i<4; i++)
-        dfx2[j] = dfx2[j] + double(i*(i-1))*xv[i-2]*acoeff[i][j];
+        dfx2[j] = dfx2[j] + vtkm::FloatDefault(i*(i-1))*xv[i-2]*acoeff[i][j];
     }
 
     for (int j = 0; j < 4; j++)
@@ -447,14 +451,14 @@ public:
 #endif
     for (int j = 1; j < 4; j++)
     {
-      dfy[j] = double(j)*yv[j-1];
+      dfy[j] = vtkm::FloatDefault(j)*yv[j-1];
       f01 = f01 + fx[j]*dfy[j];
       f11 = f11 + dfx[j]*dfy[j];
     }
 
     for (int j = 2; j < 4; j++)
     {
-      dfy2[j] = double(j*(j-1))*yv[j-2];
+      dfy2[j] = vtkm::FloatDefault(j*(j-1))*yv[j-2];
       f02 = f02 + fx[j]*dfy2[j];
     }
 
@@ -595,7 +599,7 @@ public:
       }
 */
 
-    double psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
+    vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
     this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi, dpsi_dr, dpsi_dz, d2psi_drdz, d2psi_d2r, d2psi_d2z, printIt);
     pRPZ.Psi = psi;
     pRPZ.dpsi_dr = dpsi_dr;
@@ -1000,28 +1004,28 @@ public:
                     vtkm::FloatDefault &f00, vtkm::FloatDefault &f10, vtkm::FloatDefault &f01,
                     vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02) const
   {
-    double dx = x - xc;
-    double dy = y - yc;
+    vtkm::FloatDefault dx = x - xc;
+    vtkm::FloatDefault dy = y - yc;
 
     //fortran code.
 
     f00 = f01 = f10 = f11 = f20 = f02 = 0.0f;
-    double xv[4] = {1, dx, dx*dx, dx*dx*dx};
-    double yv[4] = {1, dy, dy*dy, dy*dy*dy};
-    double fx[4] = {0,0,0,0};
-    double dfx[4] = {0,0,0,0};
-    double dfy[4] = {0,0,0,0};
-    double dfx2[4] = {0,0,0,0};
-    double dfy2[4] = {0,0,0,0};
+    vtkm::FloatDefault xv[4] = {1, dx, dx*dx, dx*dx*dx};
+    vtkm::FloatDefault yv[4] = {1, dy, dy*dy, dy*dy*dy};
+    vtkm::FloatDefault fx[4] = {0,0,0,0};
+    vtkm::FloatDefault dfx[4] = {0,0,0,0};
+    vtkm::FloatDefault dfy[4] = {0,0,0,0};
+    vtkm::FloatDefault dfx2[4] = {0,0,0,0};
+    vtkm::FloatDefault dfy2[4] = {0,0,0,0};
 
     for (int j=0; j<4; j++)
     {
       for (int i=0; i<4; i++)
         fx[j] = fx[j] + xv[i]*acoeff[i][j];
       for (int i=1; i<4; i++)
-        dfx[j] = dfx[j] + double(i)*xv[i-1]*acoeff[i][j];
+        dfx[j] = dfx[j] + vtkm::FloatDefault(i)*xv[i-1]*acoeff[i][j];
       for (int i=2; i<4; i++)
-        dfx2[j] = dfx2[j] + double(i*(i-1))*xv[i-2]*acoeff[i][j];
+        dfx2[j] = dfx2[j] + vtkm::FloatDefault(i*(i-1))*xv[i-2]*acoeff[i][j];
     }
 
     for (int j = 0; j < 4; j++)
@@ -1033,14 +1037,14 @@ public:
 
     for (int j = 1; j < 4; j++)
     {
-      dfy[j] = double(j)*yv[j-1];
+      dfy[j] = vtkm::FloatDefault(j)*yv[j-1];
       f01 = f01 + fx[j]*dfy[j];
       f11 = f11 + dfx[j]*dfy[j];
     }
 
     for (int j = 2; j < 4; j++)
     {
-      dfy2[j] = double(j*(j-1))*yv[j-2];
+      dfy2[j] = vtkm::FloatDefault(j*(j-1))*yv[j-2];
       f02 = f02 + fx[j]*dfy2[j];
     }
 
@@ -1117,20 +1121,20 @@ public:
                                 const Coeff_1DType& coeff_1D) const
   {
     //printf("  worklet %d\n", __LINE__);
-    double pn = psi * this->one_d_cub_dpsi_inv;
+    vtkm::FloatDefault pn = psi * this->one_d_cub_dpsi_inv;
     int ip=floor(pn);
     ip=std::min(std::max(ip,0),this->ncoeff-1);
-    double wp=pn-(double)(ip);
+    vtkm::FloatDefault wp=pn-(vtkm::FloatDefault)(ip);
 
     int idx = ip*4;
 
-    //double acoef[4];
+    //vtkm::FloatDefault acoef[4];
     //acoef[0] = one_d_cub_acoef(ip).coeff[0];
     //acoef[1] = one_d_cub_acoef(ip).coeff[1];
     //acoef[2] = one_d_cub_acoef(ip).coeff[2];
     //acoef[3] = one_d_cub_acoef(ip).coeff[3];
 
-    double acoef[4] = {coeff_1D.Get(idx+0),
+    vtkm::FloatDefault acoef[4] = {coeff_1D.Get(idx+0),
                        coeff_1D.Get(idx+1),
                        coeff_1D.Get(idx+2),
                        coeff_1D.Get(idx+3)};
@@ -1172,8 +1176,8 @@ public:
     //taken from eval_bicub_2;
     vtkm::FloatDefault dx = R - Rc, dy = Z - Zc;
     vtkm::FloatDefault fx[4] = {0,0,0,0};
-    double xv[4] = {1, dx, dx*dx, dx*dx*dx};
-    double yv[4] = {1, dy, dy*dy, dy*dy*dy};
+    vtkm::FloatDefault xv[4] = {1, dx, dx*dx, dx*dx*dx};
+    vtkm::FloatDefault yv[4] = {1, dy, dy*dy, dy*dy*dy};
 
     for (int j=0; j<4; j++)
       for (int i=0; i<4; i++)

@@ -54,10 +54,10 @@ int numPlanes = -1;
 int numNodes = -1;
 int numTri = -1;
 float XScale = 1;
-vtkm::FloatDefault eq_axis_r = 2.8, eq_axis_z = 0.0, eq_x_psi = 0.0697345;
-vtkm::FloatDefault eq_min_r = 1.60014, eq_max_r = 3.99986;
-vtkm::FloatDefault eq_min_z = -1.19986, eq_max_z = 1.19986;
-vtkm::FloatDefault psi_min = -1, psi_max = -1;
+double eq_axis_r = 2.8, eq_axis_z = 0.0, eq_x_psi = 0.0697345;
+double eq_min_r = 1.60014, eq_max_r = 3.99986;
+double eq_min_z = -1.19986, eq_max_z = 1.19986;
+double psi_min = -1, psi_max = -1;
 int eq_mr = -1, eq_mz = -1;
 //  vtkm::FloatDefault eq_x_psi = 0.0697345, eq_x_r = 2.8, eq_x_z = -0.99988;
 using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
@@ -189,10 +189,22 @@ ReadOther(adiosS* stuff,
       x = 0.0;
   }
 
+#ifdef VTKM_USE_DOUBLE_PRECISION
   ds.AddField(vtkm::cont::make_Field(vname,
                                      vtkm::cont::Field::Association::WHOLE_MESH,
                                      tmp,
                                      vtkm::CopyFlag::On));
+#else
+  //convert from double to vtkm::FloatDefault
+  std::vector<vtkm::FloatDefault> tmpF(tmp.size());
+  for (std::size_t i = 0; i < tmp.size(); i++)
+    tmpF[i] = static_cast<vtkm::FloatDefault>(tmp[i]);
+
+  ds.AddField(vtkm::cont::make_Field(vname,
+                                     vtkm::cont::Field::Association::WHOLE_MESH,
+                                     tmpF,
+                                     vtkm::CopyFlag::On));
+#endif
 }
 
 void
@@ -1955,7 +1967,11 @@ p11       2.329460849125147615, -0.073678279004152566
     while (std::getline(seedFile, line))
     {
       vtkm::FloatDefault r, p, z;
+#ifdef VTKM_USE_DOUBLE_PRECISION
       sscanf(line.c_str(), "%lf, %lf, %lf", &r, &p, &z);
+#else
+      sscanf(line.c_str(), "%f, %f, %f", &r, &p, &z);
+#endif
       seeds.push_back({r,p,z});
     }
     std::cout<<"NumSeeds= "<<seeds.size()<<std::endl;
