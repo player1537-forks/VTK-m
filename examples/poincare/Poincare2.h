@@ -800,10 +800,7 @@ public:
     this->GetPlaneIdx(Phi, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
     if (planeIdx0 == 48)
     {
-      std::cout<<"Problem coming..... "<<std::endl;
-      std::cout<<std::setprecision(20)<<Phi<<" "<<phiN<<" "<<planeIdx0<<" "<<Phi0<<" "<<Phi1<<" "<<numRevs<<" "<<T<<std::endl;
-      std::cout<<"  phi/2pi = "<<Phi / vtkm::TwoPi()<<std::endl;
-      this->GetPlaneIdx(Phi, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
+      printf("Problem.... plane wraparound\n");
     }
     vtkm::Vec3f B0_rpz(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
 
