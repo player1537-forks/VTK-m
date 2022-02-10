@@ -65,6 +65,16 @@ public:
   {
   }
 
+#if 0
+  VTKM_EXEC vtkm::ErrorCode FindCell(const vtkm::Vec3f& point,
+                                     vtkm::Id& cellId,
+                                     vtkm::Vec3f& parametric,
+                                     vtkm::Id3& /*prevCell*/) const
+  {
+    return this->FindCell(point, cellId, parametric);
+  }
+#endif
+
   VTKM_EXEC vtkm::ErrorCode FindCell(const vtkm::Vec3f& point,
                                      vtkm::Id& cellId,
                                      vtkm::Vec3f& parametric) const

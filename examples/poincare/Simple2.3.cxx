@@ -25,6 +25,7 @@
 #include <vtkm/cont/Timer.h>
 
 #include <vtkm/cont/CellLocatorGeneral.h>
+#include <vtkm/cont/CellLocatorBoundingIntervalHierarchy.h>
 #include <vtkm/io/VTKDataSetWriter.h>
 #include <vtkm/cont/Algorithm.h>
 #ifdef VTKM_CUDA
@@ -865,18 +866,44 @@ Poincare(const vtkm::cont::DataSet& ds,
          bool quickTest,
          vtkm::Id BGridSize,
          bool BGridCell,
-         vtkm::FloatDefault L1val,
-         vtkm::FloatDefault L2val,
+         std::string& locName,
+         std::string& locParam1,
+         std::string& locParam2,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
   //vtkm::cont::CellLocatorGeneral locator;
-  vtkm::cont::CellLocatorTwoLevel locator;
-  locator.SetDensityL1(L1val);
-  locator.SetDensityL2(L2val);
-  locator.SetCellSet(ds.GetCellSet());
-  locator.SetCoordinates(ds.GetCoordinateSystem());
-  locator.Update();
+  vtkm::cont::CellLocatorBoundingIntervalHierarchy locatorBIH;
+  vtkm::cont::CellLocatorTwoLevel locator2L;
+
+  bool locBIH = false;
+  if (locName == "BIH")
+  {
+    locBIH = true;
+    if (!locParam1.empty() && !locParam2.empty())
+    {
+      //defaults 4, 5
+      locatorBIH.SetNumberOfSplittingPlanes(std::atoi(locParam1.c_str()));
+      locatorBIH.SetMaxLeafSize(std::atoi(locParam2.c_str()));
+    }
+    std::cout<<"LocatorBIH: "<<locParam1<<" "<<locParam2<<std::endl;
+    locatorBIH.SetCellSet(ds.GetCellSet());
+    locatorBIH.SetCoordinates(ds.GetCoordinateSystem());
+    locatorBIH.Update();
+  }
+  else
+  {
+    if (!locParam1.empty() && !locParam2.empty())
+    {
+      //defaults 32.0, 2.0
+      locator2L.SetDensityL1(std::atof(locParam1.c_str()));
+      locator2L.SetDensityL2(std::atof(locParam2.c_str()));
+    }
+    std::cout<<"Locator2Level: "<<locParam1<<" "<<locParam2<<std::endl;
+    locator2L.SetCellSet(ds.GetCellSet());
+    locator2L.SetCoordinates(ds.GetCoordinateSystem());
+    locator2L.Update();
+  }
 
   vtkm::cont::Invoker invoker;
   std::vector<vtkm::Particle> s;
@@ -904,6 +931,7 @@ Poincare(const vtkm::cont::DataSet& ds,
   auto start = std::chrono::steady_clock::now();
   if (whichWorklet == 0)
   {
+#if 0
     PoincareWorklet worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
     worklet.UseBOnly = useBOnly;
     worklet.UseHighOrder = useHighOrder;
@@ -924,10 +952,13 @@ Poincare(const vtkm::cont::DataSet& ds,
 
     //timer.Start();
     start = std::chrono::steady_clock::now();
-    invoker(worklet, seeds, locator, ds.GetCellSet(),
+    invoker(worklet, seeds,
+            locator,
+            ds.GetCellSet(),
             B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
+#endif
   }
   else if (whichWorklet == 1)
   {
@@ -945,9 +976,19 @@ Poincare(const vtkm::cont::DataSet& ds,
 
     //timer.Start();
     start = std::chrono::steady_clock::now();
-    invoker(worklet, seeds, locator, ds.GetCellSet(),
-            As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
-            tracesArr, outRZ, outTP, outID);
+    if (locBIH)
+      invoker(worklet, seeds,
+              locatorBIH,
+              ds.GetCellSet(),
+              As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+              tracesArr, outRZ, outTP, outID);
+    else
+      invoker(worklet, seeds,
+              locator2L,
+              ds.GetCellSet(),
+              As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+              tracesArr, outRZ, outTP, outID);
+
   }
   else if (whichWorklet == 2)
   {
@@ -1060,11 +1101,24 @@ Poincare(const vtkm::cont::DataSet& ds,
 
     //timer.Start();
     start = std::chrono::steady_clock::now();
-    invoker(worklet, seeds, locator, locatorB, ds.GetCellSet(), grid.GetCellSet(),
-            B_rzp, /*B_Norm_rzp,*/ /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
-            Psi, B0, CurlB0, CurlNB0,  GradPsi,
-            coeff_1D, coeff_2D,
-            tracesArr, outRZ, outTP, outID);
+    if (locBIH)
+      invoker(worklet, seeds,
+              locatorBIH, locatorB,
+              ds.GetCellSet(), grid.GetCellSet(),
+              B_rzp, /*B_Norm_rzp,*/ /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
+              Psi, B0, CurlB0, CurlNB0,  GradPsi,
+              coeff_1D, coeff_2D,
+              tracesArr, outRZ, outTP, outID);
+    else
+      invoker(worklet, seeds,
+              locator2L, locatorB,
+              ds.GetCellSet(), grid.GetCellSet(),
+              B_rzp, /*B_Norm_rzp,*/ /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
+              Psi, B0, CurlB0, CurlNB0,  GradPsi,
+              coeff_1D, coeff_2D,
+              tracesArr, outRZ, outTP, outID);
+
+
     /* old worklet3
     invoker(worklet, seeds, locator, locatorB,
             ds.GetCellSet(), grid.GetCellSet(),
@@ -1562,11 +1616,17 @@ main(int argc, char** argv)
   }
   std::cout<<"Grid: "<<BGridSize<<" "<<BGridCell<<std::endl;
 
-  vtkm::FloatDefault L1Val = 32.0, L2Val = 2.0;
-  if (args.find("--LocatorLevels") != args.end())
+
+  std::string locator, locParam1, locParam2;
+  if (args.find("--Locator") != args.end())
   {
-    L1Val = std::atof(args["--LocatorLevels"][0].c_str());
-    L2Val = std::atof(args["--LocatorLevels"][1].c_str());
+    const auto& la = args["--Locator"];
+    locator = la[0];
+    if (la.size() == 3)
+    {
+      locParam1 = la[1];
+      locParam2 = la[2];
+    }
   }
 
   auto ds = ReadData(args);
@@ -1982,7 +2042,7 @@ p11       2.329460849125147615, -0.073678279004152566
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
   vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
-  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, BGridCell, L1Val, L2Val, (useTraces ? &traces : nullptr));
+  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, BGridCell, locator, locParam1, locParam2, (useTraces ? &traces : nullptr));
 
   //std::cout<<"Convert to theta/psi"<<std::endl;
   //auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);

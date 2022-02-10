@@ -83,6 +83,87 @@ public:
   {
   }
 
+  VTKM_EXEC
+  vtkm::ErrorCode FindCell(const vtkm::Vec3f& point,
+                           vtkm::Id& cellId,
+                           vtkm::Vec3f& parametric,
+                           vtkm::Id3& prevCell) const
+  {
+    //std::cout<<"FindCell:: "<<point<<" "<<prevCell<<std::endl;
+    //prevCell[0] = cellId;
+    //prevCell[1] = nodeIndex;
+    const vtkm::Id& prevId = prevCell[0];
+    const vtkm::Id& nodeIdx = prevCell[1];
+    if (prevId != -1 && nodeIdx != -1)
+    {
+      using IndicesType = typename CellSetPortal::IndicesType;
+      IndicesType cellPointIndices = this->CellSet.GetIndices(prevId);
+      vtkm::VecFromPortalPermute<IndicesType, CoordsPortal> cellPoints(&cellPointIndices,
+                                                                       this->Coords);
+      bool found;
+      VTKM_RETURN_ON_ERROR(this->IsPointInCell(
+        point, parametric, this->CellSet.GetCellShape(prevId), cellPoints, found));
+      if (found)
+      {
+        cellId = prevId;
+        prevCell[0] = cellId;
+        prevCell[1] = nodeIdx;
+        //std::cout<<"QUICK Find: "<<prevCell<<std::endl;
+        return vtkm::ErrorCode::Success;
+      }
+
+      //Otherwise, check the values in the node.
+      const vtkm::exec::CellLocatorBoundingIntervalHierarchyNode& node = this->Nodes.Get(nodeIdx);
+      auto res = this->FindInLeaf(point, parametric, node, cellId);
+      if (res == vtkm::ErrorCode::Success && cellId >= 0)
+      {
+        prevCell[0] = cellId;
+        prevCell[1] = nodeIdx;
+        //std::cout<<"LEAF Find!: "<<prevCell<<std::endl;
+        return vtkm::ErrorCode::Success;
+      }
+    }
+
+    //return this->FindCell(point, cellId, parametric);
+
+    cellId = -1;
+    vtkm::Id nodeIndex = 0;
+    FindCellState state = FindCellState::EnterNode;
+
+    while ((cellId < 0) && !((nodeIndex == 0) && (state == FindCellState::AscendFromNode)))
+    {
+      switch (state)
+      {
+        case FindCellState::EnterNode:
+          VTKM_RETURN_ON_ERROR(this->EnterNode(state, point, cellId, nodeIndex, parametric));
+          break;
+        case FindCellState::AscendFromNode:
+          this->AscendFromNode(state, nodeIndex);
+          break;
+        case FindCellState::DescendLeftChild:
+          this->DescendLeftChild(state, point, nodeIndex);
+          break;
+        case FindCellState::DescendRightChild:
+          this->DescendRightChild(state, point, nodeIndex);
+          break;
+      }
+    }
+
+    if (cellId >= 0)
+    {
+      prevCell[0] = cellId;
+      prevCell[1] = nodeIndex;
+      //std::cout<<"Slow Find: "<<prevCell<<std::endl;
+      return vtkm::ErrorCode::Success;
+    }
+    else
+    {
+      printf("BIH CellNotFound:: %d\n", __LINE__);
+      prevCell[0] = -1;
+      prevCell[1] = -1;
+      return vtkm::ErrorCode::CellNotFound;
+    }
+  }
 
   VTKM_EXEC
   vtkm::ErrorCode FindCell(const vtkm::Vec3f& point,
