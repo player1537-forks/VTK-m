@@ -879,6 +879,78 @@ void TestParticleAdvectionFile(const std::string& fname,
   }
 }
 
+void TestChargedParticles()
+{
+  std::cout << "Testing charged particle advection." << std::endl;
+  using ArrayType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
+  using FieldType = vtkm::worklet::particleadvection::ElectroMagneticField<ArrayType>;
+  using SeedsType = vtkm::cont::ArrayHandle<vtkm::ChargedParticle>;
+  using EvaluatorType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
+  using IntegratorType = vtkm::worklet::particleadvection::RK4Integrator<EvaluatorType>;
+  using Stepper = vtkm::worklet::particleadvection::Stepper<IntegratorType, EvaluatorType>;
+  using ParticleType =
+    vtkm::worklet::particleadvection::StateRecordingParticles<vtkm::ChargedParticle>;
+  using AdvectionWorklet = vtkm::worklet::particleadvection::ParticleAdvectWorklet;
+
+  vtkm::Id3 dims(32, 32, 32);
+  vtkm::Bounds bounds(-1, 1, -1, 1, -10, 10);
+
+  auto ds = vtkm::worklet::testing::CreateUniformDataSet(bounds, dims);
+
+  auto dx = static_cast<vtkm::FloatDefault>(bounds.X.Length());
+  auto dy = static_cast<vtkm::FloatDefault>(bounds.Y.Length());
+  auto dz = static_cast<vtkm::FloatDefault>(bounds.Z.Length());
+  vtkm::Vec3f spacing = { dx / static_cast<vtkm::FloatDefault>((dims[0] - 1)),
+                          dy / static_cast<vtkm::FloatDefault>((dims[1] - 1)),
+                          dz / static_cast<vtkm::FloatDefault>((dims[2] - 1)) };
+
+  constexpr static vtkm::FloatDefault SPEED_OF_LIGHT =
+    static_cast<vtkm::FloatDefault>(2.99792458e8);
+  spacing = spacing * spacing;
+  vtkm::FloatDefault length =
+    1.0 / (SPEED_OF_LIGHT * vtkm::Sqrt(1. / spacing[0] + 1. / spacing[1] + 1. / spacing[2]));
+
+  ArrayType EField, BField;
+  CreateConstantVectorField(ds.GetNumberOfPoints(), { .01, .2, .5 }, EField);
+  CreateConstantVectorField(ds.GetNumberOfPoints(), { 0, 0, 1 }, BField);
+
+  FieldType electromagnetic(EField, BField);
+
+  EvaluatorType evaluator(ds.GetCoordinateSystem(), ds.GetCellSet(), electromagnetic);
+  Stepper stepper(evaluator, length);
+  std::vector<vtkm::ChargedParticle> pts;
+  vtkm::FloatDefault mass = 1e-10, charge = -1e-9, weight = 187;
+
+  pts.push_back(vtkm::ChargedParticle({ 0, 0, .1 }, 0, mass, charge, weight, { 0.5, 0.5, 1.0 }));
+  pts.push_back(vtkm::ChargedParticle({ -.1, 0, .1 }, 1, mass, charge, weight, { -0.5, 0.5, 1.0 }));
+  pts.push_back(vtkm::ChargedParticle({ .1, 0, .1 }, 1, mass, charge, weight, { 0.5, -0.5, 1.0 }));
+  SeedsType seeds = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::Off);
+
+  vtkm::Id numSteps = 40;
+  ParticleType particles(seeds, numSteps);
+
+  vtkm::cont::ArrayHandleIndex indices(seeds.GetNumberOfValues());
+  vtkm::cont::ArrayHandleConstant<vtkm::Id> particleSteps(numSteps, seeds.GetNumberOfValues());
+
+  vtkm::cont::Invoker invoker;
+  invoker(AdvectionWorklet{}, indices, stepper, particles, particleSteps);
+
+  std::vector<vtkm::Vec3f> answer;
+  answer.push_back({ 0.74289, 0.74289, 1.58578 });
+  answer.push_back({ -0.84289, 0.74289, 1.58578 });
+  answer.push_back({ 0.84289, -0.74289, 1.58578 });
+
+  for (std::size_t i = 0; i < pts.size(); i++)
+  {
+    std::cout << "NS= " << pts[i].NumSteps << std::endl;
+
+    VTKM_TEST_ASSERT(pts[i].Status.CheckOk(), "Error in particle status");
+    VTKM_TEST_ASSERT(pts[i].NumSteps == numSteps, "Error in number of steps");
+    VTKM_TEST_ASSERT(vtkm::Magnitude((pts[i].Pos - answer[i])) < 1e-5,
+                     "Wrong particle end position");
+  }
+}
+
 void TestParticleAdvection()
 {
   TestIntegrators();
@@ -888,6 +960,7 @@ void TestParticleAdvection()
   TestParticleStatus();
   TestWorkletsBasic();
   TestParticleWorkletsWithDataSetTypes();
+  TestChargedParticles();
 
   //Fusion test.
   std::vector<vtkm::Vec3f> fusionPts, fusionEndPts;
