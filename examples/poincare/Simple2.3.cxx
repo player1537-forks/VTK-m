@@ -66,14 +66,21 @@ using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 //#define VALGRIND
 #ifdef VALGRIND
 #include <valgrind/callgrind.h>
-shit();
 #endif
 
+#define BUILD_POINC2
+
+#ifdef BUILD_POINC1
 #include "Poincare.h"
+#endif
+#ifdef BUILD_POINC2
 #include "Poincare2.h"
+#endif
+#ifdef BUILD_POINC3
 #include "Poincare3.h"
 #include "ComputeB.h"
 #include "ComputeBCell.h"
+#endif
 
 template <typename T>
 std::ostream& operator<< (std::ostream& out, const std::vector<T>& v)
@@ -929,9 +936,10 @@ Poincare(const vtkm::cont::DataSet& ds,
 
   vtkm::cont::Timer timer;
   auto start = std::chrono::steady_clock::now();
-  if (whichWorklet == 0)
+  std::cout<<"Using Worklet_"<<whichWorklet<<std::endl;
+  if (whichWorklet == 1)
   {
-#if 0
+#ifdef BUILD_POINC1
     PoincareWorklet worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
     worklet.UseBOnly = useBOnly;
     worklet.UseHighOrder = useHighOrder;
@@ -953,15 +961,18 @@ Poincare(const vtkm::cont::DataSet& ds,
     //timer.Start();
     start = std::chrono::steady_clock::now();
     invoker(worklet, seeds,
-            locator,
+            locator2L,
             ds.GetCellSet(),
             B_rzp, B_Norm_rzp, /*curl_nb_rzp,*/ As_ff, dAs_ff_rzp,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
+#else
+    std::cout<<"*************************************** Code NOT build with Worklet 1"<<std::endl;
 #endif
   }
-  else if (whichWorklet == 1)
+  else if (whichWorklet == 2)
   {
+#ifdef BUILD_POINC2
     PoincareWorklet2 worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
     worklet.UseBOnly = useBOnly;
     worklet.UseHighOrder = useHighOrder;
@@ -988,10 +999,13 @@ Poincare(const vtkm::cont::DataSet& ds,
               ds.GetCellSet(),
               As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
               tracesArr, outRZ, outTP, outID);
-
+#else
+    std::cout<<"*************************************** Code NOT build with Worklet 2"<<std::endl;
+#endif
   }
-  else if (whichWorklet == 2)
+  else if (whichWorklet == 3)
   {
+#ifdef BUILD_POINC3
     /* N = 128
        B0: [-0.0203529,-0.00366229,-0.239883] [-0.0203388,-0.0036626,-0.239886] 1.42779e-05
        curlB0: [0,-1.38778e-17,-0.0750265] [0,-9.04278e-18,-0.0749931] 3.34226e-05
@@ -1127,6 +1141,9 @@ Poincare(const vtkm::cont::DataSet& ds,
             coeff_1D, coeff_2D,
             tracesArr, outRZ, outTP, outID);
     */
+#else
+    std::cout<<"*************************************** Code NOT build with Worklet 3"<<std::endl;
+#endif
   }
   outID.SyncControlArray();
   auto end = std::chrono::steady_clock::now();
