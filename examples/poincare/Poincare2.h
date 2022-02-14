@@ -127,9 +127,6 @@ public:
     this->min_psi = psi_min;
     this->max_psi = psi_max;
     this->one_d_cub_dpsi_inv = 1.0 / ((max_psi-min_psi)/vtkm::FloatDefault(this->ncoeff));
-    #ifndef VTKM_CUDA
-    std::cout<<"PSI min/max= "<<psi_min<<" "<<psi_max<<std::endl;
-    #endif
   }
 
   template <typename Coeff_1DType, typename Coeff_2DType>
@@ -274,7 +271,7 @@ public:
     dBdr = (Br*dBr_dr + Bp*dBp_dr + Bz*dBz_dr) * over_B;
     dBdz = (Br*dBr_dz + Bp*dBp_dz + Bz*dBz_dz) * over_B;
 
-    #ifndef VTKM_CUDA
+#if 0
     //Check divergence.
     auto divergence = dBr_dr + Br/R + dBz_dz;
 #ifdef VTKM_USE_DOUBLE_PRECISION
@@ -288,7 +285,7 @@ public:
       std::cout<<"****************************************************** DIVERGENCE= "<<divergence<<std::endl;
       std::cout<<std::endl;
     }
-    #endif
+#endif
 
     //vtkm::Vec3f curl_nb_rzp;
     pInfo.curl_nb_rzp[0] = pInfo.curlB_rzp[0] * over_B + ( Bp * dBdz)*over_B2;
@@ -374,7 +371,7 @@ public:
         punctureID.Set(i, idx);
         particle.NumPunctures++;
 
-#ifndef VTKM_CUDA
+#if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
         if (idx == 0 && particle.NumPunctures%10 == 0 ) std::cout<<" ***** PUNCTURE n= "<<particle.NumPunctures<<std::endl;
 #endif
         DBG("************* PUNCTURE n= "<<particle.NumPunctures<<std::endl);
@@ -382,13 +379,13 @@ public:
       //printf("  worklet %d\n", __LINE__);
       if (particle.NumSteps >= this->MaxIter || particle.NumPunctures >= this->MaxPunc)
       {
-#ifndef VTKM_CUDA
+#if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
         std::cout<<"************************************* All done: "<<particle<<std::endl;
 #endif
         break;
       }
     }
-#ifndef VTKM_CUDA
+#if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
     std::cout<<"Particle done: "<<idx<<std::endl;
 #endif
 #ifdef VALGRIND
@@ -502,9 +499,6 @@ public:
     if (status != vtkm::ErrorCode::Success)
     {
       printf("Find Cell failed! pt= %lf %lf %lf\n", ptRZ[0], ptRZ[1], ptRZ[2]);
-#ifndef VTKM_CUDA
-      std::cout<<"Point not found: "<<ptRZ<<std::endl;
-#endif
       return false;
     }
 
