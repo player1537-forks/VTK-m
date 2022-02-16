@@ -131,6 +131,44 @@ public:
 
   template <typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
+  vtkm::Vec3f HighOrderBOnly(const vtkm::Vec3f& ptRPZ,
+                             const Coeff_1DType& Coeff_1D,
+                             const Coeff_2DType& Coeff_2D) const
+  {
+    vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2];
+    vtkm::Vec3f ptRZ(R,Z,0);
+
+    int r_i = this->GetIndex(R, this->nr, this->rmin, this->dr_inv);
+    int z_i = this->GetIndex(Z, this->nz, this->zmin, this->dz_inv);
+
+    // rc(i), zc(j)
+    vtkm::FloatDefault Rc = rmin + (vtkm::FloatDefault)(r_i)*this->dr;
+    vtkm::FloatDefault Zc = zmin + (vtkm::FloatDefault)(z_i)*this->dz;
+    auto Rc_1 = Rc + this->dr;
+    auto Zc_1 = Zc + this->dz;
+    Rc = (Rc + Rc_1) * 0.5;
+    Zc = (Zc + Zc_1) * 0.5;
+
+    //Get the coeffcients (z,r,4,4)
+    vtkm::Matrix<vtkm::FloatDefault, 4, 4> acoeff;
+    vtkm::Id offset = (r_i * this->ncoeff + z_i) * 16;
+
+    vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
+    //this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+    this->EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+
+    vtkm::FloatDefault fld_I = this->I_interpol(psi, 0, Coeff_1D);
+
+    vtkm::FloatDefault over_r = 1/R;
+    vtkm::FloatDefault Br = -dpsi_dz * over_r;
+    vtkm::FloatDefault Bz = dpsi_dr * over_r;
+    vtkm::FloatDefault Bp = fld_I * over_r;
+
+    return vtkm::Vec3f(Br, Bz, Bp);
+  }
+
+  template <typename Coeff_1DType, typename Coeff_2DType>
+  VTKM_EXEC
   bool HighOrderB(const vtkm::Vec3f& ptRPZ,
                   ParticleInfo& pInfo,
                   const Coeff_1DType& Coeff_1D,
@@ -155,6 +193,7 @@ public:
     //offset = ri * nz + zi
     vtkm::Id offset = (r_i * this->ncoeff + z_i) * 16;
     //offset = (z_i * this->ncoeff + r_i)*16;
+#if 0
     vtkm::Id idx = 0;
     //std::cout<<"Offset= "<<(offset/16)<<" 16: "<<offset<<std::endl;
     for (vtkm::Id ii = 0; ii < 4; ii++)
@@ -163,9 +202,11 @@ public:
         acoeff[ii][jj] = Coeff_2D.Get(offset+idx);
         idx++;
       }
+#endif
 
     vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
-    this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+    //this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+    this->EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
     pInfo.Psi = psi;
     //PSI = psi;
     pInfo.gradPsi_rzp[0] = dpsi_dr;
@@ -193,6 +234,8 @@ public:
 
     pInfo.B0_rzp = vtkm::Vec3f(Br, Bz, Bp);
 
+    const vtkm::FloatDefault bp_sign = 1.0;
+/*
     vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
     //Set the jacobian.
     const int PIR = 0;
@@ -202,7 +245,6 @@ public:
     for (int i = 0; i < 3; i++)
       for (int j = 0; j < 3; j++)
         jacobian_rzp[i][j] = 0;
-    vtkm::FloatDefault bp_sign = 1.0;
 
     // R-derivatives depend on the geometry
     jacobian_rzp[PIR][PIR] = ( dpsi_dz * over_r2 - d2psi_drdz * over_r) * bp_sign;
@@ -218,7 +260,6 @@ public:
 
     jacobian_rzp[PIZ][PIP] = fld_dIdpsi * dpsi_dz * over_r;
     jacobian_rzp[PIP][PIP] = 0.0;
-
     auto dBr_dr = jacobian_rzp[0][0];
     auto dBr_dz = jacobian_rzp[1][0];
     auto dBr_dp = jacobian_rzp[2][0];
@@ -230,6 +271,21 @@ public:
     auto dBp_dr = jacobian_rzp[0][2];
     auto dBp_dz = jacobian_rzp[1][2];
     //auto dBp_dp = jacobian_rzp[2][2];
+    */
+
+#if 1
+    auto dBr_dr = ( dpsi_dz * over_r2 - d2psi_drdz * over_r) * bp_sign;
+    auto dBr_dz = -d2psi_d2z * over_r * bp_sign;
+    auto dBr_dp = 0.0 * bp_sign;
+
+    auto dBz_dr = (-dpsi_dr * over_r2 + d2psi_d2r  * over_r) * bp_sign;
+    auto dBz_dz = d2psi_drdz * over_r * bp_sign;
+    auto dBz_dp = 0.0 * bp_sign;
+
+    auto dBp_dr = dpsi_dr * fld_dIdpsi * over_r - fld_I * over_r2;
+    auto dBp_dz = fld_dIdpsi * dpsi_dz * over_r;
+    //auto dBp_dp = jacobian_rzp[2][2];
+#endif
 
     //calculate curl_B
     /*
@@ -416,27 +472,31 @@ public:
     vtkm::Vec3f p0 = ptRPZ, tmp = ptRPZ;
 
     DBG("    ****** K1"<<std::endl);
-    if (!this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1))
-      return false;
-    //std::cout<<std::setprecision(12)<<"  k1: "<<k1<<std::endl;
+    bool v1, v2, v3, v4;
+    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1);
     tmp = p0 + k1*this->StepSize_2;
 
     DBG("    ****** K2"<<std::endl);
-    if (!this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2))
-      return false;
+    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2);
     tmp = p0 + k2*this->StepSize_2;
 
     DBG("    ****** K3"<<std::endl);
-    if (!this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3))
-      return false;
+    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3);
     tmp = p0 + k3*this->StepSize;
 
     DBG("    ****** K4"<<std::endl);
-    if (!this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4))
-      return false;
+    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4);
 
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + this->StepSize * vec;
+
+#if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
+    if (!(v1&&v2&&v3&&v4))
+    {
+      std::cout<<"RK4 step failed"<<std::endl;
+      return false;
+    }
+#endif
 
     return true;
   }
@@ -449,19 +509,24 @@ public:
         const vtkm::Vec<vtkm::Id, 3>& vId,
         const vtkm::Vec3f& param) const
   {
+    vtkm::FloatDefault s;
+#if 1
+    //Hard code...
+    const auto& v0 = sPortal.Get(vId[0]+offset);
+    const auto& v1 = sPortal.Get(vId[1]+offset);
+    const auto& v2 = sPortal.Get(vId[2]+offset);
+
+    const auto& w1 = param[0];
+    const auto& w2 = param[1];
+    const auto w0 = 1 - (w1+w2);
+    s = v0*w0 + v1*w1 + v2*w2;
+#else
     vtkm::VecVariable<vtkm::FloatDefault, 3> vals;
     vals.Append(sPortal.Get(vId[0]+offset));
     vals.Append(sPortal.Get(vId[1]+offset));
     vals.Append(sPortal.Get(vId[2]+offset));
-
-    /*
-    std::cout<<"  EvalS idx: "<<vId[0]<<" "<<vId[1]<<" "<<vId[2]<<std::endl;
-    std::cout<<"  EvalS params: "<<param<<std::endl;
-    std::cout<<"  EvalS: "<<vals[0]<<" "<<vals[1]<<" "<<vals[2]<<std::endl;
-    */
-
-    vtkm::FloatDefault s;
     vtkm::exec::CellInterpolate(vals, param, vtkm::CellShapeTagTriangle(), s);
+#endif
     return s;
   }
 
@@ -473,15 +538,29 @@ public:
         const vtkm::Vec3f& param,
         const vtkm::Vec<vtkm::Id, 3>& vId) const
   {
-    //std::cout<<"    ******** vid= "<<vId[0]<<" "<<vId[1]<<" "<<vId[2]<<std::endl;
-    //std::cout<<"    ******** vec= "<<vPortal.Get(vId[0])<<" "<<vPortal.Get(vId[1])<<" "<<vPortal.Get(vId[2])<<std::endl;
+    vtkm::Vec3f v;
+#if 1
+    //Hard code...
+    const auto& v0 = vPortal.Get(vId[0]+offset);
+    const auto& v1 = vPortal.Get(vId[1]+offset);
+    const auto& v2 = vPortal.Get(vId[2]+offset);
+
+    const auto& w1 = param[0];
+    const auto& w2 = param[1];
+    const auto w0 = 1 - (w1+w2);
+
+    v[0] = v0[0]*w0 + v1[0]*w1 + v2[0]*w2;
+    v[1] = v0[1]*w0 + v1[1]*w1 + v2[1]*w2;
+    v[2] = v0[2]*w0 + v1[2]*w1 + v2[2]*w2;
+    //std::cout<<std::setprecision(16)<<"EvalV: "<<v<<" "<<v2<<" "<<vtkm::Magnitude(v-v2)<<std::endl;
+#else
     vtkm::VecVariable<vtkm::Vec3f, 3> vals;
     vals.Append(vPortal.Get(vId[0]+offset));
     vals.Append(vPortal.Get(vId[1]+offset));
     vals.Append(vPortal.Get(vId[2]+offset));
-
-    vtkm::Vec3f v;
     vtkm::exec::CellInterpolate(vals, param, vtkm::CellShapeTagTriangle(), v);
+#endif
+
     return v;
   }
 
@@ -522,6 +601,63 @@ public:
     //return std::max(0, std::min(nx-1,    (int)((x-xmin)*dx_inv)) );
     int idx = std::max(1, std::min(nx  , 1 + int ((x-xmin)*dx_inv)) );
     return idx-1;
+  }
+
+  template <typename Coeff_2DType>
+  VTKM_EXEC
+  void EvalBicub2(const vtkm::FloatDefault& x,
+                  const vtkm::FloatDefault& y,
+                  const vtkm::FloatDefault& xc,
+                  const vtkm::FloatDefault& yc,
+                  const vtkm::Id& offset,
+                  const Coeff_2DType& Coeff_2D,
+                  vtkm::FloatDefault &f00, vtkm::FloatDefault &f10, vtkm::FloatDefault &f01,
+                  vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02) const
+  {
+    vtkm::FloatDefault dx = x - xc;
+    vtkm::FloatDefault dy = y - yc;
+
+    //fortran code.
+
+    f00 = f01 = f10 = f11 = f20 = f02 = 0.0f;
+    vtkm::FloatDefault xv[4] = {1, dx, dx*dx, dx*dx*dx};
+    vtkm::FloatDefault yv[4] = {1, dy, dy*dy, dy*dy*dy};
+    vtkm::FloatDefault fx[4] = {0,0,0,0};
+    vtkm::FloatDefault dfx[4] = {0,0,0,0};
+    vtkm::FloatDefault dfy[4] = {0,0,0,0};
+    vtkm::FloatDefault dfx2[4] = {0,0,0,0};
+    vtkm::FloatDefault dfy2[4] = {0,0,0,0};
+
+
+    for (int j=0; j<4; j++)
+    {
+      for (int i=0; i<4; i++)
+        fx[j] = fx[j] + xv[i]*Coeff_2D.Get(offset + i*4 + j); //acoeff[i][j];
+      for (int i=1; i<4; i++)
+        dfx[j] = dfx[j] + vtkm::FloatDefault(i)*xv[i-1]*Coeff_2D.Get(offset + i*4 + j); //acoeff[i][j];
+      for (int i=2; i<4; i++)
+        dfx2[j] = dfx2[j] + vtkm::FloatDefault(i*(i-1))*xv[i-2]*Coeff_2D.Get(offset + i*4 + j); //acoeff[i][j];
+    }
+
+    for (int j = 0; j < 4; j++)
+    {
+      f00 = f00 + fx[j]*yv[j];
+      f10 = f10 + dfx[j]*yv[j];
+      f20 = f20 + dfx2[j]*yv[j];
+    }
+
+    for (int j = 1; j < 4; j++)
+    {
+      dfy[j] = vtkm::FloatDefault(j)*yv[j-1];
+      f01 = f01 + fx[j]*dfy[j];
+      f11 = f11 + dfx[j]*dfy[j];
+    }
+
+    for (int j = 2; j < 4; j++)
+    {
+      dfy2[j] = vtkm::FloatDefault(j*(j-1))*yv[j-2];
+      f02 = f02 + fx[j]*dfy2[j];
+    }
   }
 
   VTKM_EXEC
@@ -649,7 +785,6 @@ public:
                                 const int& ideriv,
                                 const Coeff_1DType& coeff_1D) const
   {
-    //printf("  worklet %d\n", __LINE__);
     vtkm::FloatDefault pn = psi * this->one_d_cub_dpsi_inv;
     int ip=floor(pn);
     ip=std::min(std::max(ip,0),this->ncoeff-1);
@@ -663,10 +798,10 @@ public:
     //acoef[2] = one_d_cub_acoef(ip).coeff[2];
     //acoef[3] = one_d_cub_acoef(ip).coeff[3];
 
-    vtkm::FloatDefault acoef[4] = {coeff_1D.Get(idx+0),
-                                   coeff_1D.Get(idx+1),
-                                   coeff_1D.Get(idx+2),
-                                   coeff_1D.Get(idx+3)};
+    const vtkm::FloatDefault acoef[4] = {coeff_1D.Get(idx+0),
+                                         coeff_1D.Get(idx+1),
+                                         coeff_1D.Get(idx+2),
+                                         coeff_1D.Get(idx+3)};
 
     vtkm::FloatDefault iVal = 0.0;
     if (ideriv==0)
@@ -674,30 +809,44 @@ public:
     else if (ideriv==1)
       iVal = (acoef[1]+(2.0*acoef[2]+3.0*acoef[3]*wp)*wp)*one_d_cub_dpsi_inv;
 
-    //printf("  worklet %d\n", __LINE__);
     return iVal * this->sml_bp_sign;
   }
 
   template <typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
   vtkm::Vec3f GetB(vtkm::Vec3f& pt_rpz,
-                   ParticleInfo& pInfo,
+                   ParticleInfo& /*pInfo*/,
                    const Coeff_1DType& coeff_1D,
                    const Coeff_2DType& coeff_2D) const
   {
+#if 0
     this->HighOrderB(pt_rpz, pInfo, coeff_1D, coeff_2D);
-
     //This gives is the time derivative: Br = dR/dt, Bz= dZ/dt, B_phi/R = dphi/dt
     //We need with respect to phi:
     // dR/dphi = dR/dt / (dphi/dt) = Br / B_phi * R
     // same for z;
-
     vtkm::Vec3f B0_rpz(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
     B0_rpz[0] /= pInfo.B0_rzp[2];
     B0_rpz[2] /= pInfo.B0_rzp[2];
     B0_rpz[0] *= pt_rpz[0];
     B0_rpz[2] *= pt_rpz[0];
     return B0_rpz;
+#else
+    auto B0_rzp = this->HighOrderBOnly(pt_rpz, coeff_1D, coeff_2D);
+
+    vtkm::Vec3f B0_rpz(B0_rzp[0], B0_rzp[2], B0_rzp[1]);
+
+    //This gives is the time derivative: Br = dR/dt, Bz= dZ/dt, B_phi/R = dphi/dt
+    //We need with respect to phi:
+    // dR/dphi = dR/dt / (dphi/dt) = Br / B_phi * R
+    // same for z;
+
+    B0_rpz[0] /= B0_rzp[2];
+    B0_rpz[2] /= B0_rzp[2];
+    B0_rpz[0] *= pt_rpz[0];
+    B0_rpz[2] *= pt_rpz[0];
+    return B0_rpz;
+#endif
   }
 
   template <typename Coeff_1DType, typename Coeff_2DType>
