@@ -58,6 +58,10 @@ jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | 
 
 #define DO_TRACES 0
 
+static const unsigned long NO_OUTPUT = (1 << 0);
+static const unsigned long NO_CALC_FIELD_FOLLOWING = (1 << 1);
+static const unsigned long NO_TURBULENCE = (1 << 2);
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 class PoincareWorklet2 : public vtkm::worklet::WorkletMapField
@@ -422,9 +426,12 @@ public:
         //vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
         this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
         vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
-        outputRZ.Set(i, vtkm::Vec2f(R, Z));
-        outputTP.Set(i, vtkm::Vec2f(theta, pInfo.Psi/this->EqXPsi));
-        punctureID.Set(i, idx);
+        if (!(this->Variant & NO_OUTPUT))
+        {
+          outputRZ.Set(i, vtkm::Vec2f(R, Z));
+          outputTP.Set(i, vtkm::Vec2f(theta, pInfo.Psi/this->EqXPsi));
+          punctureID.Set(i, idx);
+        }
         particle.NumPunctures++;
 
 #if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
@@ -948,7 +955,10 @@ public:
     vtkm::Vec3f B0_rpz(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
 
     vtkm::Vec3f ff_pt_rpz;
-    this->CalcFieldFollowingPt({R,phiN,Z}, pInfo, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
+    if (this->Variant & NO_CALC_FIELD_FOLLOWING)
+      ff_pt_rpz = {R, phiN, Z};
+    else
+      this->CalcFieldFollowingPt({R,phiN,Z}, pInfo, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
 
     //Now, interpolate between Phi_i and Phi_i+1
     vtkm::FloatDefault T01 = (phiN - Phi0) / (Phi1-Phi0);
@@ -990,9 +1000,19 @@ public:
 
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
+    if (this->Variant & NO_TURBULENCE)
+    {
+      pInfo.B0_rzp[2] /= R;
+      //res is R,P,Z
+      res = vtkm::Vec3f(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
+      return true;
+    }
+
     this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, x_ff_param, x_ff_vids);
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
+    auto As_ff0 = this->EvalS(AsPhiFF, offsets[0], x_ff_vids, x_ff_param);
+    auto As_ff1 = this->EvalS(AsPhiFF, offsets[1], x_ff_vids, x_ff_param);
 
     vtkm::FloatDefault wphi[2] = {T10, T01}; //{T01, T10};
     vtkm::Vec3f gradAs_rpz;
@@ -1020,8 +1040,8 @@ public:
     //vtkm::Vec3f AsCurl_bhat_rzp = EvalVector(ds, locator, {x_ff_rzp}, "AsCurlBHat_RZP", off)[0];
     //auto AsCurl_bhat_rzp = this->EvalV(AsCurlBHat_RZP, 0, x_ff_vids, x_ff_param);
 
-    auto As_ff0 = this->EvalS(AsPhiFF, offsets[0], x_ff_vids, x_ff_param);
-    auto As_ff1 = this->EvalS(AsPhiFF, offsets[1], x_ff_vids, x_ff_param);
+    //auto As_ff0 = this->EvalS(AsPhiFF, offsets[0], x_ff_vids, x_ff_param);
+    //auto As_ff1 = this->EvalS(AsPhiFF, offsets[1], x_ff_vids, x_ff_param);
 
     vtkm::FloatDefault As = wphi[0]*As_ff0 + wphi[1]*As_ff1;
     auto AsCurl_bhat_rzp = As * pInfo.curl_nb_rzp;
@@ -1096,4 +1116,6 @@ public:
   vtkm::FloatDefault min_psi, max_psi;
   vtkm::FloatDefault one_d_cub_dpsi_inv;
   vtkm::FloatDefault sml_bp_sign = -1.0f;
+
+  unsigned long Variant = 0;
 };

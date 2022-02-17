@@ -875,6 +875,7 @@ Poincare(const vtkm::cont::DataSet& ds,
          std::string& locName,
          std::string& locParam1,
          std::string& locParam2,
+         unsigned long variant,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
@@ -975,6 +976,7 @@ Poincare(const vtkm::cont::DataSet& ds,
     PoincareWorklet2 worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
     worklet.UseBOnly = useBOnly;
     worklet.UseHighOrder = useHighOrder;
+    worklet.Variant = variant;
 
     if (traces != nullptr)
     {
@@ -1632,6 +1634,10 @@ main(int argc, char** argv)
   }
   std::cout<<"Grid: "<<BGridSize<<" "<<BGridCell<<std::endl;
 
+  unsigned long variant;
+  if (args.find("--Variant") != args.end())
+    variant = std::atoi(args["--Variant"][0].c_str());
+
 
   std::string locator, locParam1, locParam2;
   if (args.find("--Locator") != args.end())
@@ -2058,7 +2064,7 @@ p11       2.329460849125147615, -0.073678279004152566
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
   vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
-  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, BGridCell, locator, locParam1, locParam2, (useTraces ? &traces : nullptr));
+  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, BGridCell, locator, locParam1, locParam2, variant, (useTraces ? &traces : nullptr));
 
   //std::cout<<"Convert to theta/psi"<<std::endl;
   //auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);
