@@ -61,6 +61,7 @@ jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | 
 static const unsigned long NO_OUTPUT = (1 << 0);
 static const unsigned long NO_CALC_FIELD_FOLLOWING = (1 << 1);
 static const unsigned long NO_TURBULENCE = (1 << 2);
+static const unsigned long NO_PREV_CELL = (1 << 3);
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -426,7 +427,7 @@ public:
         //vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
         this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
         vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
-        if (!(this->Variant & NO_OUTPUT))
+        if (!(this->Variant & NO_OUTPUT)) //Variant=1
         {
           outputRZ.Set(i, vtkm::Vec2f(R, Z));
           outputTP.Set(i, vtkm::Vec2f(theta, pInfo.Psi/this->EqXPsi));
@@ -434,12 +435,10 @@ public:
         }
         particle.NumPunctures++;
 
-#if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
-        if (idx == 0 && particle.NumPunctures%10 == 0 ) std::cout<<" ***** PUNCTURE n= "<<particle.NumPunctures<<std::endl;
-#endif
+        if (idx == 0 && particle.NumPunctures%10 == 0 ) printf(" ***** PUNCTURE n= %lld\n", particle.NumPunctures);
         DBG("************* PUNCTURE n= "<<particle.NumPunctures<<std::endl);
       }
-      //printf("  worklet %d\n", __LINE__);
+
       if (particle.NumSteps >= this->MaxIter || particle.NumPunctures >= this->MaxPunc)
       {
 #if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
@@ -581,7 +580,12 @@ public:
              vtkm::Vec<vtkm::Id, 3>& vIds) const
   {
     vtkm::Id cellId;
-    vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param, pInfo.PrevCell);
+    vtkm::ErrorCode status;
+    if (this->Variant & NO_PREV_CELL) //Variant=8
+      status = locator.FindCell(ptRZ, cellId, param);
+    else
+      status = locator.FindCell(ptRZ, cellId, param, pInfo.PrevCell);
+
     if (status != vtkm::ErrorCode::Success)
     {
       printf("Find Cell failed! pt= %lf %lf %lf\n", ptRZ[0], ptRZ[1], ptRZ[2]);
@@ -955,7 +959,7 @@ public:
     vtkm::Vec3f B0_rpz(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
 
     vtkm::Vec3f ff_pt_rpz;
-    if (this->Variant & NO_CALC_FIELD_FOLLOWING)
+    if (this->Variant & NO_CALC_FIELD_FOLLOWING) //Variant=2
       ff_pt_rpz = {R, phiN, Z};
     else
       this->CalcFieldFollowingPt({R,phiN,Z}, pInfo, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
@@ -1000,7 +1004,7 @@ public:
 
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
-    if (this->Variant & NO_TURBULENCE)
+    if (this->Variant & NO_TURBULENCE) //Variant=4
     {
       pInfo.B0_rzp[2] /= R;
       //res is R,P,Z
