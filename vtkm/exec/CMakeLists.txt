@@ -20,6 +20,7 @@ set(headers
   CellLocatorMultiplexer.h
   CellLocatorRectilinearGrid.h
   CellLocatorTwoLevel.h
+  CellLocatorTwoLevelTriangle.h
   CellLocatorUniformGrid.h
   CellLocatorXGCGrid.h
   CellMeasure.h

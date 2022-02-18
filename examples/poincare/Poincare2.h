@@ -370,14 +370,6 @@ public:
     CALLGRIND_TOGGLE_COLLECT;
 #endif
 
-#ifdef __CUDA_ARCH__
-		printf("thread: %d %d %d %d %d %d\n",
-                       threadIdx.x, threadIdx.y, threadIdx.z,
-                       blockIdx.x, blockIdx.y, blockIdx.z);
-		long long int t_total = 0, t_loop = 0, t_other = 0, t_high_order = 0, t_step = 0;
-		long long int t_other_tmp = 0, t_high_order_tmp = 0, t_step_tmp = 0;
-		t_total = clock64();
-#endif
     if (this->QuickTest)
     {
       for (vtkm::Id p = 0; p < this->MaxPunc; p++)
@@ -395,9 +387,6 @@ public:
 
     ParticleInfo pInfo;
 
-#ifdef __CUDA_ARCH__
-    t_loop = clock64();
-#endif
     while (true)
     {
       vtkm::Vec3f newPos;
@@ -405,19 +394,11 @@ public:
       DBG("   "<<particle.Pos<<" #s= "<<particle.NumSteps<<std::endl);
 
 
-#ifdef __CUDA_ARCH__
-    t_step_tmp = clock64();
-#endif
       if (!this->TakeRK4Step(particle.Pos, pInfo, locator, cellSet,
                              AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, newPos))
       {
         break;
       }
-
-#ifdef __CUDA_ARCH__
-    t_step += clock64() - t_step_tmp;
-    t_other_tmp = clock64();
-#endif
 
       DBG("     *** Step--> "<<newPos<<std::endl);
       vtkm::Id numRevs0 = vtkm::Floor(vtkm::Abs(particle.Pos[1] / vtkm::TwoPi()));
@@ -442,18 +423,9 @@ public:
         //vtkm::FloatDefault psi;
         //vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, gradPsi_rzp;
         //vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
-#ifdef __CUDA_ARCH__
-        t_other += clock64() - t_other_tmp;
-				t_high_order_tmp = clock64();
-#endif
+        this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
 
-				this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
-
-#ifdef __CUDA_ARCH__
-        t_high_order += clock64() - t_high_order_tmp;
-				t_other_tmp = clock64();
-#endif
-				vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
+        vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
         outputRZ.Set(i, vtkm::Vec2f(R, Z));
         outputTP.Set(i, vtkm::Vec2f(theta, pInfo.Psi/this->EqXPsi));
         punctureID.Set(i, idx);
@@ -465,10 +437,6 @@ public:
         DBG("************* PUNCTURE n= "<<particle.NumPunctures<<std::endl);
       }
 
-#ifdef __CUDA_ARCH__
-      t_other += clock64() - t_other_tmp;
-#endif
-      //printf("  worklet %d\n", __LINE__);
       if (particle.NumSteps >= this->MaxIter || particle.NumPunctures >= this->MaxPunc)
       {
 #if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
@@ -478,24 +446,8 @@ public:
       }
     }
 
-#ifdef __CUDA_ARCH__
-    t_loop = clock64() - t_loop;
-#endif
-
-
 #if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
     std::cout<<"Particle done: "<<idx<<std::endl;
-#endif
-
-#ifdef __CUDA_ARCH__
-		t_total = clock64() - t_total;
-		if (threadIdx.x == 0) {
-			printf("therad %d, t_loop_step = %llu\n", threadIdx.x, t_step);
-			printf("therad %d, t_loop_high_order = %llu\n", threadIdx.x, t_high_order);
-			printf("therad %d, t_loop_other = %llu\n", threadIdx.x, t_other);
-			printf("therad %d, t_loop = %llu\n", threadIdx.x, t_loop);
-			printf("therad %d, t_total = %llu\n", threadIdx.x, t_total);
-		}
 #endif
 
 #ifdef VALGRIND
@@ -518,10 +470,6 @@ public:
   {
     vtkm::Vec3f k1, k2, k3, k4;
 
-#ifdef __CUDA_ARCH__
-    long long int t_1 = 0, t_2 = 0, t_3 = 0, t_4 = 0;
-#endif
-
     //k1 = F(p)
     //k2 = F(p+hk1/2)
     //k3 = F(p+hk2/2)
@@ -529,52 +477,24 @@ public:
     //Yn+1 = Yn + 1/6 h (k1+2k2+2k3+k4)
     vtkm::Vec3f p0 = ptRPZ, tmp = ptRPZ;
 
-#ifdef __CUDA_ARCH__
-    t_1 = clock64();
-#endif
     DBG("    ****** K1"<<std::endl);
     bool v1, v2, v3, v4;
     v1 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1);
     tmp = p0 + k1*this->StepSize_2;
 
-#ifdef __CUDA_ARCH__
-    t_1 = clock64() - t_1;
-		t_2 = clock64();
-#endif
-
     DBG("    ****** K2"<<std::endl);
     v2 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2);
     tmp = p0 + k2*this->StepSize_2;
 
-#ifdef __CUDA_ARCH__
-    t_2 = clock64() - t_2;
-    t_3 = clock64();
-#endif
-
     DBG("    ****** K3"<<std::endl);
     v3 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3);
     tmp = p0 + k3*this->StepSize;
-
-#ifdef __CUDA_ARCH__
-    t_3 = clock64() - t_3;
-    t_4 = clock64();
-#endif
 
     DBG("    ****** K4"<<std::endl);
     v4 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4);
 
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + this->StepSize * vec;
-
-#ifdef __CUDA_ARCH__
-    t_4 = clock64() - t_4;
-		if (threadIdx.x == 0) {
-      printf("therad %d, TakeRK4Step::t_1 = %llu\n", threadIdx.x, t_1);
-			printf("therad %d, TakeRK4Step::t_2 = %llu\n", threadIdx.x, t_2);
-			printf("therad %d, TakeRK4Step::t_3 = %llu\n", threadIdx.x, t_3);
-			printf("therad %d, TakeRK4Step::t_4 = %llu\n", threadIdx.x, t_4);
-		}
-#endif
 
 #if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
     if (!(v1&&v2&&v3&&v4))
@@ -1012,21 +932,9 @@ public:
     auto Phi = ptRPZ[1];
     auto Z = ptRPZ[2];
 
-#ifdef __CUDA_ARCH__
-    long long int t_high_order = 0, t_planeidx = 0, t_calcfield = 0, t_ptloc = 0;
-    long long int t_evals = 0, t_evalv = 0;
-    long long int t_a = 0, t_b = 0, t_c = 0, t_d = 0, t_e = 0;
-#endif
-
-#ifdef __CUDA_ARCH__
-    t_high_order = clock64();
-#endif
     //res is R,P,Z
     if (!this->HighOrderB(ptRPZ, pInfo, coeff_1D, coeff_2D))
       return false;
-#ifdef __CUDA_ARCH__
-    t_high_order = clock64() - t_high_order;
-#endif
     if (this->UseBOnly)
     {
       pInfo.B0_rzp[2] /= R;
@@ -1035,9 +943,6 @@ public:
       return true;
     }
 
-#ifdef __CUDA_ARCH__
-    t_a = clock64();    
-#endif
     vtkm::Id planeIdx0, planeIdx1, numRevs;
     vtkm::FloatDefault phiN, Phi0, Phi1, T;
     this->GetPlaneIdx(Phi, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
@@ -1046,22 +951,8 @@ public:
       printf("Problem.... plane wraparound\n");
     }
     vtkm::Vec3f B0_rpz(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
-#ifdef __CUDA_ARCH__
-    t_a = clock64() - t_a;
-#endif
-
-#ifdef __CUDA_ARCH__
-    t_calcfield = clock64();
-#endif
     vtkm::Vec3f ff_pt_rpz;
     this->CalcFieldFollowingPt({R,phiN,Z}, pInfo, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
-#ifdef __CUDA_ARCH__
-    t_calcfield = clock64() - t_calcfield;
-#endif
-
-#ifdef __CUDA_ARCH__
-    t_b = clock64();
-#endif    
 
     //Now, interpolate between Phi_i and Phi_i+1
     vtkm::FloatDefault T01 = (phiN - Phi0) / (Phi1-Phi0);
@@ -1095,10 +986,6 @@ public:
     rvec[1] =         (1.0-basis) * gammaPsi *   gradPsi_rzp[1];
     zvec[0] =         (1.0-basis) * gammaPsi * (-gradPsi_rzp[1]);
     zvec[1] = basis + (1.0-basis) * gammaPsi *   gradPsi_rzp[0];
-#ifdef __CUDA_ARCH__
-    t_b = clock64() - t_b;    
-#endif    
-    
 
     //Get the vectors in the ff coordinates.
     //auto dAs_ff_rzp = EvalVector(ds, locator, {x_ff_rzp, x_ff_rzp}, "dAs_ff_rzp", offsets);
@@ -1108,27 +995,9 @@ public:
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
 
-#ifdef __CUDA_ARCH__
-    t_ptloc = clock64();
-#endif
-		this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, x_ff_param, x_ff_vids);
-#ifdef __CUDA_ARCH__
-    t_ptloc = clock64() - t_ptloc;
-#endif
-
-
-#ifdef __CUDA_ARCH__
-    t_evalv = clock64();
-#endif
+    this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, x_ff_param, x_ff_vids);
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
-#ifdef __CUDA_ARCH__
-    t_evalv = clock64() - t_evalv;
-#endif
-
-#ifdef __CUDA_ARCH__
-    t_c = clock64();    
-#endif        
 
     vtkm::FloatDefault wphi[2] = {T10, T01}; //{T01, T10};
     vtkm::Vec3f gradAs_rpz;
@@ -1145,13 +1014,6 @@ public:
                     wphi[1] * dAs_ff1_rzp[2];
     gradAs_rpz[2] = wphi[0]*(rvec[1]*dAs_ff0_rzp[0] + zvec[1]*dAs_ff0_rzp[1]) +
                     wphi[1]*(rvec[1]*dAs_ff1_rzp[0] + zvec[1]*dAs_ff1_rzp[1]);
-#ifdef __CUDA_ARCH__
-    t_c = clock64() - t_c;    
-#endif
-
-#ifdef __CUDA_ARCH__
-    t_d = clock64();    
-#endif        
 
     vtkm::FloatDefault BMag = vtkm::Magnitude(pInfo.B0_rzp);
     //project using bfield.
@@ -1162,22 +1024,8 @@ public:
     //std::vector<int> off = {planeIdx0*this->NumNodes};
     //vtkm::Vec3f AsCurl_bhat_rzp = EvalVector(ds, locator, {x_ff_rzp}, "AsCurlBHat_RZP", off)[0];
     //auto AsCurl_bhat_rzp = this->EvalV(AsCurlBHat_RZP, 0, x_ff_vids, x_ff_param);
-#ifdef __CUDA_ARCH__
-    t_d = clock64() - t_d;    
-#endif        
-
-#ifdef __CUDA_ARCH__
-    t_evals = clock64();
-#endif
     auto As_ff0 = this->EvalS(AsPhiFF, offsets[0], x_ff_vids, x_ff_param);
     auto As_ff1 = this->EvalS(AsPhiFF, offsets[1], x_ff_vids, x_ff_param);
-#ifdef __CUDA_ARCH__
-    t_evals = clock64() - t_evals;
-#endif
-
-#ifdef __CUDA_ARCH__
-    t_e = clock64();    
-#endif        
 
     vtkm::FloatDefault As = wphi[0]*As_ff0 + wphi[1]*As_ff1;
     auto AsCurl_bhat_rzp = As * pInfo.curl_nb_rzp;
@@ -1193,21 +1041,6 @@ public:
     vtkm::Vec3f vec_rzp = pInfo.B0_rzp + deltaB_rzp;
     vtkm::Vec3f vec_rpz(vec_rzp[0], vec_rzp[2], vec_rzp[1]);
     res = vec_rpz;
-#ifdef __CUDA_ARCH__
-    t_e = clock64() - t_e;    
-#endif        
-
-#ifdef __CUDA_ARCH__
-    if (threadIdx.x == 0) {
-      printf("therad %d, Evaluation::t_high_order = %llu\n", threadIdx.x, t_high_order);
-      printf("therad %d, Evaluation::t_planeidx = %llu\n", threadIdx.x, t_planeidx);
-      printf("therad %d, Evaluation::t_calcfield = %llu\n", threadIdx.x, t_calcfield);
-      printf("therad %d, Evaluation::t_ptloc = %llu\n", threadIdx.x, t_ptloc);
-      printf("therad %d, Evaluation::t_evalv = %llu\n", threadIdx.x, t_evalv);
-      printf("therad %d, Evaluation::t_evals = %llu\n", threadIdx.x, t_evals);
-    }
-#endif
-
     return true;
   }
 
