@@ -58,6 +58,15 @@ jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | 
 
 #define DO_TRACES 0
 
+//Timers
+#define TOTAL 0
+#define EVAL_BICUB 1
+#define GET_B 2
+#define FIELD_FOLLOWING 3
+#define EVALUATE_A 4
+#define EVALUATE_B 5
+//static const IdComponent EVAL_BICUB = 0;
+
 static const unsigned long NO_OUTPUT = (1 << 0);
 static const unsigned long NO_CALC_FIELD_FOLLOWING = (1 << 1);
 static const unsigned long NO_TURBULENCE = (1 << 2);
@@ -81,6 +90,8 @@ class PoincareWorklet2 : public vtkm::worklet::WorkletMapField
   };
 
 public:
+  using Vec10f = vtkm::Vec<vtkm::FloatDefault, 10>;
+//  using Vec3f = vtkm::Vec<vtkm::FloatDefault, 3>
   using ControlSignature = void(FieldInOut particles,
                                 ExecObject locator,
                                 WholeCellSetIn<> cellSet,
@@ -91,8 +102,9 @@ public:
                                 WholeArrayInOut traces,
                                 WholeArrayInOut outputRZ,
                                 WholeArrayInOut outputTP,
-                                WholeArrayInOut punctureID);
-  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11);
+                                WholeArrayInOut punctureID,
+                                FieldOut timers);
+  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12);
   using InputDomain = _1;
 
   PoincareWorklet2(vtkm::Id maxPunc,
@@ -138,7 +150,8 @@ public:
   VTKM_EXEC
   vtkm::Vec3f HighOrderBOnly(const vtkm::Vec3f& ptRPZ,
                              const Coeff_1DType& Coeff_1D,
-                             const Coeff_2DType& Coeff_2D) const
+                             const Coeff_2DType& Coeff_2D,
+                             Vec10f& timers) const
   {
     vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2];
     vtkm::Vec3f ptRZ(R,Z,0);
@@ -160,7 +173,7 @@ public:
 
     vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
     //this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
-    this->EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+    this->EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z, timers);
 
     vtkm::FloatDefault fld_I = this->I_interpol(psi, 0, Coeff_1D);
 
@@ -172,12 +185,29 @@ public:
     return vtkm::Vec3f(Br, Bz, Bp);
   }
 
+  VTKM_EXEC
+  void UpdateTimer(const unsigned int& start,
+                   const unsigned int& end,
+                   int idx,
+                   Vec10f& timer) const
+  {
+    unsigned int tot;
+    if (end > start)
+      tot = end-start;
+    else
+      tot = end + (0xffffffff - start);
+
+    vtkm::FloatDefault dT = (double)(tot) / 1000000000.0;
+    timer[idx] += dT;
+  }
+
   template <typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
   bool HighOrderB(const vtkm::Vec3f& ptRPZ,
                   ParticleInfo& pInfo,
                   const Coeff_1DType& Coeff_1D,
-                  const Coeff_2DType& Coeff_2D) const
+                  const Coeff_2DType& Coeff_2D,
+                  Vec10f& timers) const
   {
     vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2];
     vtkm::Vec3f ptRZ(R,Z,0);
@@ -211,7 +241,7 @@ public:
 
     vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
     //this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
-    this->EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+    this->EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z, timers);
     pInfo.Psi = psi;
     //PSI = psi;
     pInfo.gradPsi_rzp[0] = dpsi_dr;
@@ -368,7 +398,8 @@ public:
                             OutputType& traces,
                             OutputType2D& outputRZ,
                             OutputType2D& outputTP,
-                            IdType punctureID) const
+                            IdType punctureID,
+                            Vec10f& timers) const
   {
 #ifdef VALGRIND
     CALLGRIND_START_INSTRUMENTATION;
@@ -390,6 +421,9 @@ public:
 
     DBG("Begin: "<<particle<<std::endl);
 
+    for (vtkm::IdComponent i = 0; i < 10; i++) timers[i] = 0.0f;
+
+    auto start = clock();
     ParticleInfo pInfo;
     while (true)
     {
@@ -397,7 +431,7 @@ public:
       DBG("\n\n\n*********************************************"<<std::endl);
       DBG("   "<<particle.Pos<<" #s= "<<particle.NumSteps<<std::endl);
       if (!this->TakeRK4Step(particle.Pos, pInfo, locator, cellSet,
-                             AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, newPos))
+                             AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, timers, newPos))
       {
         break;
       }
@@ -425,7 +459,7 @@ public:
         //vtkm::FloatDefault psi;
         //vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, gradPsi_rzp;
         //vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
-        this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
+        this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D, timers); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
         vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
         if (!(this->Variant & NO_OUTPUT)) //Variant=1
         {
@@ -447,6 +481,7 @@ public:
         break;
       }
     }
+    this->UpdateTimer(start, clock(), TOTAL, timers);
 #if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
     std::cout<<"Particle done: "<<idx<<std::endl;
 #endif
@@ -466,6 +501,7 @@ public:
                    const DAsFieldType& DAsPhiFF_RZP,
                    const Coeff_1DType& Coeff_1D,
                    const Coeff_2DType& Coeff_2D,
+                   Vec10f& timers,
                    vtkm::Vec3f& res) const
   {
     vtkm::Vec3f k1, k2, k3, k4;
@@ -479,19 +515,19 @@ public:
 
     DBG("    ****** K1"<<std::endl);
     bool v1, v2, v3, v4;
-    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1);
+    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1, timers);
     tmp = p0 + k1*this->StepSize_2;
 
     DBG("    ****** K2"<<std::endl);
-    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2);
+    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2, timers);
     tmp = p0 + k2*this->StepSize_2;
 
     DBG("    ****** K3"<<std::endl);
-    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3);
+    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3, timers);
     tmp = p0 + k3*this->StepSize;
 
     DBG("    ****** K4"<<std::endl);
-    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4);
+    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4, timers);
 
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + this->StepSize * vec;
@@ -623,8 +659,10 @@ public:
                   const vtkm::Id& offset,
                   const Coeff_2DType& Coeff_2D,
                   vtkm::FloatDefault &f00, vtkm::FloatDefault &f10, vtkm::FloatDefault &f01,
-                  vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02) const
+                  vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02,
+                  Vec10f& timers) const
   {
+    auto start = clock();
     vtkm::FloatDefault dx = x - xc;
     vtkm::FloatDefault dy = y - yc;
 
@@ -669,6 +707,8 @@ public:
       dfy2[j] = vtkm::FloatDefault(j*(j-1))*yv[j-2];
       f02 = f02 + fx[j]*dfy2[j];
     }
+
+    this->UpdateTimer(start, clock(), EVAL_BICUB, timers);
   }
 
   VTKM_EXEC
@@ -828,7 +868,8 @@ public:
   vtkm::Vec3f GetB(vtkm::Vec3f& pt_rpz,
                    ParticleInfo& /*pInfo*/,
                    const Coeff_1DType& coeff_1D,
-                   const Coeff_2DType& coeff_2D) const
+                   const Coeff_2DType& coeff_2D,
+                   Vec10f& timers) const
   {
 #if 0
     this->HighOrderB(pt_rpz, pInfo, coeff_1D, coeff_2D);
@@ -843,7 +884,8 @@ public:
     B0_rpz[2] *= pt_rpz[0];
     return B0_rpz;
 #else
-    auto B0_rzp = this->HighOrderBOnly(pt_rpz, coeff_1D, coeff_2D);
+    auto start = clock();
+    auto B0_rzp = this->HighOrderBOnly(pt_rpz, coeff_1D, coeff_2D, timers);
 
     vtkm::Vec3f B0_rpz(B0_rzp[0], B0_rzp[2], B0_rzp[1]);
 
@@ -856,6 +898,7 @@ public:
     B0_rpz[2] /= B0_rzp[2];
     B0_rpz[0] *= pt_rpz[0];
     B0_rpz[2] *= pt_rpz[0];
+    this->UpdateTimer(start, clock(), GET_B, timers);
     return B0_rpz;
 #endif
   }
@@ -869,8 +912,10 @@ public:
                             const vtkm::FloatDefault& Phi1,
                             const Coeff_1DType& coeff_1D,
                             const Coeff_2DType& coeff_2D,
-                            vtkm::Vec3f& x_ff_rpz) const
+                            vtkm::Vec3f& x_ff_rpz,
+                            Vec10f& timers) const
   {
+    auto start = clock();
     vtkm::FloatDefault R = pt_rpz[0];
     vtkm::FloatDefault Phi = pt_rpz[1];
     vtkm::FloatDefault Z = pt_rpz[2];
@@ -901,16 +946,16 @@ public:
     ParticleInfo pInfo2 = pInfo;
     for (int i = 0; i < 2; i++)
     {
-      k1 = this->GetB(p0, pInfo2, coeff_1D, coeff_2D);
+      k1 = this->GetB(p0, pInfo2, coeff_1D, coeff_2D, timers);
       tmp = p0 + k1*h_2;
 
-      k2 = this->GetB(tmp, pInfo2, coeff_1D, coeff_2D);
+      k2 = this->GetB(tmp, pInfo2, coeff_1D, coeff_2D, timers);
       tmp = p0 + k2*h_2;
 
-      k3 = this->GetB(tmp, pInfo2, coeff_1D, coeff_2D);
+      k3 = this->GetB(tmp, pInfo2, coeff_1D, coeff_2D, timers);
       tmp = p0 + k3*h;
 
-      k4 = this->GetB(tmp, pInfo2, coeff_1D, coeff_2D);
+      k4 = this->GetB(tmp, pInfo2, coeff_1D, coeff_2D, timers);
 
       vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4) / 6.0;
       p0 = p0 + h * vec;
@@ -918,6 +963,7 @@ public:
 
     x_ff_rpz = p0;
 
+    this->UpdateTimer(start, clock(), FIELD_FOLLOWING, timers);
     return true;
   }
 
@@ -931,14 +977,15 @@ public:
                 const DAsFieldType& DAsPhiFF_RZP,
                 const Coeff_1DType& coeff_1D,
                 const Coeff_2DType& coeff_2D,
-                vtkm::Vec3f& res) const
+                vtkm::Vec3f& res,
+                Vec10f& timers) const
   {
     auto R = ptRPZ[0];
     auto Phi = ptRPZ[1];
     auto Z = ptRPZ[2];
 
     //res is R,P,Z
-    if (!this->HighOrderB(ptRPZ, pInfo, coeff_1D, coeff_2D))
+    if (!this->HighOrderB(ptRPZ, pInfo, coeff_1D, coeff_2D, timers))
       return false;
 
     if (this->UseBOnly)
@@ -962,7 +1009,7 @@ public:
     if (this->Variant & NO_CALC_FIELD_FOLLOWING) //Variant=2
       ff_pt_rpz = {R, phiN, Z};
     else
-      this->CalcFieldFollowingPt({R,phiN,Z}, pInfo, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz);
+      this->CalcFieldFollowingPt({R,phiN,Z}, pInfo, B0_rpz, Phi0, Phi1, coeff_1D, coeff_2D, ff_pt_rpz, timers);
 
     //Now, interpolate between Phi_i and Phi_i+1
     vtkm::FloatDefault T01 = (phiN - Phi0) / (Phi1-Phi0);
@@ -1012,12 +1059,16 @@ public:
       return true;
     }
 
+
+    auto start = clock();
     this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, x_ff_param, x_ff_vids);
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
     auto As_ff0 = this->EvalS(AsPhiFF, offsets[0], x_ff_vids, x_ff_param);
     auto As_ff1 = this->EvalS(AsPhiFF, offsets[1], x_ff_vids, x_ff_param);
+    this->UpdateTimer(start, clock(), EVALUATE_A, timers);
 
+    start = clock();
     vtkm::FloatDefault wphi[2] = {T10, T01}; //{T01, T10};
     vtkm::Vec3f gradAs_rpz;
 
@@ -1061,6 +1112,7 @@ public:
     vtkm::Vec3f vec_rzp = pInfo.B0_rzp + deltaB_rzp;
     vtkm::Vec3f vec_rpz(vec_rzp[0], vec_rzp[2], vec_rzp[1]);
     res = vec_rpz;
+    this->UpdateTimer(start, clock(), EVALUATE_B, timers);
 
     return true;
   }

@@ -934,6 +934,8 @@ Poincare(const vtkm::cont::DataSet& ds,
   outTP.Allocate(numPunc*pts.size());
   outID.Allocate(numPunc*pts.size());
 
+  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 10>> timers;
+
   vtkm::cont::Timer timer;
   auto start = std::chrono::steady_clock::now();
   std::cout<<"Using Worklet_"<<whichWorklet<<std::endl;
@@ -993,13 +995,13 @@ Poincare(const vtkm::cont::DataSet& ds,
               locatorBIH,
               ds.GetCellSet(),
               As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
-              tracesArr, outRZ, outTP, outID);
+              tracesArr, outRZ, outTP, outID, timers);
     else
       invoker(worklet, seeds,
               locator2L,
               ds.GetCellSet(),
               As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
-              tracesArr, outRZ, outTP, outID);
+              tracesArr, outRZ, outTP, outID, timers);
 #else
     std::cout<<"*************************************** Code NOT build with Worklet 2"<<std::endl;
 #endif
@@ -1158,6 +1160,9 @@ Poincare(const vtkm::cont::DataSet& ds,
   std::cout<<"punctureID.size()= "<<outID.GetNumberOfValues()<<std::endl;
   //vtkm::cont::printSummary_ArrayHandle(output, std::cout);
   //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);
+
+  std::cout<<"Timers= ";
+  vtkm::cont::printSummary_ArrayHandle(timers, std::cout, true);
 
   std::vector<std::vector<vtkm::Vec3f>> res;
   if (traces)
