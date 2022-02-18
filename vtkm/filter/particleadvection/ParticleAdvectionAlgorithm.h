@@ -30,13 +30,16 @@ using TDSIType = vtkm::filter::particleadvection::TemporalDataSetIntegrator;
 
 //Particle advection
 class VTKM_ALWAYS_EXPORT ParticleAdvectionAlgorithm
-  : public AdvectorBaseAlgorithm<DSIType, vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>>
+  : public AdvectorBaseAlgorithm<DSIType,
+                                 vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>,
+                                 vtkm::Particle>
 {
 public:
   ParticleAdvectionAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                              const std::vector<DSIType>& blocks)
-    : AdvectorBaseAlgorithm<DSIType, vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>>(bm,
-                                                                                             blocks)
+    : AdvectorBaseAlgorithm<DSIType,
+                            vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>,
+                            vtkm::Particle>(bm, blocks)
   {
   }
 };
@@ -58,12 +61,16 @@ public:
 
 //Streamline
 class VTKM_ALWAYS_EXPORT StreamlineAlgorithm
-  : public AdvectorBaseAlgorithm<DSIType, vtkm::worklet::StreamlineResult<vtkm::Particle>>
+  : public AdvectorBaseAlgorithm<DSIType,
+                                 vtkm::worklet::StreamlineResult<vtkm::Particle>,
+                                 vtkm::Particle>
 {
 public:
   StreamlineAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                       const std::vector<DSIType>& blocks)
-    : AdvectorBaseAlgorithm<DSIType, vtkm::worklet::StreamlineResult<vtkm::Particle>>(bm, blocks)
+    : AdvectorBaseAlgorithm<DSIType,
+                            vtkm::worklet::StreamlineResult<vtkm::Particle>,
+                            vtkm::Particle>(bm, blocks)
   {
   }
 };
@@ -88,14 +95,16 @@ public:
 
 //PathParticle
 class VTKM_ALWAYS_EXPORT PathParticleAlgorithm
-  : public AdvectorBaseAlgorithm<TDSIType, vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>>
+  : public AdvectorBaseAlgorithm<TDSIType,
+                                 vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>,
+                                 vtkm::Particle>
 {
 public:
   PathParticleAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                         const std::vector<TDSIType>& blocks)
-    : AdvectorBaseAlgorithm<TDSIType, vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>>(
-        bm,
-        blocks)
+    : AdvectorBaseAlgorithm<TDSIType,
+                            vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>,
+                            vtkm::Particle>(bm, blocks)
   {
   }
 };
@@ -118,12 +127,16 @@ public:
 
 //Pathline
 class VTKM_ALWAYS_EXPORT PathlineAlgorithm
-  : public AdvectorBaseAlgorithm<TDSIType, vtkm::worklet::StreamlineResult<vtkm::Particle>>
+  : public AdvectorBaseAlgorithm<TDSIType,
+                                 vtkm::worklet::StreamlineResult<vtkm::Particle>,
+                                 vtkm::Particle>
 {
 public:
   PathlineAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                     const std::vector<TDSIType>& blocks)
-    : AdvectorBaseAlgorithm<TDSIType, vtkm::worklet::StreamlineResult<vtkm::Particle>>(bm, blocks)
+    : AdvectorBaseAlgorithm<TDSIType,
+                            vtkm::worklet::StreamlineResult<vtkm::Particle>,
+                            vtkm::Particle>(bm, blocks)
   {
   }
 };

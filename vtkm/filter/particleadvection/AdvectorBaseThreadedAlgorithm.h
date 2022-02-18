@@ -24,12 +24,12 @@ namespace particleadvection
 
 template <typename DataSetIntegratorType, typename ResultType>
 class VTKM_ALWAYS_EXPORT AdvectorBaseThreadedAlgorithm
-  : public AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType>
+  : public AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>
 {
 public:
   AdvectorBaseThreadedAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                                 const std::vector<DataSetIntegratorType>& blocks)
-    : AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType>(bm, blocks)
+    : AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>(bm, blocks)
     , Done(false)
     , WorkerActivate(false)
   {
@@ -56,8 +56,8 @@ protected:
   bool GetActiveParticles(std::vector<vtkm::Particle>& particles, vtkm::Id& blockId) override
   {
     std::lock_guard<std::mutex> lock(this->Mutex);
-    bool val = this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType>::GetActiveParticles(
-      particles, blockId);
+    bool val = this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>::
+                 GetActiveParticles(particles, blockId);
     this->WorkerActivate = val;
     return val;
   }
@@ -68,8 +68,8 @@ protected:
     if (!particles.empty())
     {
       std::lock_guard<std::mutex> lock(this->Mutex);
-      this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType>::UpdateActive(particles,
-                                                                                   idsMap);
+      this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>::UpdateActive(
+        particles, idsMap);
 
       //Let workers know there is new work
       this->WorkerActivateCondition.notify_all();
@@ -150,9 +150,11 @@ protected:
   {
     std::lock_guard<std::mutex> lock(this->Mutex);
 
-    return (this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType>::GetBlockAndWait(
-              numLocalTerm) &&
-            !this->WorkerActivate && this->WorkerResults.empty());
+    return (
+      this
+        ->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>::GetBlockAndWait(
+          numLocalTerm) &&
+      !this->WorkerActivate && this->WorkerResults.empty());
   }
 
   void GetWorkerResults(std::unordered_map<vtkm::Id, std::vector<ResultType>>& results)

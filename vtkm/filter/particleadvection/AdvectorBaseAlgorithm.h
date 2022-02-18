@@ -204,12 +204,12 @@ public:
 };
 };
 
-template <typename DataSetIntegratorType, typename AlgorithmType>
+template <typename DataSetIntegratorType, typename AlgorithmType, typename ParticleType>
 vtkm::cont::PartitionedDataSet RunAlgo(const vtkm::filter::particleadvection::BoundsMap& boundsMap,
                                        const std::vector<DataSetIntegratorType>& dsi,
                                        vtkm::Id numSteps,
                                        vtkm::FloatDefault stepSize,
-                                       const vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
+                                       const vtkm::cont::ArrayHandle<ParticleType>& seeds)
 {
   AlgorithmType algo(boundsMap, dsi);
 
@@ -223,7 +223,7 @@ vtkm::cont::PartitionedDataSet RunAlgo(const vtkm::filter::particleadvection::Bo
 //
 // Base class for particle advector
 //
-template <typename DataSetIntegratorType, typename ResultType>
+template <typename DataSetIntegratorType, typename ResultType, typename ParticleType>
 class VTKM_ALWAYS_EXPORT AdvectorBaseAlgorithm
 {
 public:
@@ -243,7 +243,7 @@ public:
   //Initialize ParticleAdvectorBase
   void SetStepSize(vtkm::FloatDefault stepSize) { this->StepSize = stepSize; }
   void SetNumberOfSteps(vtkm::Id numSteps) { this->NumberOfSteps = numSteps; }
-  void SetSeeds(const vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
+  void SetSeeds(const vtkm::cont::ArrayHandle<ParticleType>& seeds)
   {
     this->ClearParticles();
 
@@ -251,10 +251,10 @@ public:
     auto portal = seeds.ReadPortal();
 
     std::vector<std::vector<vtkm::Id>> blockIDs;
-    std::vector<vtkm::Particle> particles;
+    std::vector<ParticleType> particles;
     for (vtkm::Id i = 0; i < n; i++)
     {
-      const vtkm::Particle p = portal.Get(i);
+      const ParticleType p = portal.Get(i);
       std::vector<vtkm::Id> ids = this->BoundsMap.FindBlocks(p.Pos);
       if (!ids.empty() && this->BoundsMap.FindRank(ids[0]) == this->Rank)
       {
@@ -278,7 +278,7 @@ public:
 
     while (this->TotalNumTerminatedParticles < this->TotalNumParticles)
     {
-      std::vector<vtkm::Particle> v;
+      std::vector<ParticleType> v;
       vtkm::Id numTerm = 0, blockId = -1;
       if (GetActiveParticles(v, blockId))
       {
@@ -328,7 +328,7 @@ protected:
     throw vtkm::cont::ErrorFilterExecution("Bad block");
   }
 
-  virtual void SetSeedArray(const std::vector<vtkm::Particle>& particles,
+  virtual void SetSeedArray(const std::vector<ParticleType>& particles,
                             const std::vector<std::vector<vtkm::Id>>& blockIds)
   {
     VTKM_ASSERT(particles.size() == blockIds.size());
@@ -345,7 +345,7 @@ protected:
     this->Active.insert(this->Active.end(), particles.begin(), particles.end());
   }
 
-  virtual bool GetActiveParticles(std::vector<vtkm::Particle>& particles, vtkm::Id& blockId)
+  virtual bool GetActiveParticles(std::vector<ParticleType>& particles, vtkm::Id& blockId)
   {
     particles.clear();
     blockId = -1;
@@ -373,7 +373,7 @@ protected:
                            vtkm::Id numLocalTerminations,
                            vtkm::Id& numTermMessages)
   {
-    std::vector<vtkm::Particle> incoming;
+    std::vector<ParticleType> incoming;
     std::unordered_map<vtkm::Id, std::vector<vtkm::Id>> incomingIDs;
     numTermMessages = 0;
     messenger.Exchange(this->Inactive,
@@ -388,20 +388,20 @@ protected:
     this->UpdateActive(incoming, incomingIDs);
   }
 
-  virtual void UpdateActive(const std::vector<vtkm::Particle>& particles,
+  virtual void UpdateActive(const std::vector<ParticleType>& particles,
                             const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& idsMap)
   {
     this->Update(this->Active, particles, idsMap);
   }
 
-  virtual void UpdateInactive(const std::vector<vtkm::Particle>& particles,
+  virtual void UpdateInactive(const std::vector<ParticleType>& particles,
                               const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& idsMap)
   {
     this->Update(this->Inactive, particles, idsMap);
   }
 
-  void Update(std::vector<vtkm::Particle>& arr,
-              const std::vector<vtkm::Particle>& particles,
+  void Update(std::vector<ParticleType>& arr,
+              const std::vector<ParticleType>& particles,
               const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& idsMap)
   {
     VTKM_ASSERT(particles.size() == idsMap.size());
@@ -411,7 +411,7 @@ protected:
       this->ParticleBlockIDsMap[it.first] = it.second;
   }
 
-  void UpdateTerminated(const vtkm::cont::ArrayHandle<vtkm::Particle>& particles,
+  void UpdateTerminated(const vtkm::cont::ArrayHandle<ParticleType>& particles,
                         const std::vector<vtkm::Id>& idxTerm)
   {
     auto portal = particles.ReadPortal();
@@ -419,11 +419,11 @@ protected:
       this->ParticleBlockIDsMap.erase(portal.Get(idx).ID);
   }
 
-  void ClassifyParticles(const vtkm::cont::ArrayHandle<vtkm::Particle>& particles,
+  void ClassifyParticles(const vtkm::cont::ArrayHandle<ParticleType>& particles,
                          std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& idsMapA,
                          std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& idsMapI,
-                         std::vector<vtkm::Particle>& A,
-                         std::vector<vtkm::Particle>& I,
+                         std::vector<ParticleType>& A,
+                         std::vector<ParticleType>& I,
                          std::vector<vtkm::Id>& termIdx) const
   {
     A.clear();
@@ -504,7 +504,7 @@ protected:
   vtkm::Id UpdateResult(ResultType& res, vtkm::Id blockId)
   {
     std::unordered_map<vtkm::Id, std::vector<vtkm::Id>> idsMapI, idsMapA;
-    std::vector<vtkm::Particle> A, I;
+    std::vector<ParticleType> A, I;
     std::vector<vtkm::Id> termIdx;
     this->ClassifyParticles(res.Particles, idsMapA, idsMapI, A, I, termIdx);
 
@@ -538,11 +538,11 @@ protected:
   }
 
   //Member data
-  std::vector<vtkm::Particle> Active;
+  std::vector<ParticleType> Active;
   std::vector<DataSetIntegratorType> Blocks;
   vtkm::filter::particleadvection::BoundsMap BoundsMap;
   vtkmdiy::mpi::communicator Comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
-  std::vector<vtkm::Particle> Inactive;
+  std::vector<ParticleType> Inactive;
   vtkm::Id NumberOfSteps;
   vtkm::Id NumRanks;
   std::unordered_map<vtkm::Id, std::vector<vtkm::Id>> ParticleBlockIDsMap;

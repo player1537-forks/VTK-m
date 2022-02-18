@@ -48,7 +48,7 @@ ParticleAdvectionBase<ParticleType>::PrepareForExecution(
     return vtkm::filter::particleadvection::RunAlgo<DSIType, ThreadedAlgorithmType>(
       boundsMap, dsi, this->NumberOfSteps, this->StepSize, this->Seeds);
   else
-    return vtkm::filter::particleadvection::RunAlgo<DSIType, AlgorithmType>(
+    return vtkm::filter::particleadvection::RunAlgo<DSIType, AlgorithmType, ParticleType>(
       boundsMap, dsi, this->NumberOfSteps, this->StepSize, this->Seeds);
 }
 
