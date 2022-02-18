@@ -34,7 +34,6 @@
 #endif
 
 #include <adios2.h>
-
 #include <random>
 #include <chrono>
 #include <variant>
@@ -875,7 +874,6 @@ Poincare(const vtkm::cont::DataSet& ds,
          std::string& locName,
          std::string& locParam1,
          std::string& locParam2,
-         unsigned long variant,
          std::vector<std::vector<vtkm::Vec3f>>* traces=nullptr)
 
 {
@@ -934,8 +932,6 @@ Poincare(const vtkm::cont::DataSet& ds,
   outTP.Allocate(numPunc*pts.size());
   outID.Allocate(numPunc*pts.size());
 
-  vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 10>> timers;
-
   vtkm::cont::Timer timer;
   auto start = std::chrono::steady_clock::now();
   std::cout<<"Using Worklet_"<<whichWorklet<<std::endl;
@@ -978,7 +974,6 @@ Poincare(const vtkm::cont::DataSet& ds,
     PoincareWorklet2 worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
     worklet.UseBOnly = useBOnly;
     worklet.UseHighOrder = useHighOrder;
-    worklet.Variant = variant;
 
     if (traces != nullptr)
     {
@@ -995,13 +990,13 @@ Poincare(const vtkm::cont::DataSet& ds,
               locatorBIH,
               ds.GetCellSet(),
               As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
-              tracesArr, outRZ, outTP, outID, timers);
+              tracesArr, outRZ, outTP, outID);
     else
       invoker(worklet, seeds,
               locator2L,
               ds.GetCellSet(),
               As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
-              tracesArr, outRZ, outTP, outID, timers);
+              tracesArr, outRZ, outTP, outID);
 #else
     std::cout<<"*************************************** Code NOT build with Worklet 2"<<std::endl;
 #endif
@@ -1160,9 +1155,6 @@ Poincare(const vtkm::cont::DataSet& ds,
   std::cout<<"punctureID.size()= "<<outID.GetNumberOfValues()<<std::endl;
   //vtkm::cont::printSummary_ArrayHandle(output, std::cout);
   //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);
-
-  std::cout<<"Timers= ";
-  vtkm::cont::printSummary_ArrayHandle(timers, std::cout, true);
 
   std::vector<std::vector<vtkm::Vec3f>> res;
   if (traces)
@@ -1639,10 +1631,6 @@ main(int argc, char** argv)
   }
   std::cout<<"Grid: "<<BGridSize<<" "<<BGridCell<<std::endl;
 
-  unsigned long variant;
-  if (args.find("--Variant") != args.end())
-    variant = std::atoi(args["--Variant"][0].c_str());
-
 
   std::string locator, locParam1, locParam2;
   if (args.find("--Locator") != args.end())
@@ -2069,7 +2057,7 @@ p11       2.329460849125147615, -0.073678279004152566
   std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
   vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
-  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, BGridCell, locator, locParam1, locParam2, variant, (useTraces ? &traces : nullptr));
+  Poincare(ds, seeds, vField, stepSize, numPunc, whichWorklet, useBOnly, useHighOrder, outRZ, outTP, outID, quickTest, BGridSize, BGridCell, locator, locParam1, locParam2, (useTraces ? &traces : nullptr));
 
   //std::cout<<"Convert to theta/psi"<<std::endl;
   //auto puncturesTP = ConvertPuncturesToThetaPsi(punctures, ds);
