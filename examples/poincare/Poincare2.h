@@ -1014,7 +1014,8 @@ public:
 
 #ifdef __CUDA_ARCH__
     long long int t_high_order = 0, t_planeidx = 0, t_calcfield = 0, t_ptloc = 0;
-		long long int t_evals = 0, t_evalv = 0;
+    long long int t_evals = 0, t_evalv = 0;
+    long long int t_a = 0, t_b = 0, t_c = 0, t_d = 0, t_e = 0;
 #endif
 
 #ifdef __CUDA_ARCH__
@@ -1034,6 +1035,9 @@ public:
       return true;
     }
 
+#ifdef __CUDA_ARCH__
+    t_a = clock64();    
+#endif
     vtkm::Id planeIdx0, planeIdx1, numRevs;
     vtkm::FloatDefault phiN, Phi0, Phi1, T;
     this->GetPlaneIdx(Phi, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
@@ -1042,6 +1046,9 @@ public:
       printf("Problem.... plane wraparound\n");
     }
     vtkm::Vec3f B0_rpz(pInfo.B0_rzp[0], pInfo.B0_rzp[2], pInfo.B0_rzp[1]);
+#ifdef __CUDA_ARCH__
+    t_a = clock64() - t_a;
+#endif
 
 #ifdef __CUDA_ARCH__
     t_calcfield = clock64();
@@ -1051,6 +1058,10 @@ public:
 #ifdef __CUDA_ARCH__
     t_calcfield = clock64() - t_calcfield;
 #endif
+
+#ifdef __CUDA_ARCH__
+    t_b = clock64();
+#endif    
 
     //Now, interpolate between Phi_i and Phi_i+1
     vtkm::FloatDefault T01 = (phiN - Phi0) / (Phi1-Phi0);
@@ -1084,6 +1095,10 @@ public:
     rvec[1] =         (1.0-basis) * gammaPsi *   gradPsi_rzp[1];
     zvec[0] =         (1.0-basis) * gammaPsi * (-gradPsi_rzp[1]);
     zvec[1] = basis + (1.0-basis) * gammaPsi *   gradPsi_rzp[0];
+#ifdef __CUDA_ARCH__
+    t_b = clock64() - t_b;    
+#endif    
+    
 
     //Get the vectors in the ff coordinates.
     //auto dAs_ff_rzp = EvalVector(ds, locator, {x_ff_rzp, x_ff_rzp}, "dAs_ff_rzp", offsets);
@@ -1111,6 +1126,9 @@ public:
     t_evalv = clock64() - t_evalv;
 #endif
 
+#ifdef __CUDA_ARCH__
+    t_c = clock64();    
+#endif        
 
     vtkm::FloatDefault wphi[2] = {T10, T01}; //{T01, T10};
     vtkm::Vec3f gradAs_rpz;
@@ -1127,6 +1145,13 @@ public:
                     wphi[1] * dAs_ff1_rzp[2];
     gradAs_rpz[2] = wphi[0]*(rvec[1]*dAs_ff0_rzp[0] + zvec[1]*dAs_ff0_rzp[1]) +
                     wphi[1]*(rvec[1]*dAs_ff1_rzp[0] + zvec[1]*dAs_ff1_rzp[1]);
+#ifdef __CUDA_ARCH__
+    t_c = clock64() - t_c;    
+#endif
+
+#ifdef __CUDA_ARCH__
+    t_d = clock64();    
+#endif        
 
     vtkm::FloatDefault BMag = vtkm::Magnitude(pInfo.B0_rzp);
     //project using bfield.
@@ -1137,6 +1162,9 @@ public:
     //std::vector<int> off = {planeIdx0*this->NumNodes};
     //vtkm::Vec3f AsCurl_bhat_rzp = EvalVector(ds, locator, {x_ff_rzp}, "AsCurlBHat_RZP", off)[0];
     //auto AsCurl_bhat_rzp = this->EvalV(AsCurlBHat_RZP, 0, x_ff_vids, x_ff_param);
+#ifdef __CUDA_ARCH__
+    t_d = clock64() - t_d;    
+#endif        
 
 #ifdef __CUDA_ARCH__
     t_evals = clock64();
@@ -1147,6 +1175,9 @@ public:
     t_evals = clock64() - t_evals;
 #endif
 
+#ifdef __CUDA_ARCH__
+    t_e = clock64();    
+#endif        
 
     vtkm::FloatDefault As = wphi[0]*As_ff0 + wphi[1]*As_ff1;
     auto AsCurl_bhat_rzp = As * pInfo.curl_nb_rzp;
@@ -1162,9 +1193,11 @@ public:
     vtkm::Vec3f vec_rzp = pInfo.B0_rzp + deltaB_rzp;
     vtkm::Vec3f vec_rpz(vec_rzp[0], vec_rzp[2], vec_rzp[1]);
     res = vec_rpz;
+#ifdef __CUDA_ARCH__
+    t_e = clock64() - t_e;    
+#endif        
 
 #ifdef __CUDA_ARCH__
-    t_4 = clock64() - t_4;
     if (threadIdx.x == 0) {
       printf("therad %d, Evaluation::t_high_order = %llu\n", threadIdx.x, t_high_order);
       printf("therad %d, Evaluation::t_planeidx = %llu\n", threadIdx.x, t_planeidx);
