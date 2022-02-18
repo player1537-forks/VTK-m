@@ -65,6 +65,7 @@ jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | 
 #define FIELD_FOLLOWING 3
 #define EVALUATE_A 4
 #define EVALUATE_B 5
+#define PT_LOC 6
 //static const IdComponent EVAL_BICUB = 0;
 
 static const unsigned long NO_OUTPUT = (1 << 0);
@@ -1059,9 +1060,11 @@ public:
       return true;
     }
 
-
     auto start = clock();
     this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, x_ff_param, x_ff_vids);
+    this->UpdateTimer(start, clock(), PT_LOC, timers);
+
+    start = clock();
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
     auto As_ff0 = this->EvalS(AsPhiFF, offsets[0], x_ff_vids, x_ff_param);
