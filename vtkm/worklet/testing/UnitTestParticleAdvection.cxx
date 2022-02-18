@@ -908,7 +908,7 @@ void TestChargedParticles()
     static_cast<vtkm::FloatDefault>(2.99792458e8);
   spacing = spacing * spacing;
   vtkm::FloatDefault length =
-    1.0 / (SPEED_OF_LIGHT * vtkm::Sqrt(1. / spacing[0] + 1. / spacing[1] + 1. / spacing[2]));
+    1 / (SPEED_OF_LIGHT * vtkm::Sqrt(1 / spacing[0] + 1 / spacing[1] + 1 / spacing[2]));
 
   ArrayType EField, BField;
   CreateConstantVectorField(ds.GetNumberOfPoints(), { .01, .2, .5 }, EField);
@@ -921,9 +921,13 @@ void TestChargedParticles()
   std::vector<vtkm::ChargedParticle> pts;
   vtkm::FloatDefault mass = 1e-10, charge = -1e-9, weight = 187;
 
-  pts.push_back(vtkm::ChargedParticle({ 0, 0, .1 }, 0, mass, charge, weight, { 0.5, 0.5, 1.0 }));
-  pts.push_back(vtkm::ChargedParticle({ -.1, 0, .1 }, 1, mass, charge, weight, { -0.5, 0.5, 1.0 }));
-  pts.push_back(vtkm::ChargedParticle({ .1, 0, .1 }, 1, mass, charge, weight, { 0.5, -0.5, 1.0 }));
+  pts.push_back(
+    vtkm::ChargedParticle({ 0.0f, 0.0f, .1f }, 0, mass, charge, weight, { 0.5f, 0.5f, 1.0f }));
+  pts.push_back(
+    vtkm::ChargedParticle({ -.1f, 0.f, .1f }, 1, mass, charge, weight, { -0.5f, 0.5f, 1.0f }));
+  pts.push_back(
+    vtkm::ChargedParticle({ .1f, 0.0f, .1f }, 1, mass, charge, weight, { 0.5f, -0.5f, 1.0f }));
+
   SeedsType seeds = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::Off);
 
   vtkm::Id numSteps = 40;
