@@ -34,7 +34,7 @@ namespace internal
 
 //Helper class to store the different result types.
 //template <typename ResultType>
-template <template <typename> typename ResultType, typename ParticleType>
+template <template <typename> class ResultType, typename ParticleType>
 class ResultHelper;
 
 //Specialization for ParticleAdvectionResult
@@ -232,7 +232,7 @@ vtkm::cont::PartitionedDataSet RunAlgo(const vtkm::filter::particleadvection::Bo
 //
 template <typename DataSetIntegratorType,
           template <typename>
-          typename ResultType,
+          class ResultType,
           typename ParticleType>
 class VTKM_ALWAYS_EXPORT AdvectorBaseAlgorithm
 {

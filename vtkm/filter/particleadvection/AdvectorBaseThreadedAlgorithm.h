@@ -24,7 +24,7 @@ namespace particleadvection
 
 template <typename DataSetIntegratorType,
           template <typename>
-          typename ResultType,
+          class ResultType,
           typename ParticleType>
 class VTKM_ALWAYS_EXPORT AdvectorBaseThreadedAlgorithm
   : public AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, ParticleType>
