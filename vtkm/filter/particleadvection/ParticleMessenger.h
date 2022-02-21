@@ -30,13 +30,15 @@ namespace filter
 namespace particleadvection
 {
 
+//template <typename ParticleType>
 class VTKM_FILTER_EXTRA_EXPORT ParticleMessenger : public vtkm::filter::particleadvection::Messenger
 {
+  using ParticleType = vtkm::Particle;
   //sendRank, message
   using MsgCommType = std::pair<int, std::vector<int>>;
 
   //particle + blockIDs.
-  using ParticleCommType = std::pair<vtkm::Particle, std::vector<vtkm::Id>>;
+  using ParticleCommType = std::pair<ParticleType, std::vector<vtkm::Id>>;
 
   //sendRank, vector of ParticleCommType.
   using ParticleRecvCommType = std::pair<int, std::vector<ParticleCommType>>;
@@ -49,10 +51,10 @@ public:
                               int numBlockIds = 2);
   VTKM_CONT ~ParticleMessenger() {}
 
-  VTKM_CONT void Exchange(const std::vector<vtkm::Particle>& outData,
+  VTKM_CONT void Exchange(const std::vector<ParticleType>& outData,
                           const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
                           vtkm::Id numLocalTerm,
-                          std::vector<vtkm::Particle>& inData,
+                          std::vector<ParticleType>& inData,
                           std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& inDataBlockIDsMap,
                           vtkm::Id& numTerminateMessages,
                           bool blockAndWait = false);
@@ -98,10 +100,10 @@ protected:
 #endif
 
   VTKM_CONT void SerialExchange(
-    const std::vector<vtkm::Particle>& outData,
+    const std::vector<ParticleType>& outData,
     const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
     vtkm::Id numLocalTerm,
-    std::vector<vtkm::Particle>& inData,
+    std::vector<ParticleType>& inData,
     std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& inDataBlockIDsMap,
     bool blockAndWait) const;
 

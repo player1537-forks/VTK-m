@@ -44,11 +44,11 @@ public:
   vtkm::Id GetID() const { return this->ID; }
   void SetCopySeedFlag(bool val) { this->CopySeedArray = val; }
 
-  template <typename ResultType>
-  void Advect(std::vector<vtkm::Particle>& v,
+  template <template <typename> class ResultType, typename ParticleType>
+  void Advect(std::vector<ParticleType>& v,
               vtkm::FloatDefault stepSize,
               vtkm::Id maxSteps,
-              ResultType& result) const
+              ResultType<ParticleType>& result) const
   {
     auto copyFlag = (this->CopySeedArray ? vtkm::CopyFlag::On : vtkm::CopyFlag::Off);
     auto seedArray = vtkm::cont::make_ArrayHandle(v, copyFlag);
@@ -61,11 +61,11 @@ protected:
   using Stepper = vtkm::worklet::particleadvection::Stepper<RK4Type, GridEvalType>;
   using FieldHandleType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
 
-  template <typename ResultType>
-  inline void DoAdvect(vtkm::cont::ArrayHandle<vtkm::Particle>& seeds,
+  template <template <typename> class ResultType, typename ParticleType>
+  inline void DoAdvect(vtkm::cont::ArrayHandle<ParticleType>& seeds,
                        const Stepper& rk4,
                        vtkm::Id maxSteps,
-                       ResultType& result) const;
+                       ResultType<ParticleType>& result) const;
 
   FieldHandleType GetFieldHandle(const vtkm::cont::DataSet& ds, const std::string& fieldNm)
   {

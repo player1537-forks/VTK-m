@@ -45,29 +45,19 @@ ParticleMessenger::ParticleMessenger(vtkmdiy::mpi::communicator& comm,
 
 std::size_t ParticleMessenger::CalcParticleBufferSize(std::size_t nParticles, std::size_t nBlockIds)
 {
-  constexpr std::size_t pSize = sizeof(vtkm::Vec3f) // Pos
-    + sizeof(vtkm::Id)                              // ID
-    + sizeof(vtkm::Id)                              // NumSteps
-    + sizeof(vtkm::UInt8)                           // Status
-    + sizeof(vtkm::FloatDefault);                   // Time
-
-#ifndef NDEBUG
+  //Determine the size for a particle. Since it's a templated type, we need to determine this.
   vtkmdiy::MemoryBuffer buff;
-  vtkm::Particle p;
+  ParticleType p;
   vtkmdiy::save(buff, p);
-
-  //If this assert fires, vtkm::Particle changed
-  //and pSize should be updated.
-  VTKM_ASSERT(pSize == buff.size());
-#endif
+  std::size_t pSize = buff.size();
 
   return
     // rank
     sizeof(int)
-    //std::vector<vtkm::Particle> p;
+    //std::vector<ParticleType> p;
     //p.size()
     + sizeof(std::size_t)
-    //nParticles of vtkm::Particle
+    //nParticles of ParticleType
     + nParticles * pSize
     // std::vector<vtkm::Id> blockIDs for each particle.
     // blockIDs.size() for each particle
@@ -78,10 +68,10 @@ std::size_t ParticleMessenger::CalcParticleBufferSize(std::size_t nParticles, st
 
 VTKM_CONT
 void ParticleMessenger::SerialExchange(
-  const std::vector<vtkm::Particle>& outData,
+  const std::vector<ParticleType>& outData,
   const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
   vtkm::Id vtkmNotUsed(numLocalTerm),
-  std::vector<vtkm::Particle>& inData,
+  std::vector<ParticleType>& inData,
   std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& inDataBlockIDsMap,
   bool vtkmNotUsed(blockAndWait)) const
 {
@@ -95,10 +85,10 @@ void ParticleMessenger::SerialExchange(
 
 VTKM_CONT
 void ParticleMessenger::Exchange(
-  const std::vector<vtkm::Particle>& outData,
+  const std::vector<ParticleType>& outData,
   const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
   vtkm::Id numLocalTerm,
-  std::vector<vtkm::Particle>& inData,
+  std::vector<ParticleType>& inData,
   std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& inDataBlockIDsMap,
   vtkm::Id& numTerminateMessages,
   bool blockAndWait)

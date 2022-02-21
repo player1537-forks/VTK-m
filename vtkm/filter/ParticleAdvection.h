@@ -37,6 +37,7 @@ public:
 };
 
 using ParticleAdvection = ParticleAdvectionBase<vtkm::Particle>;
+//using ChargedParticleAdvection = ParticleAdvectionBase<vtkm::ChargedParticle>;
 }
 } // namespace vtkm::filter
 

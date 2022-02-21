@@ -911,8 +911,14 @@ void TestChargedParticles()
     1 / (SPEED_OF_LIGHT * vtkm::Sqrt(1 / spacing[0] + 1 / spacing[1] + 1 / spacing[2]));
 
   ArrayType EField, BField;
-  CreateConstantVectorField(ds.GetNumberOfPoints(), { .01, .2, .5 }, EField);
-  CreateConstantVectorField(ds.GetNumberOfPoints(), { 0, 0, 1 }, BField);
+  vtkm::Vec3f eVec(static_cast<vtkm::FloatDefault>(0.01),
+                   static_cast<vtkm::FloatDefault>(0.20),
+                   static_cast<vtkm::FloatDefault>(0.50));
+  vtkm::Vec3f bVec(static_cast<vtkm::FloatDefault>(0.0),
+                   static_cast<vtkm::FloatDefault>(0.0),
+                   static_cast<vtkm::FloatDefault>(1.0));
+  CreateConstantVectorField(ds.GetNumberOfPoints(), eVec, EField);
+  CreateConstantVectorField(ds.GetNumberOfPoints(), bVec, BField);
 
   FieldType electromagnetic(EField, BField);
 
@@ -921,12 +927,13 @@ void TestChargedParticles()
   std::vector<vtkm::ChargedParticle> pts;
   vtkm::FloatDefault mass = 1e-10, charge = -1e-9, weight = 187;
 
-  pts.push_back(
-    vtkm::ChargedParticle({ 0.0f, 0.0f, .1f }, 0, mass, charge, weight, { 0.5f, 0.5f, 1.0f }));
-  pts.push_back(
-    vtkm::ChargedParticle({ -.1f, 0.f, .1f }, 1, mass, charge, weight, { -0.5f, 0.5f, 1.0f }));
-  pts.push_back(
-    vtkm::ChargedParticle({ .1f, 0.0f, .1f }, 1, mass, charge, weight, { 0.5f, -0.5f, 1.0f }));
+  vtkm::Vec3f p0(0, 0, .1), v0(.5, .5, 1.0);
+  vtkm::Vec3f p1(-.1f, 0.f, .1f), v1(-0.5f, 0.5f, 1.0f);
+  vtkm::Vec3f p2(.1f, 0.0f, .1f), v2(0.5f, -0.5f, 1.0f);
+
+  pts.push_back(vtkm::ChargedParticle(p0, 0, mass, charge, weight, v0));
+  pts.push_back(vtkm::ChargedParticle(p1, 1, mass, charge, weight, v1));
+  pts.push_back(vtkm::ChargedParticle(p2, 1, mass, charge, weight, v2));
 
   SeedsType seeds = vtkm::cont::make_ArrayHandle(pts, vtkm::CopyFlag::Off);
 
@@ -939,10 +946,11 @@ void TestChargedParticles()
   vtkm::cont::Invoker invoker;
   invoker(AdvectionWorklet{}, indices, stepper, particles, particleSteps);
 
-  std::vector<vtkm::Vec3f> answer;
-  answer.push_back({ 0.74289, 0.74289, 1.58578 });
-  answer.push_back({ -0.84289, 0.74289, 1.58578 });
-  answer.push_back({ 0.84289, -0.74289, 1.58578 });
+  vtkm::Vec3f a0(0.74289f, 0.74289f, 1.58578f);
+  vtkm::Vec3f a1(-0.84289f, 0.74289f, 1.58578f);
+  vtkm::Vec3f a2(0.84289f, -0.74289f, 1.58578f);
+
+  std::vector<vtkm::Vec3f> answer = { a0, a1, a2 };
 
   for (std::size_t i = 0; i < pts.size(); i++)
   {

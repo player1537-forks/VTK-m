@@ -59,19 +59,19 @@ protected:
   bool GetActiveParticles(std::vector<ParticleType>& particles, vtkm::Id& blockId) override
   {
     std::lock_guard<std::mutex> lock(this->Mutex);
-    bool val = this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>::
+    bool val = this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, ParticleType>::
                  GetActiveParticles(particles, blockId);
     this->WorkerActivate = val;
     return val;
   }
 
-  void UpdateActive(const std::vector<vtkm::Particle>& particles,
+  void UpdateActive(const std::vector<ParticleType>& particles,
                     const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& idsMap) override
   {
     if (!particles.empty())
     {
       std::lock_guard<std::mutex> lock(this->Mutex);
-      this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>::UpdateActive(
+      this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, ParticleType>::UpdateActive(
         particles, idsMap);
 
       //Let workers know there is new work
@@ -105,7 +105,7 @@ protected:
   {
     while (!this->CheckDone())
     {
-      std::vector<vtkm::Particle> v;
+      std::vector<ParticleType> v;
       vtkm::Id blockId = -1;
       if (this->GetActiveParticles(v, blockId))
       {
@@ -154,9 +154,8 @@ protected:
     std::lock_guard<std::mutex> lock(this->Mutex);
 
     return (
-      this
-        ->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>::GetBlockAndWait(
-          numLocalTerm) &&
+      this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, ParticleType>::GetBlockAndWait(
+        numLocalTerm) &&
       !this->WorkerActivate && this->WorkerResults.empty());
   }
 
