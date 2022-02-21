@@ -22,14 +22,17 @@ namespace filter
 namespace particleadvection
 {
 
-template <typename DataSetIntegratorType, typename ResultType>
+template <typename DataSetIntegratorType,
+          template <typename>
+          typename ResultType,
+          typename ParticleType>
 class VTKM_ALWAYS_EXPORT AdvectorBaseThreadedAlgorithm
-  : public AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>
+  : public AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, ParticleType>
 {
 public:
   AdvectorBaseThreadedAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                                 const std::vector<DataSetIntegratorType>& blocks)
-    : AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>(bm, blocks)
+    : AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, ParticleType>(bm, blocks)
     , Done(false)
     , WorkerActivate(false)
   {
@@ -53,7 +56,7 @@ public:
   }
 
 protected:
-  bool GetActiveParticles(std::vector<vtkm::Particle>& particles, vtkm::Id& blockId) override
+  bool GetActiveParticles(std::vector<ParticleType>& particles, vtkm::Id& blockId) override
   {
     std::lock_guard<std::mutex> lock(this->Mutex);
     bool val = this->AdvectorBaseAlgorithm<DataSetIntegratorType, ResultType, vtkm::Particle>::
@@ -107,7 +110,7 @@ protected:
       if (this->GetActiveParticles(v, blockId))
       {
         const auto& block = this->GetDataSet(blockId);
-        ResultType r;
+        ResultType<ParticleType> r;
         block.Advect(v, this->StepSize, this->NumberOfSteps, r);
         this->UpdateWorkerResult(blockId, r);
       }
@@ -123,7 +126,7 @@ protected:
 
     while (this->TotalNumTerminatedParticles < this->TotalNumParticles)
     {
-      std::unordered_map<vtkm::Id, std::vector<ResultType>> workerResults;
+      std::unordered_map<vtkm::Id, std::vector<ResultType<ParticleType>>> workerResults;
       this->GetWorkerResults(workerResults);
 
       vtkm::Id numTerm = 0;
@@ -157,7 +160,8 @@ protected:
       !this->WorkerActivate && this->WorkerResults.empty());
   }
 
-  void GetWorkerResults(std::unordered_map<vtkm::Id, std::vector<ResultType>>& results)
+  void GetWorkerResults(
+    std::unordered_map<vtkm::Id, std::vector<ResultType<ParticleType>>>& results)
   {
     results.clear();
 
@@ -169,7 +173,7 @@ protected:
     }
   }
 
-  void UpdateWorkerResult(vtkm::Id blockId, const ResultType& result)
+  void UpdateWorkerResult(vtkm::Id blockId, const ResultType<ParticleType>& result)
   {
     std::lock_guard<std::mutex> lock(this->Mutex);
 
@@ -181,7 +185,7 @@ protected:
   std::mutex Mutex;
   bool WorkerActivate;
   std::condition_variable WorkerActivateCondition;
-  std::unordered_map<vtkm::Id, std::vector<ResultType>> WorkerResults;
+  std::unordered_map<vtkm::Id, std::vector<ResultType<ParticleType>>> WorkerResults;
 };
 
 }

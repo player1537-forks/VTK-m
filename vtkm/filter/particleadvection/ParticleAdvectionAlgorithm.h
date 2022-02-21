@@ -29,63 +29,59 @@ using TDSIType = vtkm::filter::particleadvection::TemporalDataSetIntegrator;
 //Steady state advection algorithms
 
 //Particle advection
+template <typename ParticleType>
 class VTKM_ALWAYS_EXPORT ParticleAdvectionAlgorithm
-  : public AdvectorBaseAlgorithm<DSIType,
-                                 vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>,
-                                 vtkm::Particle>
+  : public AdvectorBaseAlgorithm<DSIType, vtkm::worklet::ParticleAdvectionResult, ParticleType>
 {
 public:
   ParticleAdvectionAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                              const std::vector<DSIType>& blocks)
-    : AdvectorBaseAlgorithm<DSIType,
-                            vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>,
-                            vtkm::Particle>(bm, blocks)
+    : AdvectorBaseAlgorithm<DSIType, vtkm::worklet::ParticleAdvectionResult, ParticleType>(bm,
+                                                                                           blocks)
   {
   }
 };
 
 //Threaded particle advection
+template <typename ParticleType>
 class VTKM_ALWAYS_EXPORT ParticleAdvectionThreadedAlgorithm
   : public AdvectorBaseThreadedAlgorithm<DSIType,
-                                         vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>>
+                                         vtkm::worklet::ParticleAdvectionResult,
+                                         ParticleType>
 {
 public:
   ParticleAdvectionThreadedAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                                      const std::vector<DSIType>& blocks)
-    : AdvectorBaseThreadedAlgorithm<DSIType,
-                                    vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>>(bm,
-                                                                                            blocks)
+    : AdvectorBaseThreadedAlgorithm<DSIType, vtkm::worklet::ParticleAdvectionResult, ParticleType>(
+        bm,
+        blocks)
   {
   }
 };
 
 //Streamline
+template <typename ParticleType>
 class VTKM_ALWAYS_EXPORT StreamlineAlgorithm
-  : public AdvectorBaseAlgorithm<DSIType,
-                                 vtkm::worklet::StreamlineResult<vtkm::Particle>,
-                                 vtkm::Particle>
+  : public AdvectorBaseAlgorithm<DSIType, vtkm::worklet::StreamlineResult, ParticleType>
 {
 public:
   StreamlineAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                       const std::vector<DSIType>& blocks)
-    : AdvectorBaseAlgorithm<DSIType,
-                            vtkm::worklet::StreamlineResult<vtkm::Particle>,
-                            vtkm::Particle>(bm, blocks)
+    : AdvectorBaseAlgorithm<DSIType, vtkm::worklet::StreamlineResult, ParticleType>(bm, blocks)
   {
   }
 };
 
 //Threaded streamline
-
+template <typename ParticleType>
 class VTKM_ALWAYS_EXPORT StreamlineThreadedAlgorithm
-  : public AdvectorBaseThreadedAlgorithm<DSIType, vtkm::worklet::StreamlineResult<vtkm::Particle>>
+  : public AdvectorBaseThreadedAlgorithm<DSIType, vtkm::worklet::StreamlineResult, ParticleType>
 {
 public:
   StreamlineThreadedAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                               const std::vector<DSIType>& blocks)
-    : AdvectorBaseThreadedAlgorithm<DSIType, vtkm::worklet::StreamlineResult<vtkm::Particle>>(
-        bm,
-        blocks)
+    : AdvectorBaseThreadedAlgorithm<DSIType, vtkm::worklet::StreamlineResult, ParticleType>(bm,
+                                                                                            blocks)
   {
   }
 };
@@ -94,68 +90,63 @@ public:
 //Unsteady state advection algorithms
 
 //PathParticle
+template <typename ParticleType>
 class VTKM_ALWAYS_EXPORT PathParticleAlgorithm
-  : public AdvectorBaseAlgorithm<TDSIType,
-                                 vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>,
-                                 vtkm::Particle>
+  : public AdvectorBaseAlgorithm<TDSIType, vtkm::worklet::ParticleAdvectionResult, ParticleType>
 {
 public:
   PathParticleAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                         const std::vector<TDSIType>& blocks)
-    : AdvectorBaseAlgorithm<TDSIType,
-                            vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>,
-                            vtkm::Particle>(bm, blocks)
+    : AdvectorBaseAlgorithm<TDSIType, vtkm::worklet::ParticleAdvectionResult, ParticleType>(bm,
+                                                                                            blocks)
   {
   }
 };
 
 
 //Threaded PathParticle
+template <typename ParticleType>
 class VTKM_ALWAYS_EXPORT PathParticleThreadedAlgorithm
   : public AdvectorBaseThreadedAlgorithm<TDSIType,
-                                         vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>>
+                                         vtkm::worklet::ParticleAdvectionResult,
+                                         ParticleType>
 {
 public:
   PathParticleThreadedAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
                                 const std::vector<TDSIType>& blocks)
-    : AdvectorBaseThreadedAlgorithm<TDSIType,
-                                    vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>>(bm,
-                                                                                            blocks)
-  {
-  }
-};
-
-//Pathline
-class VTKM_ALWAYS_EXPORT PathlineAlgorithm
-  : public AdvectorBaseAlgorithm<TDSIType,
-                                 vtkm::worklet::StreamlineResult<vtkm::Particle>,
-                                 vtkm::Particle>
-{
-public:
-  PathlineAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
-                    const std::vector<TDSIType>& blocks)
-    : AdvectorBaseAlgorithm<TDSIType,
-                            vtkm::worklet::StreamlineResult<vtkm::Particle>,
-                            vtkm::Particle>(bm, blocks)
-  {
-  }
-};
-
-//Threaded pathline
-class VTKM_ALWAYS_EXPORT PathlineThreadedAlgorithm
-  : public AdvectorBaseThreadedAlgorithm<TDSIType, vtkm::worklet::StreamlineResult<vtkm::Particle>>
-{
-public:
-  PathlineThreadedAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
-                            const std::vector<TDSIType>& blocks)
-    : AdvectorBaseThreadedAlgorithm<TDSIType, vtkm::worklet::StreamlineResult<vtkm::Particle>>(
+    : AdvectorBaseThreadedAlgorithm<TDSIType, vtkm::worklet::ParticleAdvectionResult, ParticleType>(
         bm,
         blocks)
   {
   }
 };
 
+//Pathline
+template <typename ParticleType>
+class VTKM_ALWAYS_EXPORT PathlineAlgorithm
+  : public AdvectorBaseAlgorithm<TDSIType, vtkm::worklet::StreamlineResult, ParticleType>
+{
+public:
+  PathlineAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
+                    const std::vector<TDSIType>& blocks)
+    : AdvectorBaseAlgorithm<TDSIType, vtkm::worklet::StreamlineResult, ParticleType>(bm, blocks)
+  {
+  }
+};
 
+//Threaded pathline
+template <typename ParticleType>
+class VTKM_ALWAYS_EXPORT PathlineThreadedAlgorithm
+  : public AdvectorBaseThreadedAlgorithm<TDSIType, vtkm::worklet::StreamlineResult, ParticleType>
+{
+public:
+  PathlineThreadedAlgorithm(const vtkm::filter::particleadvection::BoundsMap& bm,
+                            const std::vector<TDSIType>& blocks)
+    : AdvectorBaseThreadedAlgorithm<TDSIType, vtkm::worklet::StreamlineResult, ParticleType>(bm,
+                                                                                             blocks)
+  {
+  }
+};
 
 }
 }

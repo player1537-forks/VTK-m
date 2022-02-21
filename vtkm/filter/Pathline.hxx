@@ -36,8 +36,9 @@ inline VTKM_CONT vtkm::cont::PartitionedDataSet PathlineBase<ParticleType>::Prep
   const vtkm::cont::PartitionedDataSet& input,
   const vtkm::filter::PolicyBase<DerivedPolicy>&)
 {
-  using AlgorithmType = vtkm::filter::particleadvection::PathlineAlgorithm;
-  using ThreadedAlgorithmType = vtkm::filter::particleadvection::PathlineThreadedAlgorithm;
+  using AlgorithmType = vtkm::filter::particleadvection::PathlineAlgorithm<ParticleType>;
+  using ThreadedAlgorithmType =
+    vtkm::filter::particleadvection::PathlineThreadedAlgorithm<ParticleType>;
   using TDSIType = vtkm::filter::particleadvection::TemporalDataSetIntegrator;
 
   this->ValidateOptions(input);

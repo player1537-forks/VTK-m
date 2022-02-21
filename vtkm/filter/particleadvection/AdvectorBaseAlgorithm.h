@@ -33,15 +33,19 @@ namespace internal
 {
 
 //Helper class to store the different result types.
-template <typename ResultType>
+//template <typename ResultType>
+template <template <typename> typename ResultType, typename ParticleType>
 class ResultHelper;
 
 //Specialization for ParticleAdvectionResult
-using PAType = vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>;
+//using PAType = vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>;
 
-template <>
-class ResultHelper<PAType>
+//template <typename ParticleType>
+template <typename ParticleType>
+class ResultHelper<vtkm::worklet::ParticleAdvectionResult, ParticleType>
 {
+  using PAType = vtkm::worklet::ParticleAdvectionResult<ParticleType>;
+
 public:
   static void Store(std::map<vtkm::Id, std::vector<PAType>>& results,
                     const PAType& res,
@@ -52,7 +56,7 @@ public:
       return;
 
     //Selected out the terminated particles and store them.
-    vtkm::cont::ArrayHandle<vtkm::Particle> termParticles;
+    vtkm::cont::ArrayHandle<ParticleType> termParticles;
     auto indicesAH = vtkm::cont::make_ArrayHandle(indices, vtkm::CopyFlag::Off);
     auto perm = vtkm::cont::make_ArrayHandlePermutation(indicesAH, res.Particles);
 
@@ -71,7 +75,7 @@ public:
       if (nResults == 0)
         continue;
 
-      std::vector<vtkm::cont::ArrayHandle<vtkm::Particle>> allParticles;
+      std::vector<vtkm::cont::ArrayHandle<ParticleType>> allParticles;
       allParticles.reserve(static_cast<std::size_t>(nResults));
 
       for (const auto& res : it.second)
@@ -102,11 +106,14 @@ public:
 };
 
 //Specialization for StreamlineResult
-using SLType = vtkm::worklet::StreamlineResult<vtkm::Particle>;
+//using SLType = vtkm::worklet::StreamlineResult<vtkm::Particle>;
 
-template <>
-class ResultHelper<SLType>
+//template <>
+template <typename ParticleType>
+class ResultHelper<vtkm::worklet::StreamlineResult, ParticleType>
 {
+  using SLType = vtkm::worklet::StreamlineResult<ParticleType>;
+
 public:
   static void Store(std::map<vtkm::Id, std::vector<SLType>>& results,
                     const SLType& res,
@@ -223,7 +230,10 @@ vtkm::cont::PartitionedDataSet RunAlgo(const vtkm::filter::particleadvection::Bo
 //
 // Base class for particle advector
 //
-template <typename DataSetIntegratorType, typename ResultType, typename ParticleType>
+template <typename DataSetIntegratorType,
+          template <typename>
+          typename ResultType,
+          typename ParticleType>
 class VTKM_ALWAYS_EXPORT AdvectorBaseAlgorithm
 {
 public:
@@ -283,7 +293,7 @@ public:
       if (GetActiveParticles(v, blockId))
       {
         const auto& block = this->GetDataSet(blockId);
-        ResultType r;
+        ResultType<ParticleType> r;
         block.Advect(v, this->StepSize, this->NumberOfSteps, r);
         numTerm = this->UpdateResult(r, blockId);
       }
@@ -299,7 +309,7 @@ public:
 
   vtkm::cont::PartitionedDataSet GetOutput() const
   {
-    return internal::ResultHelper<ResultType>::GetOutput(this->Results);
+    return internal::ResultHelper<ResultType, ParticleType>::GetOutput(this->Results);
   }
 
 protected:
@@ -501,7 +511,7 @@ protected:
   }
 
 
-  vtkm::Id UpdateResult(ResultType& res, vtkm::Id blockId)
+  vtkm::Id UpdateResult(ResultType<ParticleType>& res, vtkm::Id blockId)
   {
     std::unordered_map<vtkm::Id, std::vector<vtkm::Id>> idsMapI, idsMapA;
     std::vector<ParticleType> A, I;
@@ -516,7 +526,7 @@ protected:
     if (numTerm > 0)
       this->UpdateTerminated(res.Particles, termIdx);
 
-    internal::ResultHelper<ResultType>::Store(this->Results, res, blockId, termIdx);
+    internal::ResultHelper<ResultType, ParticleType>::Store(this->Results, res, blockId, termIdx);
 
     return numTerm;
   }
@@ -547,7 +557,7 @@ protected:
   vtkm::Id NumRanks;
   std::unordered_map<vtkm::Id, std::vector<vtkm::Id>> ParticleBlockIDsMap;
   vtkm::Id Rank;
-  std::map<vtkm::Id, std::vector<ResultType>> Results;
+  std::map<vtkm::Id, std::vector<ResultType<ParticleType>>> Results;
   vtkm::FloatDefault StepSize;
   vtkm::Id TotalNumParticles;
   vtkm::Id TotalNumTerminatedParticles;
