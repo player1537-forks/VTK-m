@@ -895,7 +895,10 @@ Poincare(const vtkm::cont::DataSet& ds,
     std::cout<<"LocatorBIH: "<<locParam1<<" "<<locParam2<<std::endl;
     locatorBIH.SetCellSet(ds.GetCellSet());
     locatorBIH.SetCoordinates(ds.GetCoordinateSystem());
+    auto startL = std::chrono::steady_clock::now();
     locatorBIH.Update();
+    std::chrono::duration<double> dt = std::chrono::steady_clock::now()-startL;
+    std::cout<<"BIH build= "<<dt.count()<<std::endl;
   }
   else
   {
@@ -908,7 +911,10 @@ Poincare(const vtkm::cont::DataSet& ds,
     std::cout<<"Locator2Level: "<<locParam1<<" "<<locParam2<<std::endl;
     locator2L.SetCellSet(ds.GetCellSet());
     locator2L.SetCoordinates(ds.GetCoordinateSystem());
+    auto startL = std::chrono::steady_clock::now();
     locator2L.Update();
+    std::chrono::duration<double> dt = std::chrono::steady_clock::now()-startL;
+    std::cout<<"2L build= "<<dt.count()<<std::endl;
   }
 
   vtkm::cont::Invoker invoker;
@@ -1438,7 +1444,7 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
 }
 
 vtkm::cont::DataSet
-ReadData(std::map<std::string, std::vector<std::string>>& args)
+ReadData_ORIG(std::map<std::string, std::vector<std::string>>& args)
 {
   std::map<std::string, std::string> adiosArgs;
   adiosArgs["--dir"] = args["--dir"][0];
@@ -1513,6 +1519,119 @@ ReadData(std::map<std::string, std::vector<std::string>>& args)
 //  vtkm::io::VTKDataSetWriter writer("debug.vtk");
 //  writer.WriteDataSet(ds);
 
+  return ds;
+}
+
+vtkm::cont::DataSet
+ReadData(std::map<std::string, std::vector<std::string>>& args)
+{
+  if (args.find("--Step") == args.end())
+    return ReadData_ORIG(args);
+
+  int step = std::stoi(args["--Step"][0]);
+
+  std::map<std::string, std::string> adiosArgs;
+  adiosArgs["--dir"] = args["--dir"][0];
+
+  adios = new adios2::ADIOS;
+  adiosStuff["init"] = new adiosS(adios, "xgc.poincare_init.bp", "init", adiosArgs);
+  adiosStuff["mesh"] = new adiosS(adios, "xgc.mesh.bp", "mesh", adiosArgs);
+  adiosStuff["data"] = new adiosS(adios, "xgc.3d.bp", "3d", adiosArgs);
+  adiosStuff["equil"] = new adiosS(adios, "xgc.equil.bp", "equil", adiosArgs);
+  adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "bfield", adiosArgs);
+
+  /*
+  adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "/node_data[0]/values", adiosArgs);
+  adiosStuff["bfield-all"] = new adiosS(adios, "xgc.bfield-all.bp", "Bs", adiosArgs);
+  //adiosStuff["psi_bicub_acoef"] = new adiosS(adios, "xgc.bfield_with_coeff.bp", "psi_bicub_acoef", adiosArgs);
+  //adiosStuff["one_d_cub_psi_acoef"] = new adiosS(adios, "xgc.bfield_with_coeff.bp", "one_d_cub_acoef", adiosArgs);
+  adiosStuff["interp_coeff"] = new adiosS(adios, "xgc.bfield_with_coeff.bp", "interp_coeff", adiosArgs);
+  adiosStuff["equil"] = new adiosS(adios, "xgc.equil.bp", "equil", adiosArgs);
+  */
+
+  auto initStuff = adiosStuff["init"];
+  auto meshStuff = adiosStuff["mesh"];
+  auto dataStuff = adiosStuff["data"];
+  auto equilStuff = adiosStuff["equil"];
+  auto bfieldStuff = adiosStuff["bfield"];
+
+  /*
+  auto bfield_allStuff = adiosStuff["bfield-all"];
+  auto interp_coeffStuff = adiosStuff["interp_coeff"];
+  //auto one_dcub_acoefStuff = adiosStuff["one_d_cub_psi_acoef"];
+  */
+
+  initStuff->engine.BeginStep();
+  meshStuff->engine.BeginStep();
+  equilStuff->engine.BeginStep();
+  bfieldStuff->engine.BeginStep();
+
+  dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &numPlanes, adios2::Mode::Sync);
+  meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_n"), &numNodes, adios2::Mode::Sync);
+  meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_t"), &numTri, adios2::Mode::Sync);
+  std::vector<double> psiVals;
+  meshStuff->engine.Get(meshStuff->io.InquireVariable<double>("psi"), psiVals, adios2::Mode::Sync);
+  psi_min = psiVals[0];
+  psi_max = psiVals[psiVals.size()-1];
+
+  auto ds = ReadMesh(meshStuff);
+  ReadPsiInterp(equilStuff, initStuff, ds);
+  ReadB(bfieldStuff, ds);
+
+  adios2::StepStatus status;
+  for (int i = 0; i < step; i++)
+  {
+    status = dataStuff->engine.BeginStep();
+    if (status != adios2::StepStatus::OK)
+    {
+      std::cout<<"********* Failed to get step."<<std::endl;
+      return ds;
+    }
+
+    dataStuff->engine.EndStep();
+  }
+
+  status = dataStuff->engine.BeginStep();
+  ReadOther(dataStuff, ds, "As_phi_ff");
+  ReadOther(dataStuff, ds, "dAs_phi_ff");
+  ReadScalar(dataStuff, ds, "dpot");
+
+
+
+/*
+  ReadScalar(dataStuff, ds, "apars", "apars", true);
+  ReadScalar(meshStuff, ds, "psi");
+  ReadScalar(meshStuff, ds, "theta");
+*/
+
+  /*
+  ReadVec(bfieldStuff, ds, "B", "/node_data[0]/values");
+  ReadVec(bfieldStuff, ds, "B3D", "/node_data[0]/values", true, false);
+  ReadVec(bfield_allStuff, ds, "Bs", "Bs", true);
+  ReadOther(bfieldStuff, ds, "As_phi_ff");
+  ReadOther(bfieldStuff, ds, "dAs_phi_ff");
+  ReadPsiInterp(equilStuff, interp_coeffStuff, ds);
+  */
+
+  CalcAs(ds);
+  Calc_dAs(ds);
+
+  /*
+  if (0)
+  {
+    auto ds3d = ReadMesh3D(meshStuff, true);
+    ReadScalar(dataStuff, ds3d, "apars", "apars", true, true);
+    ReadVec(bfieldStuff, ds3d, "B", "/node_data[0]/values", true, true);
+    ReadVec(bfield_allStuff, ds3d, "Bs", "Bs", true, true);
+    //CalcX(ds3d);
+    vtkm::io::VTKDataSetWriter writer("debug.vtk");
+    writer.WriteDataSet(ds3d);
+  }
+  */
+
+  //ds.PrintSummary(std::cout);
+  //vtkm::io::VTKDataSetWriter writer("debug.vtk");
+  //writer.WriteDataSet(ds);
   return ds;
 }
 
@@ -1614,7 +1733,8 @@ main(int argc, char** argv)
 
   std::vector<vtkm::Vec3f> seeds;
   int whichWorklet = std::atoi(args["--worklet"][0].c_str());
-  bool useTraces = std::atoi(args["--traces"][0].c_str());
+  bool useTraces = false;
+  if (args.find("--traces") != args.end()) std::atoi(args["--traces"][0].c_str());
   std::string outFileName = args["--output"][0];
   useTurb = true;
   if (args.find("--turbulence") != args.end())
@@ -1646,6 +1766,7 @@ main(int argc, char** argv)
   }
 
   auto ds = ReadData(args);
+
   //ds.PrintSummary(std::cout);
   //return 0;
   /*

@@ -95,7 +95,7 @@ public:
                    vtkm::FloatDefault stepSize,
                    bool saveTraces,
                    bool quickTest)
-    : MaxIter(maxPunc * 100000000)
+    : MaxIter(maxPunc * 1000000)
     , MaxPunc(maxPunc)
     , PlaneVal(planeVal)
     , StepSize(stepSize)
