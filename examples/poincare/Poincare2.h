@@ -48,7 +48,6 @@ jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | 
 
 */
 
-
 //#define PRINT_STUFF
 #ifdef PRINT_STUFF
 #define DBG(x) std::cout<<x
@@ -62,6 +61,10 @@ jsrun -n 192 -a1 -c1 -g0 -r32 -brs /usr/bin/stdbuf -oL -eL ./xgc-eem-rel 2>&1 | 
 //-----------------------------------------------------------------------------
 class PoincareWorklet2 : public vtkm::worklet::WorkletMapField
 {
+  using DimensionType = vtkm::Int16;
+  using DimVec3 = vtkm::Vec<DimensionType, 3>;
+  using FloatVec3 = vtkm::Vec3f;
+
   class ParticleInfo
   {
   public:
@@ -79,6 +82,7 @@ public:
   using ControlSignature = void(FieldInOut particles,
                                 ExecObject locator,
                                 WholeCellSetIn<> cellSet,
+                                WholeArrayIn Coords,
                                 WholeArrayIn As_phi_ff,
                                 WholeArrayIn dAs_phi_ff_RZP,
                                 WholeArrayIn coeff_1D,
@@ -87,7 +91,7 @@ public:
                                 WholeArrayInOut outputRZ,
                                 WholeArrayInOut outputTP,
                                 WholeArrayInOut punctureID);
-  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11);
+  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12);
   using InputDomain = _1;
 
   PoincareWorklet2(vtkm::Id maxPunc,
@@ -351,11 +355,12 @@ public:
     return true;
   }
 
-  template <typename LocatorType, typename CellSetType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType, typename OutputType, typename OutputType2D, typename IdType>
+  template <typename LocatorType, typename CellSetType, typename CoordsType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType, typename OutputType, typename OutputType2D, typename IdType>
   VTKM_EXEC void operator()(const vtkm::Id& idx,
                             vtkm::Particle& particle,
                             const LocatorType& locator,
                             const CellSetType& cellSet,
+                            const CoordsType& coords,
                             const AsFieldType& AsPhiFF,
                             const DAsFieldType& DAsPhiFF_RZP,
                             const Coeff_1DType& Coeff_1D,
@@ -394,7 +399,7 @@ public:
       DBG("   "<<particle.Pos<<" #s= "<<particle.NumSteps<<std::endl);
 
 
-      if (!this->TakeRK4Step(particle.Pos, pInfo, locator, cellSet,
+      if (!this->TakeRK4Step(particle.Pos, pInfo, locator, cellSet, coords,
                              AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, newPos))
       {
         break;
@@ -456,12 +461,13 @@ public:
 #endif
   }
 
-  template <typename LocatorType, typename CellSetType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
+  template <typename LocatorType, typename CellSetType, typename CoordsType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
   bool TakeRK4Step(const vtkm::Vec3f& ptRPZ,
                    ParticleInfo& pInfo,
                    const LocatorType& locator,
                    const CellSetType& cellSet,
+                   const CoordsType& coords,
                    const AsFieldType& AsPhiFF,
                    const DAsFieldType& DAsPhiFF_RZP,
                    const Coeff_1DType& Coeff_1D,
@@ -479,19 +485,19 @@ public:
 
     DBG("    ****** K1"<<std::endl);
     bool v1, v2, v3, v4;
-    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1);
+    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1);
     tmp = p0 + k1*this->StepSize_2;
 
     DBG("    ****** K2"<<std::endl);
-    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2);
+    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2);
     tmp = p0 + k2*this->StepSize_2;
 
     DBG("    ****** K3"<<std::endl);
-    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3);
+    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3);
     tmp = p0 + k3*this->StepSize;
 
     DBG("    ****** K4"<<std::endl);
-    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4);
+    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4);
 
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + this->StepSize * vec;
@@ -570,12 +576,226 @@ public:
     return v;
   }
 
-  template <typename LocatorType, typename CellSetType>
+  VTKM_EXEC inline vtkm::Id ComputeFlatIndex(const DimVec3& idx, const DimVec3 dim) const
+  {
+    return idx[0] + (dim[0] * (idx[1] + (dim[1] * idx[2])));
+  }
+  VTKM_EXEC inline vtkm::exec::Grid ComputeLeafGrid(const DimVec3& idx, const DimVec3& dim, const vtkm::exec::Grid& l1Grid) const
+  {
+    return { dim,
+             0,
+             l1Grid.Origin + (static_cast<FloatVec3>(idx) * l1Grid.BinSize),
+             l1Grid.BinSize / static_cast<FloatVec3>(dim) };
+  }
+
+  template <typename LocatorType, typename CellSetType, typename CoordsType>
+  VTKM_EXEC
+  vtkm::ErrorCode FindCell2(const vtkm::Vec3f& point,
+                            const LocatorType& locator,
+                            const CellSetType& cellSet,
+                            const CoordsType& coords,
+                            vtkm::Id& cellId,
+                            vtkm::Vec3f& parametric,
+                            vtkm::Id3& prevCell) const
+  {
+    using namespace vtkm::internal::cl_uniform_bins;
+
+    cellId = -1;
+
+    auto TopLevel = locator.GetTopLevel();
+    DimVec3 binId3 = static_cast<DimVec3>((point - TopLevel.Origin) / TopLevel.BinSize);
+    if (binId3[0] >= 0 && binId3[0] < TopLevel.Dimensions[0] && binId3[1] >= 0 &&
+        binId3[1] < TopLevel.Dimensions[1] && binId3[2] >= 0 &&
+        binId3[2] < TopLevel.Dimensions[2])
+    {
+      vtkm::Id binId = this->ComputeFlatIndex(binId3, TopLevel.Dimensions);
+
+      auto ldim = locator.GetLeafDimensions().Get(binId);
+      if (!ldim[0] || !ldim[1] || !ldim[2])
+      {
+        printf("2L CellNotFound:: %d\n", __LINE__);
+        return vtkm::ErrorCode::CellNotFound;
+      }
+
+      auto leafGrid = this->ComputeLeafGrid(binId3, ldim, TopLevel);
+
+      DimVec3 leafId3 = static_cast<DimVec3>((point - leafGrid.Origin) / leafGrid.BinSize);
+      // precision issues may cause leafId3 to be out of range so clamp it
+      leafId3 = vtkm::Max(DimVec3(0), vtkm::Min(ldim - DimVec3(1), leafId3));
+
+      vtkm::Id leafStart = locator.GetLeafStartIndex().Get(binId);
+      vtkm::Id leafId = leafStart + this->ComputeFlatIndex(leafId3, leafGrid.Dimensions);
+
+      vtkm::Id start = locator.GetCellStartIndex().Get(leafId);
+      vtkm::Id end = start + locator.GetCellCount().Get(leafId);
+      for (vtkm::Id i = start; i < end; ++i)
+      {
+        vtkm::Id cid = locator.GetCellIds().Get(i);
+        auto indices = cellSet.GetIndices(cid);
+        auto pts = vtkm::make_VecFromPortalPermute(&indices, coords);
+        vtkm::Vec3f pc;
+        bool inside;
+        PointInsideCell(point, cellSet.GetCellShape(cid), pts, pc, inside);
+        if (inside)
+        {
+          prevCell[0] = start;
+          prevCell[1] = end;
+          prevCell[2] = cid;
+//          std::cout<<"FindCell: s/e= "<<start<<" "<<end<<" i= "<<i<<" prev= "<<prevCell<<std::endl;
+          cellId = cid;
+          parametric = pc;
+          return vtkm::ErrorCode::Success;
+        }
+      }
+    }
+
+    printf("2L CellNotFound:: %d\n", __LINE__);
+    return vtkm::ErrorCode::CellNotFound;
+  }
+
+  template <typename PointsVecType>
+  VTKM_EXEC inline bool InCellBounds(const PointsVecType& points, const vtkm::Vec3f& pt) const
+  {
+    vtkm::Vec2f minP, maxP;
+    minP[0] = maxP[0] = points[0][0];
+    minP[1] = maxP[1] = points[0][1];
+
+    //X,Y
+    for (vtkm::IdComponent i = 0; i < 2; i++)
+    {
+      if (points[1][i] < minP[i]) minP[i] = points[1][i];
+      if (points[1][i] > maxP[i]) maxP[i] = points[1][i];
+
+      if (points[2][i] < minP[i]) minP[i] = points[2][i];
+      if (points[2][i] > maxP[i]) maxP[i] = points[2][i];
+    }
+
+    return (pt[0] >= minP[0] && pt[0] <= maxP[0] &&
+            pt[1] >= minP[1] && pt[1] <= maxP[1]);
+  }
+
+  vtkm::FloatDefault dot(const vtkm::Vec3f& a, const vtkm::Vec3f& b) const
+  {
+    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  }
+
+  template <typename CellShapeTag, typename CoordsType>
+  VTKM_EXEC bool PointInsideCell(const vtkm::Vec3f& point,
+                                 const CellShapeTag& /*cellShape*/,
+                                 const CoordsType& cellPoints,
+                                 vtkm::Vec3f& parametricCoordinates,
+                                 bool& inside) const
+  {
+    inside = this->InCellBounds(cellPoints, point);
+    if (inside)
+    {
+      parametricCoordinates[2] = 0;
+      vtkm::Vec3f norm(0,0,1); //2D, so always in Z.
+      const auto& p0 = cellPoints[0];
+      for (vtkm::IdComponent i = 0; i < 2; i++)
+      {
+        vtkm::Vec3f p1 = cellPoints[i+1];
+        vtkm::Vec3f p2 = cellPoints[2-i];
+        auto plnN = vtkm::Cross(norm, p2-p0);
+        parametricCoordinates[i] = vtkm::Dot(point - p0, plnN) /  vtkm::Dot(p1-p0, plnN);
+      }
+
+      inside = (parametricCoordinates[0] >= 0 &&
+                parametricCoordinates[1] >= 0 &&
+                (parametricCoordinates[0] + parametricCoordinates[1]) <= 1);
+
+      //vtkm::exec::WorldCoordinatesToParametricCoordinates(cellPoints, point, cellShape, parametricCoordinates);
+      //inside = vtkm::exec::CellInside(parametricCoordinates, cellShape);
+    }
+    return true;
+  }
+
+  template <typename LocatorType, typename CellSetType, typename CoordsType>
+  VTKM_EXEC
+  bool FindCell(const vtkm::Vec3f& ptRZ,
+                ParticleInfo& pInfo,
+                const LocatorType& locator,
+                const CellSetType& cellSet,
+                const CoordsType& coords,
+                vtkm::Vec3f& param,
+                vtkm::Id& cellId) const
+  {
+    cellId = -1;
+
+    //prevCell: (start, end, prevID)
+    auto prevCell = pInfo.PrevCell;
+
+    if (prevCell[0] != -1)
+    {
+      //Check last cellId first.
+      auto indices = cellSet.GetIndices(prevCell[2]);
+      auto pts = vtkm::make_VecFromPortalPermute(&indices, coords);
+      vtkm::Vec3f pc;
+      bool inside;
+      this->PointInsideCell(ptRZ, cellSet.GetCellShape(prevCell[2]), pts, pc, inside);
+      if (inside)
+      {
+        cellId = prevCell[2];
+//        std::cout<<"  Quick:: FindCell: "<<prevCell<<"  cid= "<<cellId<<std::endl;
+        param = pc;
+        return true;
+      }
+//      std::cout<<"    QuickFail "<<prevCell<<std::endl;
+      //Check the rest of the cells in the bin, excluding the cell we just checked.
+      for (vtkm::Id i = prevCell[0]; i < prevCell[1]; i++)
+      {
+        vtkm::Id cid = locator.GetCellIds().Get(i);
+        if (cid != prevCell[2])
+        {
+          auto indices2 = cellSet.GetIndices(cid);
+          auto pts2 = vtkm::make_VecFromPortalPermute(&indices2, coords);
+          this->PointInsideCell(ptRZ, cellSet.GetCellShape(prevCell[2]), pts2, pc, inside);
+          if (inside)
+          {
+//            std::cout<<"  "<<(i-prevCell[0])<<" -FindCell: "<<prevCell<<"  cid= "<<cid<<" len= "<<prevCell[1]-prevCell[0]<<std::endl;
+            prevCell[2] = cid;
+            cellId = cid;
+            param = pc;
+            return true;
+          }
+        }
+      }
+    }
+
+//    std::cout<<" ***** No find: "<<prevCell<<std::endl;
+
+    return (this->FindCell2(ptRZ, locator, cellSet, coords, cellId, param, prevCell) == vtkm::ErrorCode::Success);
+  }
+
+  template <typename LocatorType, typename CellSetType, typename CoordsType>
+  VTKM_EXEC
+  bool PtLoc2(const vtkm::Vec3f& ptRZ,
+              ParticleInfo& pInfo,
+              const LocatorType& locator,
+              const CellSetType& cs,
+              const CoordsType& coords,
+              vtkm::Vec3f& param,
+              vtkm::Vec<vtkm::Id, 3>& vIds) const
+  {
+    vtkm::Id cellId;
+    if (!this->FindCell(ptRZ, pInfo, locator, cs, coords, param, cellId))
+      return false;
+
+    auto tmp =  cs.GetIndices(cellId);
+    vIds[0] = tmp[0];
+    vIds[1] = tmp[1];
+    vIds[2] = tmp[2];
+
+    return true;
+  }
+
+  template <typename LocatorType, typename CellSetType, typename CoordsType>
   VTKM_EXEC
   bool PtLoc(const vtkm::Vec3f& ptRZ,
              ParticleInfo& pInfo,
              const LocatorType& locator,
              const CellSetType& cs,
+             const CoordsType& coords,
              vtkm::Vec3f& param,
              vtkm::Vec<vtkm::Id, 3>& vIds) const
   {
@@ -585,6 +805,18 @@ public:
     {
       printf("Find Cell failed! pt= %lf %lf %lf\n", ptRZ[0], ptRZ[1], ptRZ[2]);
       return false;
+    }
+
+    if (0)
+    {
+      vtkm::Vec3f p2;
+      vtkm::Id cid2;
+
+      ParticleInfo p2Info = pInfo;
+      p2Info.PrevCell = vtkm::Id3(-1,-1,-1);
+      this->FindCell(ptRZ, p2Info, locator, cs, coords, p2, cid2);
+      if (cid2 != cellId) std::cout<<" **************************** WRONG"<<std::endl;
+      if (vtkm::Magnitude(p2-param) > 1e-10) std::cout<<" **************************** WRONG"<<std::endl;
     }
 
     //vtkm::VecVariable<vtkm::Id, 3> tmp;
@@ -916,12 +1148,13 @@ public:
     return true;
   }
 
-  template <typename LocatorType, typename CellSetType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
+  template <typename LocatorType, typename CellSetType, typename CoordsType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
   VTKM_EXEC
   bool Evaluate(const vtkm::Vec3f& ptRPZ,
                 ParticleInfo& pInfo,
                 const LocatorType& locator,
                 const CellSetType& cellSet,
+                const CoordsType& coords,
                 const AsFieldType& AsPhiFF,
                 const DAsFieldType& DAsPhiFF_RZP,
                 const Coeff_1DType& coeff_1D,
@@ -995,7 +1228,7 @@ public:
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
 
-    this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, x_ff_param, x_ff_vids);
+    this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, coords, x_ff_param, x_ff_vids);
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
 

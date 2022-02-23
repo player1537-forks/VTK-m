@@ -25,7 +25,7 @@
 #include <vtkm/cont/Timer.h>
 
 #include <vtkm/cont/CellLocatorGeneral.h>
-#include <vtkm/cont/CellLocatorTwoLevelTriangle.h>
+//#include <vtkm/cont/CellLocatorTwoLevelTriangle.h>
 #include <vtkm/cont/CellLocatorBoundingIntervalHierarchy.h>
 #include <vtkm/io/VTKDataSetWriter.h>
 #include <vtkm/cont/Algorithm.h>
@@ -880,7 +880,7 @@ Poincare(const vtkm::cont::DataSet& ds,
 {
   //vtkm::cont::CellLocatorGeneral locator;
   vtkm::cont::CellLocatorBoundingIntervalHierarchy locatorBIH;
-  vtkm::cont::CellLocatorTwoLevelTriangle locator2L;
+  vtkm::cont::CellLocatorTwoLevel locator2L;
 
   bool locBIH = false;
   if (locName == "BIH")
@@ -996,12 +996,14 @@ Poincare(const vtkm::cont::DataSet& ds,
       invoker(worklet, seeds,
               locatorBIH,
               ds.GetCellSet(),
+              ds.GetCoordinateSystem(),
               As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
               tracesArr, outRZ, outTP, outID);
     else
       invoker(worklet, seeds,
               locator2L,
               ds.GetCellSet(),
+              ds.GetCoordinateSystem(),
               As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
               tracesArr, outRZ, outTP, outID);
 #else
