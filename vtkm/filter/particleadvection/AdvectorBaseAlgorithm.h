@@ -38,9 +38,6 @@ template <template <typename> class ResultType, typename ParticleType>
 class ResultHelper;
 
 //Specialization for ParticleAdvectionResult
-//using PAType = vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>;
-
-//template <typename ParticleType>
 template <typename ParticleType>
 class ResultHelper<vtkm::worklet::ParticleAdvectionResult, ParticleType>
 {
@@ -106,9 +103,6 @@ public:
 };
 
 //Specialization for StreamlineResult
-//using SLType = vtkm::worklet::StreamlineResult<vtkm::Particle>;
-
-//template <>
 template <typename ParticleType>
 class ResultHelper<vtkm::worklet::StreamlineResult, ParticleType>
 {

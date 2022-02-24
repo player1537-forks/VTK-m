@@ -10,7 +10,6 @@
 
 set(headers
   AdvectorBaseAlgorithm.h
-  AdvectorBaseAlgorithm.hxx
   AdvectorBaseThreadedAlgorithm.h
   BoundsMap.h
   DataSetIntegrator.h
