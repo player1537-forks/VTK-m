@@ -28,61 +28,61 @@ using TemporalRK4Type = vtkm::worklet::particleadvection::RK4Integrator<Temporal
 using TemporalStepper =
   vtkm::worklet::particleadvection::Stepper<TemporalRK4Type, TemporalGridEvalType>;
 
-//-----
-// Specialization for ParticleAdvection worklet
-template <>
-template <>
-inline void DataSetIntegratorBase<GridEvalType>::DoAdvect(
-  vtkm::cont::ArrayHandle<vtkm::Particle>& seeds,
-  const Stepper& stepper,
-  vtkm::Id maxSteps,
-  vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>& result) const
-{
-  vtkm::worklet::ParticleAdvection Worklet;
-  result = Worklet.Run(stepper, seeds, maxSteps);
-}
+#define DEFINE_DOADVECT(GridEvalType, ParticleType, ResultType, WorkletType) \
+  template <>                                                                \
+  template <>                                                                \
+  inline void DataSetIntegratorBase<GridEvalType>::DoAdvect(                 \
+    vtkm::cont::ArrayHandle<ParticleType>& seeds,                            \
+    const Stepper& stepper,                                                  \
+    vtkm::Id maxSteps,                                                       \
+    ResultType<ParticleType>& result) const                                  \
+  {                                                                          \
+    WorkletType Worklet;                                                     \
+    result = Worklet.Run(stepper, seeds, maxSteps);                          \
+  }
 
 //-----
-// Specialization for Streamline worklet
-template <>
-template <>
-inline void DataSetIntegratorBase<GridEvalType>::DoAdvect(
-  vtkm::cont::ArrayHandle<vtkm::Particle>& seeds,
-  const Stepper& stepper,
-  vtkm::Id maxSteps,
-  vtkm::worklet::StreamlineResult<vtkm::Particle>& result) const
-{
-  vtkm::worklet::Streamline Worklet;
-  result = Worklet.Run(stepper, seeds, maxSteps);
-}
+// Specialization for different worklets.
 
-//-----
-// Specialization for PathParticle worklet
-template <>
-template <>
-inline void DataSetIntegratorBase<TemporalGridEvalType>::DoAdvect(
-  vtkm::cont::ArrayHandle<vtkm::Particle>& seeds,
-  const TemporalStepper& stepper,
-  vtkm::Id maxSteps,
-  vtkm::worklet::ParticleAdvectionResult<vtkm::Particle>& result) const
-{
-  vtkm::worklet::ParticleAdvection Worklet;
-  result = Worklet.Run(stepper, seeds, maxSteps);
-}
+// ParticleAdvection worklet
+DEFINE_DOADVECT(GridEvalType,
+                vtkm::Particle,
+                vtkm::worklet::ParticleAdvectionResult,
+                vtkm::worklet::ParticleAdvection)
+DEFINE_DOADVECT(GridEvalType,
+                vtkm::ChargedParticle,
+                vtkm::worklet::ParticleAdvectionResult,
+                vtkm::worklet::ParticleAdvection)
 
-//-----
-// Specialization for Pathline worklet
-template <>
-template <>
-inline void DataSetIntegratorBase<TemporalGridEvalType>::DoAdvect(
-  vtkm::cont::ArrayHandle<vtkm::Particle>& seeds,
-  const TemporalStepper& stepper,
-  vtkm::Id maxSteps,
-  vtkm::worklet::StreamlineResult<vtkm::Particle>& result) const
-{
-  vtkm::worklet::Streamline Worklet;
-  result = Worklet.Run(stepper, seeds, maxSteps);
-}
+// Streamline worklet
+DEFINE_DOADVECT(GridEvalType,
+                vtkm::Particle,
+                vtkm::worklet::StreamlineResult,
+                vtkm::worklet::Streamline)
+DEFINE_DOADVECT(GridEvalType,
+                vtkm::ChargedParticle,
+                vtkm::worklet::StreamlineResult,
+                vtkm::worklet::Streamline)
+
+// PathParticle worklet
+DEFINE_DOADVECT(TemporalGridEvalType,
+                vtkm::Particle,
+                vtkm::worklet::ParticleAdvectionResult,
+                vtkm::worklet::ParticleAdvection)
+DEFINE_DOADVECT(TemporalGridEvalType,
+                vtkm::ChargedParticle,
+                vtkm::worklet::ParticleAdvectionResult,
+                vtkm::worklet::ParticleAdvection)
+
+// Pathline worklet
+DEFINE_DOADVECT(TemporalGridEvalType,
+                vtkm::Particle,
+                vtkm::worklet::StreamlineResult,
+                vtkm::worklet::Streamline)
+DEFINE_DOADVECT(TemporalGridEvalType,
+                vtkm::ChargedParticle,
+                vtkm::worklet::StreamlineResult,
+                vtkm::worklet::Streamline)
 
 }
 }
