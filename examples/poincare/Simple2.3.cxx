@@ -74,6 +74,9 @@ using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 #endif
 #ifdef BUILD_POINC2
 #include "Poincare2.h"
+#include "Poincare2.1.h"
+#include "ComputeAs.h"
+#include "ComputeAsCell.h"
 #endif
 #ifdef BUILD_POINC3
 #include "Poincare3.h"
@@ -915,6 +918,7 @@ Poincare(const vtkm::cont::DataSet& ds,
     locator2L.Update();
     std::chrono::duration<double> dt = std::chrono::steady_clock::now()-startL;
     std::cout<<"2L build= "<<dt.count()<<std::endl;
+
   }
 
   vtkm::cont::Invoker invoker;
@@ -1006,6 +1010,111 @@ Poincare(const vtkm::cont::DataSet& ds,
               ds.GetCoordinateSystem(),
               As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
               tracesArr, outRZ, outTP, outID);
+#else
+    std::cout<<"*************************************** Code NOT build with Worklet 2"<<std::endl;
+#endif
+  }
+  else if (whichWorklet == 21)
+  {
+#ifdef BUILD_POINC2
+
+    //Compute the As values on a uniform grid.
+    vtkm::Id3 dims(BGridSize, BGridSize, numPlanes*2);
+    vtkm::FloatDefault dR = (eq_max_r-eq_min_r) / static_cast<vtkm::FloatDefault>(BGridSize-1);
+    vtkm::FloatDefault dZ = (eq_max_z-eq_min_z) / static_cast<vtkm::FloatDefault>(BGridSize-1);
+    vtkm::Vec3f origin(eq_min_r, eq_min_z, 0), maxPt(eq_max_r, eq_max_z, numPlanes*2);
+    vtkm::Vec3f spacing(dR, dZ, 1);
+
+    auto grid = vtkm::cont::DataSetBuilderUniform::Create(dims, origin, spacing);
+    vtkm::cont::ArrayHandleUniformPointCoordinates uniform2DCoords({BGridSize, BGridSize, 1},
+                                                                   origin, {dR, dZ, 0});
+    vtkm::cont::CellSetStructured<2> uniform2DCells;
+    uniform2DCells.SetPointDimensions(vtkm::Id2(BGridSize, BGridSize));
+
+    std::cout<<"********** NumCells= "<<grid.GetCellSet().GetNumberOfCells()<<std::endl;
+    grid.PrintSummary(std::cout);
+
+    /*
+    grid.AddField(vtkm::cont::make_FieldPoint("As", AsUniform));
+    grid.AddField(vtkm::cont::make_FieldPoint("dAs", dAsUniform));
+    vtkm::io::VTKDataSetWriter writer("asGrid.vtk");
+    writer.WriteDataSet(grid);
+    */
+
+    PoincareWorklet2_1 worklet(numPunc, 0.0f, h, (traces!=nullptr), quickTest);
+    worklet.SetAsGrid(origin, spacing, maxPt, dims);
+    worklet.UseBOnly = useBOnly;
+    worklet.UseHighOrder = useHighOrder;
+    worklet.UseAsCell = BGridCell;
+
+    /*
+    auto cellCountP = locator2L.CellCount.ReadPortal();
+    vtkm::Id maxCount = cellCountP.Get(0);
+    for (vtkm::Id i = 0; i < cellCountP.GetNumberOfValues(); i++)
+    {
+      vtkm::Id val = cellCountP.Get(i);
+      if (val > maxCount) maxCount = val;
+    }
+    worklet.MaxCellCount = maxCount;
+    */
+
+    if (traces != nullptr)
+    {
+      std::vector<vtkm::Vec3f> t;
+      t.resize(pts.size()*worklet.MaxIter, {-100, -100, -100});
+      std::cout<<"TRACES: "<<t.size()<<std::endl;
+      tracesArr = vtkm::cont::make_ArrayHandle(t, vtkm::CopyFlag::On);
+    }
+
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> dAsUniform;
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> AsUniform;
+
+    vtkm::cont::Timer timer2;
+    timer2.Start();
+    if (worklet.UseAsCell)
+    {
+      std::cout<<"********************* AS Cell"<<std::endl;
+      vtkm::Id nCells = uniform2DCells.GetNumberOfCells() * numPlanes * 2;
+      AsUniform.Allocate(nCells);
+      dAsUniform.Allocate(nCells);
+      ComputeAsCellWorklet computeAs;
+      computeAs.Num2DCells = uniform2DCells.GetNumberOfCells();
+
+      invoker(computeAs,
+              uniform2DCells, uniform2DCoords,
+              //grid.GetCellSet(),
+              //grid.GetCoordinateSystem(),
+              locator2L,
+              ds.GetCellSet(),
+              As_ff, dAs_ff_rzp,
+              AsUniform, dAsUniform);
+    }
+    else
+    {
+      std::cout<<"********************* AS Point"<<std::endl;
+      ComputeAsWorklet computeAs;
+      invoker(computeAs,
+              grid.GetCoordinateSystem(),
+              locator2L,
+              ds.GetCellSet(),
+              As_ff,
+              dAs_ff_rzp,
+              AsUniform,
+              dAsUniform);
+    }
+    timer2.Stop();
+    std::cout<<"... BGrid compute done."<<std::endl;
+    std::cout<<"Grid build timer= "<<timer2.GetElapsedTime()<<std::endl;
+
+    start = std::chrono::steady_clock::now();
+    invoker(worklet, seeds,
+            locator2L,
+            ds.GetCellSet(),
+            ds.GetCoordinateSystem(),
+            As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+            AsUniform, dAsUniform,
+            tracesArr, outRZ, outTP, outID);
+
 #else
     std::cout<<"*************************************** Code NOT build with Worklet 2"<<std::endl;
 #endif
