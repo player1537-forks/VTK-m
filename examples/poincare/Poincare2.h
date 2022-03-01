@@ -813,8 +813,8 @@ public:
       ParticleInfo p2Info = pInfo;
       p2Info.PrevCell = vtkm::Id3(-1,-1,-1);
       this->FindCell(ptRZ, p2Info, locator, cs, coords, p2, cid2);
-      if (cid2 != cellId) std::cout<<" **************************** WRONG"<<std::endl;
-      if (vtkm::Magnitude(p2-param) > 1e-10) std::cout<<" **************************** WRONG"<<std::endl;
+      //if (cid2 != cellId) std::cout<<" **************************** WRONG"<<std::endl;
+      //if (vtkm::Magnitude(p2-param) > 1e-10) std::cout<<" **************************** WRONG"<<std::endl;
     }
 
     //vtkm::VecVariable<vtkm::Id, 3> tmp;
