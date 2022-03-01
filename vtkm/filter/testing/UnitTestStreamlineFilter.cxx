@@ -170,7 +170,7 @@ void TestPathline()
 void TestChargedParticle()
 {
 #if 1
-  using ArrayType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
+  //using ArrayType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
   //using FieldType = vtkm::worklet::particleadvection::ElectroMagneticField<ArrayType>;
   using SeedsType = vtkm::cont::ArrayHandle<vtkm::ChargedParticle>;
 
