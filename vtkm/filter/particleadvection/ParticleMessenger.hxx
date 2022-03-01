@@ -145,7 +145,8 @@ void ParticleMessenger<ParticleType>::Exchange(
 #ifdef VTKM_ENABLE_MPI
 
 VTKM_CONT
-void ParticleMessenger::RegisterMessages(int msgSz, int nParticles, int numBlockIds)
+template <typename ParticleType>
+void ParticleMessenger<ParticleType>::RegisterMessages(int msgSz, int nParticles, int numBlockIds)
 {
   //Determine buffer size for msg and particle tags.
   std::size_t messageBuffSz = CalcMessageBufferSize(msgSz + 1);
@@ -160,7 +161,8 @@ void ParticleMessenger::RegisterMessages(int msgSz, int nParticles, int numBlock
 }
 
 VTKM_CONT
-void ParticleMessenger::SendMsg(int dst, const std::vector<int>& msg)
+template <typename ParticleType>
+void ParticleMessenger<ParticleType>::SendMsg(int dst, const std::vector<int>& msg)
 {
   vtkmdiy::MemoryBuffer buff;
 
@@ -171,7 +173,8 @@ void ParticleMessenger::SendMsg(int dst, const std::vector<int>& msg)
 }
 
 VTKM_CONT
-void ParticleMessenger::SendAllMsg(const std::vector<int>& msg)
+template <typename ParticleType>
+void ParticleMessenger<ParticleType>::SendAllMsg(const std::vector<int>& msg)
 {
   for (int i = 0; i < this->GetNumRanks(); i++)
     if (i != this->GetRank())
@@ -179,9 +182,10 @@ void ParticleMessenger::SendAllMsg(const std::vector<int>& msg)
 }
 
 VTKM_CONT
-bool ParticleMessenger::RecvAny(std::vector<MsgCommType>* msgs,
-                                std::vector<ParticleRecvCommType>* recvParticles,
-                                bool blockAndWait)
+template <typename ParticleType>
+bool ParticleMessenger<ParticleType>::RecvAny(std::vector<MsgCommType>* msgs,
+                                              std::vector<ParticleRecvCommType>* recvParticles,
+                                              bool blockAndWait)
 {
   std::set<int> tags;
   if (msgs)

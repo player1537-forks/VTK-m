@@ -113,8 +113,10 @@ protected:
 
 #ifdef VTKM_ENABLE_MPI
 VTKM_CONT
+template <typename ParticleType>
 template <typename P, template <typename, typename> class Container, typename Allocator>
-inline void ParticleMessenger::SendParticles(int dst, const Container<P, Allocator>& c)
+inline void ParticleMessenger<ParticleType>::SendParticles(int dst,
+                                                           const Container<P, Allocator>& c)
 {
   if (dst == this->GetRank())
   {
@@ -131,8 +133,9 @@ inline void ParticleMessenger::SendParticles(int dst, const Container<P, Allocat
 }
 
 VTKM_CONT
+template <typename ParticleType>
 template <typename P, template <typename, typename> class Container, typename Allocator>
-inline void ParticleMessenger::SendParticles(
+inline void ParticleMessenger<ParticleType>::SendParticles(
   const std::unordered_map<int, Container<P, Allocator>>& m)
 {
   for (const auto& mit : m)
