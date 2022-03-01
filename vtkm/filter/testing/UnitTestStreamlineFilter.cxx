@@ -20,6 +20,14 @@
 namespace
 {
 
+template <typename TX, typename TY, typename TZ>
+vtkm::Vec3f makeVec(const TX& x, const TY& y, const TZ& z)
+{
+  return vtkm::Vec3f(static_cast<vtkm::FloatDefault>(x),
+                     static_cast<vtkm::FloatDefault>(y),
+                     static_cast<vtkm::FloatDefault>(z));
+}
+
 enum FilterType
 {
   PARTICLE_ADVECTION,
@@ -163,7 +171,7 @@ void TestChargedParticle()
 {
 #if 1
   using ArrayType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
-  using FieldType = vtkm::worklet::particleadvection::ElectroMagneticField<ArrayType>;
+  //using FieldType = vtkm::worklet::particleadvection::ElectroMagneticField<ArrayType>;
   using SeedsType = vtkm::cont::ArrayHandle<vtkm::ChargedParticle>;
 
   vtkm::Id3 dims(32, 32, 32);
@@ -255,16 +263,10 @@ void TestAMRStreamline(bool useSL)
     AddVectorFields(pds, fieldName, vecX);
 
     //seed 0 goes right through the center of the inner
-    vtkm::Particle p0(vtkm::Vec3f(static_cast<vtkm::FloatDefault>(1),
-                                  static_cast<vtkm::FloatDefault>(4.5),
-                                  static_cast<vtkm::FloatDefault>(4.5)),
-                      0);
+    vtkm::Particle p0(makeVec(1, 4.5, 4.5), 0);
 
     //seed 1 goes remains entirely in the outer
-    vtkm::Particle p1(vtkm::Vec3f(static_cast<vtkm::FloatDefault>(1),
-                                  static_cast<vtkm::FloatDefault>(3),
-                                  static_cast<vtkm::FloatDefault>(3)),
-                      1);
+    vtkm::Particle p1(makeVec(1, 3, 3), 1);
 
     vtkm::cont::ArrayHandle<vtkm::Particle> seedArray;
     seedArray = vtkm::cont::make_ArrayHandle({ p0, p1 });

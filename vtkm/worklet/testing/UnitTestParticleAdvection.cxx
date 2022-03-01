@@ -95,6 +95,14 @@ vtkm::FloatDefault vecData[125 * 3] = {
 };
 }
 
+template <typename TX, typename TY, typename TZ>
+vtkm::Vec3f makeVec(const TX& x, const TY& y, const TZ& z)
+{
+  return vtkm::Vec3f(static_cast<vtkm::FloatDefault>(x),
+                     static_cast<vtkm::FloatDefault>(y),
+                     static_cast<vtkm::FloatDefault>(z));
+}
+
 void GenerateRandomParticles(std::vector<vtkm::Particle>& points,
                              const std::size_t N,
                              const vtkm::Bounds& bounds,
@@ -911,12 +919,9 @@ void TestChargedParticles()
     1 / (SPEED_OF_LIGHT * vtkm::Sqrt(1 / spacing[0] + 1 / spacing[1] + 1 / spacing[2]));
 
   ArrayType EField, BField;
-  vtkm::Vec3f eVec(static_cast<vtkm::FloatDefault>(0.01),
-                   static_cast<vtkm::FloatDefault>(0.20),
-                   static_cast<vtkm::FloatDefault>(0.50));
-  vtkm::Vec3f bVec(static_cast<vtkm::FloatDefault>(0.0),
-                   static_cast<vtkm::FloatDefault>(0.0),
-                   static_cast<vtkm::FloatDefault>(1.0));
+  vtkm::Vec3f eVec = makeVec(0.01, 0.2, 0.50);
+  vtkm::Vec3f bVec = makeVec(0, 0, 1);
+
   CreateConstantVectorField(ds.GetNumberOfPoints(), eVec, EField);
   CreateConstantVectorField(ds.GetNumberOfPoints(), bVec, BField);
 
@@ -925,11 +930,13 @@ void TestChargedParticles()
   EvaluatorType evaluator(ds.GetCoordinateSystem(), ds.GetCellSet(), electromagnetic);
   Stepper stepper(evaluator, length);
   std::vector<vtkm::ChargedParticle> pts;
-  vtkm::FloatDefault mass = 1e-10, charge = -1e-9, weight = 187;
+  auto mass = static_cast<vtkm::FloatDefault>(1e-10);
+  auto charge = static_cast<vtkm::FloatDefault>(-1e-9);
+  auto weight = static_cast<vtkm::FloatDefault>(187);
 
-  vtkm::Vec3f p0(0, 0, .1), v0(.5, .5, 1.0);
-  vtkm::Vec3f p1(-.1f, 0.f, .1f), v1(-0.5f, 0.5f, 1.0f);
-  vtkm::Vec3f p2(.1f, 0.0f, .1f), v2(0.5f, -0.5f, 1.0f);
+  vtkm::Vec3f p0 = makeVec(0, 0, .1), v0 = makeVec(.5, .5, 1);
+  vtkm::Vec3f p1 = makeVec(-.1, 0, .1), v1 = makeVec(-0.5, 0.5, 1);
+  vtkm::Vec3f p2 = makeVec(.1, 0, .1), v2 = makeVec(0.5, -0.5, 1);
 
   pts.push_back(vtkm::ChargedParticle(p0, 0, mass, charge, weight, v0));
   pts.push_back(vtkm::ChargedParticle(p1, 1, mass, charge, weight, v1));
