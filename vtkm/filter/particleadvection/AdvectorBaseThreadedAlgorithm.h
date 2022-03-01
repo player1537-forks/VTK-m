@@ -121,7 +121,7 @@ protected:
 
   void Manage()
   {
-    vtkm::filter::particleadvection::ParticleMessenger messenger(
+    vtkm::filter::particleadvection::ParticleMessenger<ParticleType> messenger(
       this->Comm, this->BoundsMap, 1, 128);
 
     while (this->TotalNumTerminatedParticles < this->TotalNumParticles)

@@ -8,12 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#include <vtkm/filter/particleadvection/ParticleMessenger.h>
-
-#include <iostream>
-#include <string.h>
-#include <vtkm/cont/Logging.h>
-#include <vtkm/cont/Serialization.h>
+#ifndef vtk_m_filter_ParticleMessenger_hxx
+#define vtk_m_filter_ParticleMessenger_hxx
 
 namespace vtkm
 {
@@ -23,11 +19,13 @@ namespace particleadvection
 {
 
 VTKM_CONT
-ParticleMessenger::ParticleMessenger(vtkmdiy::mpi::communicator& comm,
-                                     const vtkm::filter::particleadvection::BoundsMap& boundsMap,
-                                     int msgSz,
-                                     int numParticles,
-                                     int numBlockIds)
+template <typename ParticleType>
+ParticleMessenger<ParticleType>::ParticleMessenger(
+  vtkmdiy::mpi::communicator& comm,
+  const vtkm::filter::particleadvection::BoundsMap& boundsMap,
+  int msgSz,
+  int numParticles,
+  int numBlockIds)
   : Messenger(comm)
 #ifdef VTKM_ENABLE_MPI
   , BoundsMap(boundsMap)
@@ -43,7 +41,9 @@ ParticleMessenger::ParticleMessenger(vtkmdiy::mpi::communicator& comm,
 #endif
 }
 
-std::size_t ParticleMessenger::CalcParticleBufferSize(std::size_t nParticles, std::size_t nBlockIds)
+template <typename ParticleType>
+std::size_t ParticleMessenger<ParticleType>::CalcParticleBufferSize(std::size_t nParticles,
+                                                                    std::size_t nBlockIds)
 {
   //Determine the size for a particle. Since it's a templated type, we need to determine this.
   vtkmdiy::MemoryBuffer buff;
@@ -66,8 +66,8 @@ std::size_t ParticleMessenger::CalcParticleBufferSize(std::size_t nParticles, st
     + nParticles * nBlockIds * sizeof(vtkm::Id);
 }
 
-VTKM_CONT
-void ParticleMessenger::SerialExchange(
+template <typename ParticleType>
+VTKM_CONT void ParticleMessenger<ParticleType>::SerialExchange(
   const std::vector<ParticleType>& outData,
   const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
   vtkm::Id vtkmNotUsed(numLocalTerm),
@@ -84,7 +84,8 @@ void ParticleMessenger::SerialExchange(
 }
 
 VTKM_CONT
-void ParticleMessenger::Exchange(
+template <typename ParticleType>
+void ParticleMessenger<ParticleType>::Exchange(
   const std::vector<ParticleType>& outData,
   const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& outBlockIDsMap,
   vtkm::Id numLocalTerm,
@@ -229,3 +230,5 @@ bool ParticleMessenger::RecvAny(std::vector<MsgCommType>* msgs,
 }
 }
 } // vtkm::filter::particleadvection
+
+#endif

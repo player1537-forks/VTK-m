@@ -273,7 +273,7 @@ public:
   //Advect all the particles.
   virtual void Go()
   {
-    vtkm::filter::particleadvection::ParticleMessenger messenger(
+    vtkm::filter::particleadvection::ParticleMessenger<ParticleType> messenger(
       this->Comm, this->BoundsMap, 1, 128);
 
     vtkm::Id nLocal = static_cast<vtkm::Id>(this->Active.size() + this->Inactive.size());
@@ -373,9 +373,10 @@ protected:
     return !particles.empty();
   }
 
-  virtual void Communicate(vtkm::filter::particleadvection::ParticleMessenger& messenger,
-                           vtkm::Id numLocalTerminations,
-                           vtkm::Id& numTermMessages)
+  virtual void Communicate(
+    vtkm::filter::particleadvection::ParticleMessenger<ParticleType>& messenger,
+    vtkm::Id numLocalTerminations,
+    vtkm::Id& numTermMessages)
   {
     std::vector<ParticleType> incoming;
     std::unordered_map<vtkm::Id, std::vector<vtkm::Id>> incomingIDs;

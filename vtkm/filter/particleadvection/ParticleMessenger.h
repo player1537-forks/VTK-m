@@ -30,10 +30,10 @@ namespace filter
 namespace particleadvection
 {
 
-//template <typename ParticleType>
+template <typename ParticleType>
 class VTKM_FILTER_EXTRA_EXPORT ParticleMessenger : public vtkm::filter::particleadvection::Messenger
 {
-  using ParticleType = vtkm::Particle;
+  //  using ParticleType = ParticleType_;
   //sendRank, message
   using MsgCommType = std::pair<int, std::vector<int>>;
 
@@ -144,5 +144,6 @@ inline void ParticleMessenger::SendParticles(
 }
 } // namespace vtkm::filter::particleadvection
 
+#include <vtkm/filter/particleadvection/ParticleMessenger.hxx>
 
 #endif
