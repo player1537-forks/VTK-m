@@ -913,13 +913,16 @@ public:
                      vtkm::Vec3f& dAs0_rzp,
                      vtkm::Vec3f& dAs1_rzp) const
   {
+    vtkm::Vec3f ptRZN(ptRZP[0], ptRZP[1], 0);
+    vtkm::Id3 ijk;
+    vtkm::Vec3f param;
+    vtkm::Id cellId = this->CellLocUniform(ptRZN, ijk, param);
+
+    if (cellId < 0)
+      return false;
+
     if (this->UseAsCell)
     {
-      vtkm::Vec3f ptRZN(ptRZP[0], ptRZP[1], 0);
-      vtkm::Id3 ijk;
-      vtkm::Vec3f param;
-      vtkm::Id cellId = this->CellLocUniform(ptRZN, ijk, param);
-
       vtkm::Id ncells2d = this->CellDims[0]*this->CellDims[1];
       vtkm::Id offset0 = 2*N*ncells2d;
       vtkm::Id offset1 = offset0 + ncells2d;
@@ -929,32 +932,52 @@ public:
       dAs0_rzp = DAsUniform_RZP.Get(offset0 + cellId);
       dAs1_rzp = DAsUniform_RZP.Get(offset1 + cellId);
     }
+    else
+    {
+      int npts2d = this->Dims[0] * this->Dims[1];
+      vtkm::Id offset0 = 2*N*npts2d;
+      vtkm::Id offset1 = offset0 + npts2d;
+
+      vtkm::Vec<vtkm::Id,4> ptIds;
+      this->PtLocUniform(ptRZP, param, ptIds);
+
+      vtkm::VecVariable<vtkm::FloatDefault, 4> valsS0, valsS1;
+      vtkm::VecVariable<vtkm::Vec3f, 4> valsV0, valsV1;
+      for (vtkm::Id i = 0; i < 4; i++)
+      {
+        valsS0.Append(AsUniform.Get(offset0 + ptIds[i]));
+        valsS1.Append(AsUniform.Get(offset1 + ptIds[i]));
+
+        valsV0.Append(DAsUniform_RZP.Get(offset0 + ptIds[i]));
+        valsV1.Append(DAsUniform_RZP.Get(offset1 + ptIds[i]));
+      }
+
+      vtkm::exec::CellInterpolate(valsS0, param, vtkm::CellShapeTagQuad(), as0);
+      vtkm::exec::CellInterpolate(valsS1, param, vtkm::CellShapeTagQuad(), as1);
+      vtkm::exec::CellInterpolate(valsV0, param, vtkm::CellShapeTagQuad(), dAs0_rzp);
+      vtkm::exec::CellInterpolate(valsV1, param, vtkm::CellShapeTagQuad(), dAs1_rzp);
+    }
 
     return true;
   }
 
   VTKM_EXEC
   bool PtLocUniform(const vtkm::Vec3f& ptRZ,
-                    const vtkm::Id& N,
                     vtkm::Vec3f& param,
-                    vtkm::Vec<vtkm::Id, 8>& pointIds) const
+                    vtkm::Vec<vtkm::Id, 4>& ptIds) const
   {
-    vtkm::Vec3f ptRZN(ptRZ[0], ptRZ[1], N);
     vtkm::Id3 ijk;
-    vtkm::Id cellId = this->CellLocUniform(ptRZN, ijk, param);
+    vtkm::Id cellId = this->CellLocUniform(ptRZ, ijk, param);
 
     if (cellId == -1)
       return false;
 
     //vtkm::Vec<vtkm::Id, 8> pointIds;
-    pointIds[0] = (ijk[2] * this->Dims[1] + ijk[1]) * this->Dims[0] + ijk[0];
-    pointIds[1] = pointIds[0] + 1;
-    pointIds[2] = pointIds[1] + this->Dims[0];
-    pointIds[3] = pointIds[2] - 1;
-    pointIds[4] = pointIds[0] + this->Dims[0] * this->Dims[1];
-    pointIds[5] = pointIds[4] + 1;
-    pointIds[6] = pointIds[5] + this->Dims[0];
-    pointIds[7] = pointIds[6] - 1;
+    ptIds[0] = ijk[0] + this->Dims[0]*ijk[1];
+    ptIds[1] = ptIds[0] + 1;
+    ptIds[2] = ptIds[1] + this->Dims[0];
+    ptIds[3] = ptIds[2] - 1;
+
 
     //std::cout<<"PtLocUniform param= "<<param<<std::endl;
     return true;
@@ -1414,7 +1437,7 @@ public:
 
     this->PtUniformEval(x_ff_rzp, planeIdx0, AsUniform, dAsUniform_RZP, As_ff0, As_ff1, dAs_ff0_rzp, dAs_ff1_rzp);
 
-    /*
+/*
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
     this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, coords, x_ff_param, x_ff_vids);
@@ -1422,12 +1445,11 @@ public:
     auto s1 = this->EvalS(AsPhiFF, offsets[1], x_ff_vids, x_ff_param);
     auto v0 = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto v1 = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
-    */
-    /*
+
     std::cout<<std::setprecision(16);
     std::cout<<"As error: "<<vtkm::Abs(s0-As_ff0)<<" "<<vtkm::Abs(s1-As_ff1)<<" :: ";
     std::cout<<vtkm::Magnitude(v0-dAs_ff0_rzp)<<" "<<vtkm::Magnitude(v1-dAs_ff1_rzp)<<std::endl;
-    */
+*/
 
 #if 0
     if (0)

@@ -1082,8 +1082,6 @@ Poincare(const vtkm::cont::DataSet& ds,
 
       invoker(computeAs,
               uniform2DCells, uniform2DCoords,
-              //grid.GetCellSet(),
-              //grid.GetCoordinateSystem(),
               locator2L,
               ds.GetCellSet(),
               As_ff, dAs_ff_rzp,
@@ -1093,14 +1091,17 @@ Poincare(const vtkm::cont::DataSet& ds,
     {
       std::cout<<"********************* AS Point"<<std::endl;
       ComputeAsWorklet computeAs;
+      vtkm::Id nPts = uniform2DCoords.GetNumberOfValues() * numPlanes * 2;
+      AsUniform.Allocate(nPts);
+      dAsUniform.Allocate(nPts);
+      computeAs.Num2DPts = uniform2DCoords.GetNumberOfValues();
+
       invoker(computeAs,
-              grid.GetCoordinateSystem(),
+              uniform2DCoords,
               locator2L,
               ds.GetCellSet(),
-              As_ff,
-              dAs_ff_rzp,
-              AsUniform,
-              dAsUniform);
+              As_ff, dAs_ff_rzp,
+              AsUniform, dAsUniform);
     }
     timer2.Stop();
     std::cout<<"... BGrid compute done."<<std::endl;
