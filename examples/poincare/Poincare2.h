@@ -502,13 +502,11 @@ public:
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + this->StepSize * vec;
 
-#if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
     if (!(v1&&v2&&v3&&v4))
     {
-      std::cout<<"RK4 step failed"<<std::endl;
+      printf("RK4 step failed\n");
       return false;
     }
-#endif
 
     return true;
   }

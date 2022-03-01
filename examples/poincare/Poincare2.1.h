@@ -521,13 +521,11 @@ public:
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + this->StepSize * vec;
 
-#if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
     if (!(v1&&v2&&v3&&v4))
     {
-      std::cout<<"RK4 step failed"<<std::endl;
+      printf("RK4 step failed\n");
       return false;
     }
-#endif
 
     return true;
   }
@@ -1346,11 +1344,11 @@ public:
   VTKM_EXEC
   bool Evaluate(const vtkm::Vec3f& ptRPZ,
                 ParticleInfo& pInfo,
-                const LocatorType& locator,
-                const CellSetType& cellSet,
-                const CoordsType& coords,
-                const AsFieldType& AsPhiFF,
-                const DAsFieldType& DAsPhiFF_RZP,
+                const LocatorType& vtkmNotUsed(locator),
+                const CellSetType& vtkmNotUsed(cellSet),
+                const CoordsType& vtkmNotUsed(coords),
+                const AsFieldType& vtkmNotUsed(AsPhiFF),
+                const DAsFieldType& vtkmNotUsed(DAsPhiFF_RZP),
                 const Coeff_1DType& coeff_1D,
                 const Coeff_2DType& coeff_2D,
                 const AsUniformType& AsUniform,
@@ -1392,10 +1390,6 @@ public:
     //vtkm::Vec3f x_ff_rzp(ptOnMidPlane_rpz[0], ptOnMidPlane_rpz[2], 0);
     vtkm::Vec3f x_ff_rzp(ff_pt_rpz[0], ff_pt_rpz[2], 0);
 
-    int offsets[2];
-    offsets[0] = planeIdx0*this->NumNodes*2;
-    offsets[1] = planeIdx0*this->NumNodes*2 + this->NumNodes;
-
     const vtkm::FloatDefault basis = 0.0f;
     //auto B0_R = B0_rzp[0];
     //auto B0_Z = B0_rzp[1];
@@ -1417,6 +1411,9 @@ public:
     zvec[1] = basis + (1.0-basis) * gammaPsi *   gradPsi_rzp[0];
 
     //Get the vectors in the ff coordinates.
+    //int offsets[2];
+    //offsets[0] = planeIdx0*this->NumNodes*2;
+    //offsets[1] = planeIdx0*this->NumNodes*2 + this->NumNodes;
     //auto dAs_ff_rzp = EvalVector(ds, locator, {x_ff_rzp, x_ff_rzp}, "dAs_ff_rzp", offsets);
     //auto dAs_ff0_rzp = dAs_ff_rzp[0];
     //auto dAs_ff1_rzp = dAs_ff_rzp[1];
