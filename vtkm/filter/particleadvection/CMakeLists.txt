@@ -17,6 +17,7 @@ set(headers
   Messenger.h
   ParticleAdvectionAlgorithm.h
   ParticleMessenger.h
+  ParticleMessenger.hxx
 )
 
 #-----------------------------------------------------------------------------
