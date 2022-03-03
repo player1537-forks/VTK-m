@@ -169,7 +169,6 @@ void TestPathline()
 
 void TestChargedParticle()
 {
-#if 1
   //using ArrayType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
   //using FieldType = vtkm::worklet::particleadvection::ElectroMagneticField<ArrayType>;
   using SeedsType = vtkm::cont::ArrayHandle<vtkm::ChargedParticle>;
@@ -215,7 +214,6 @@ void TestChargedParticle()
   filter.SetSeeds(seeds);
   filter.SetActiveField("vec");
   auto output = filter.Execute(ds);
-#endif
 }
 
 void TestAMRStreamline(bool useSL)
