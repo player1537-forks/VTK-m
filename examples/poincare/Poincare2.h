@@ -146,8 +146,8 @@ public:
     int z_i = this->GetIndex(Z, this->nz, this->zmin, this->dz_inv);
 
     // rc(i), zc(j)
-    vtkm::FloatDefault Rc = rmin + (vtkm::FloatDefault)(r_i)*this->dr;
-    vtkm::FloatDefault Zc = zmin + (vtkm::FloatDefault)(z_i)*this->dz;
+    vtkm::FloatDefault Rc = this->rmin + (vtkm::FloatDefault)(r_i)*this->dr;
+    vtkm::FloatDefault Zc = this->zmin + (vtkm::FloatDefault)(z_i)*this->dz;
     auto Rc_1 = Rc + this->dr;
     auto Zc_1 = Zc + this->dz;
     Rc = (Rc + Rc_1) * 0.5;
@@ -1318,7 +1318,7 @@ public:
   vtkm::FloatDefault dPhi;
 
   bool UseBOnly = false;
-  bool UseHighOrder = false;
+  bool UseHighOrderB = false;
   bool SaveTraces = false;
   bool QuickTest = false;
 

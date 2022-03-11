@@ -1580,7 +1580,7 @@ public:
   vtkm::FloatDefault dPhi;
 
   bool UseBOnly = false;
-  bool UseHighOrder = false;
+  bool UseHighOrderB = false;
   bool SaveTraces = false;
   bool QuickTest = false;
 
