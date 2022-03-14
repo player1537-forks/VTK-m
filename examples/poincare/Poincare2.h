@@ -1,3 +1,18 @@
+#ifndef PoincareWorklet2_h
+#define PoincareWorklet2_h
+
+#include <vtkm/Geometry.h>
+#include <vtkm/Matrix.h>
+#include <vtkm/Particle.h>
+#include <vtkm/cont/CellLocatorTwoLevel.h>
+#include <vtkm/worklet/WorkletMapField.h>
+
+#include "XGCParameters.h"
+
+using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
+
+
+
 //
 //./examples/poincare/Simple2.3 --vField B --dir ../data/sku_8000/POINC --worklet 1 --traces 1 --numPunc 2 --stepSize 0.01 --useHighOrder --jong1 --output bumm
 
@@ -98,39 +113,38 @@ public:
                    vtkm::FloatDefault planeVal,
                    vtkm::FloatDefault stepSize,
                    bool saveTraces,
-                   bool quickTest)
+                   const XGCParameters& xgcParams)
     : MaxIter(maxPunc * 1000000)
     , MaxPunc(maxPunc)
     , PlaneVal(planeVal)
     , StepSize(stepSize)
     , SaveTraces(saveTraces)
-    , QuickTest(quickTest)
   {
-    this->NumPlanes = numPlanes;
-    this->NumNodes = numNodes;
+    this->NumPlanes = xgcParams.numPlanes;
+    this->NumNodes = xgcParams.numNodes;
     this->dPhi = vtkm::TwoPi()/static_cast<vtkm::FloatDefault>(this->NumPlanes);
     this->StepSize_2 = this->StepSize / 2.0;
     this->StepSize_6 = this->StepSize / 6.0;
 
 
-    this->nr = eq_mr-1;
-    this->nz = eq_mz-1;
-    this->rmin = eq_min_r;
-    this->rmax = eq_max_r;
-    this->zmin = eq_min_z;
-    this->zmax = eq_max_z;
-    this->EqAxisR = eq_axis_r;
-    this->EqAxisZ = eq_axis_z;
-    this->EqXPsi = eq_x_psi;
-    this->dr = (eq_max_r - eq_min_r) / vtkm::FloatDefault(this->nr);
-    this->dz = (eq_max_z - eq_min_z) / vtkm::FloatDefault(this->nz);
+    this->nr = xgcParams.eq_mr-1;
+    this->nz = xgcParams.eq_mz-1;
+    this->rmin = xgcParams.eq_min_r;
+    this->rmax = xgcParams.eq_max_r;
+    this->zmin = xgcParams.eq_min_z;
+    this->zmax = xgcParams.eq_max_z;
+    this->EqAxisR = xgcParams.eq_axis_r;
+    this->EqAxisZ = xgcParams.eq_axis_z;
+    this->EqXPsi = xgcParams.eq_x_psi;
+    this->dr = (xgcParams.eq_max_r - xgcParams.eq_min_r) / vtkm::FloatDefault(this->nr);
+    this->dz = (xgcParams.eq_max_z - xgcParams.eq_min_z) / vtkm::FloatDefault(this->nz);
     this->dr_inv = 1.0/this->dr;
     this->dz_inv = 1.0/this->dz;
 
-    this->ncoeff = eq_mr-1;
-    this->min_psi = psi_min;
-    this->max_psi = psi_max;
-    this->one_d_cub_dpsi_inv = 1.0 / ((max_psi-min_psi)/vtkm::FloatDefault(this->ncoeff));
+    this->ncoeff = xgcParams.eq_mr-1;
+    this->min_psi = xgcParams.psi_min;
+    this->max_psi = xgcParams.psi_max;
+    this->one_d_cub_dpsi_inv = 1.0 / ((this->max_psi-this->min_psi)/vtkm::FloatDefault(this->ncoeff));
   }
 
   template <typename Coeff_1DType, typename Coeff_2DType>
@@ -374,19 +388,6 @@ public:
     CALLGRIND_START_INSTRUMENTATION;
     CALLGRIND_TOGGLE_COLLECT;
 #endif
-
-    if (this->QuickTest)
-    {
-      for (vtkm::Id p = 0; p < this->MaxPunc; p++)
-      {
-        vtkm::Id i = (idx * this->MaxPunc) + p;
-        outputRZ.Set(i, vtkm::Vec2f(0,0));
-        outputTP.Set(i, vtkm::Vec2f(0,0));
-        punctureID.Set(i, idx);
-      }
-
-      return;
-    }
 
     DBG("Begin: "<<particle<<std::endl);
 
@@ -1318,9 +1319,7 @@ public:
   vtkm::FloatDefault dPhi;
 
   bool UseBOnly = false;
-  bool UseHighOrderB = false;
   bool SaveTraces = false;
-  bool QuickTest = false;
 
   int nr, nz;
   vtkm::FloatDefault rmin, zmin, rmax, zmax;
@@ -1332,3 +1331,5 @@ public:
   vtkm::FloatDefault one_d_cub_dpsi_inv;
   vtkm::FloatDefault sml_bp_sign = -1.0f;
 };
+
+#endif
