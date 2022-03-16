@@ -13,10 +13,13 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
              vtkm::Id& numPuncs,
              bool useBOnly,
              bool useTraces,
+             bool useLinearB,
              const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& As_ff,
              const vtkm::cont::ArrayHandle<vtkm::Vec3f>& dAs_ff_rzp,
              const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& coeff_1D,
              const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& coeff_2D,
+             const vtkm::cont::ArrayHandle<vtkm::Vec3f>& B_RZP,
+             const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& psi,
              vtkm::cont::ArrayHandle<vtkm::Vec3f>& tracesArr,
              vtkm::cont::ArrayHandle<vtkm::Vec2f>& outRZ,
              vtkm::cont::ArrayHandle<vtkm::Vec2f>& outTP,
@@ -34,12 +37,12 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
   ds.GetField("eq_psi_grid").GetData().AsArrayHandle(eq_psi_gridArr);
   auto dPsi = eq_psi_gridArr.ReadPortal().Get(1)-eq_psi_gridArr.ReadPortal().Get(0);
 
-
   vtkm::cont::Invoker invoker;
 
   PoincareWorklet2 worklet(numPuncs, 0.0f, stepSize, useTraces, xgcParams);
   worklet.UseBOnly = useBOnly;
   worklet.one_d_cub_dpsi_inv = 1.0/dPsi;
+  worklet.UseLinearB = useLinearB;
 
   if (useTraces)
   {
@@ -54,6 +57,7 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
           ds.GetCellSet(),
           ds.GetCoordinateSystem(),
           As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+          B_RZP, psi,
           tracesArr, outRZ, outTP, outID);
 
   outID.SyncControlArray();

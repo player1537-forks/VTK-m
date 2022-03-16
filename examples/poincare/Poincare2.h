@@ -102,11 +102,13 @@ public:
                                 WholeArrayIn dAs_phi_ff_RZP,
                                 WholeArrayIn coeff_1D,
                                 WholeArrayIn coeff_2D,
+                                WholeArrayIn B_RZP,
+                                WholeArrayIn Psi,
                                 WholeArrayInOut traces,
                                 WholeArrayInOut outputRZ,
                                 WholeArrayInOut outputTP,
                                 WholeArrayInOut punctureID);
-  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12);
+  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14);
   using InputDomain = _1;
 
   PoincareWorklet2(vtkm::Id maxPunc,
@@ -369,7 +371,7 @@ public:
     return true;
   }
 
-  template <typename LocatorType, typename CellSetType, typename CoordsType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType, typename OutputType, typename OutputType2D, typename IdType>
+  template <typename LocatorType, typename CellSetType, typename CoordsType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType, typename BFieldType, typename PsiType, typename OutputType, typename OutputType2D, typename IdType>
   VTKM_EXEC void operator()(const vtkm::Id& idx,
                             vtkm::Particle& particle,
                             const LocatorType& locator,
@@ -379,6 +381,8 @@ public:
                             const DAsFieldType& DAsPhiFF_RZP,
                             const Coeff_1DType& Coeff_1D,
                             const Coeff_2DType& Coeff_2D,
+                            const BFieldType& B_RZP,
+                            const PsiType& Psi,
                             OutputType& traces,
                             OutputType2D& outputRZ,
                             OutputType2D& outputTP,
@@ -401,7 +405,7 @@ public:
 
 
       if (!this->TakeRK4Step(particle.Pos, pInfo, locator, cellSet, coords,
-                             AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, newPos))
+                             AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, newPos))
       {
         break;
       }
@@ -429,7 +433,17 @@ public:
         //vtkm::FloatDefault psi;
         //vtkm::Vec3f B0_rzp, curlB_rzp, curl_nb_rzp, gradPsi_rzp;
         //vtkm::Vec<vtkm::Vec3f, 3> jacobian_rzp;
-        this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D); //, B0_rzp, jacobian_rzp, curlB_rzp, curl_nb_rzp, psi, gradPsi_rzp);
+        if (this->UseLinearB)
+        {
+          vtkm::Vec3f ptRZ(R, Z, 0), param;
+          vtkm::Vec<vtkm::Id,3> vids;
+          this->PtLoc(ptRZ, pInfo, locator, cellSet, coords, param, vids);
+          pInfo.Psi = this->EvalS(Psi, 0, vids, param);
+        }
+        else
+        {
+          this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D);
+        }
 
         vtkm::Id i = (idx * this->MaxPunc) + particle.NumPunctures;
         outputRZ.Set(i, vtkm::Vec2f(R, Z));
@@ -462,7 +476,7 @@ public:
 #endif
   }
 
-  template <typename LocatorType, typename CellSetType, typename CoordsType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
+  template <typename LocatorType, typename CellSetType, typename CoordsType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType, typename BFieldType>
   VTKM_EXEC
   bool TakeRK4Step(const vtkm::Vec3f& ptRPZ,
                    ParticleInfo& pInfo,
@@ -473,6 +487,7 @@ public:
                    const DAsFieldType& DAsPhiFF_RZP,
                    const Coeff_1DType& Coeff_1D,
                    const Coeff_2DType& Coeff_2D,
+                   const BFieldType& B_RZP,
                    vtkm::Vec3f& res) const
   {
     vtkm::Vec3f k1, k2, k3, k4;
@@ -486,19 +501,19 @@ public:
 
     DBG("    ****** K1"<<std::endl);
     bool v1, v2, v3, v4;
-    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k1);
+    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k1);
     tmp = p0 + k1*this->StepSize_2;
 
     DBG("    ****** K2"<<std::endl);
-    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k2);
+    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k2);
     tmp = p0 + k2*this->StepSize_2;
 
     DBG("    ****** K3"<<std::endl);
-    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k3);
+    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k3);
     tmp = p0 + k3*this->StepSize;
 
     DBG("    ****** K4"<<std::endl);
-    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, k4);
+    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k4);
 
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + this->StepSize * vec;
@@ -1147,7 +1162,7 @@ public:
     return true;
   }
 
-  template <typename LocatorType, typename CellSetType, typename CoordsType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType>
+  template <typename LocatorType, typename CellSetType, typename CoordsType, typename AsFieldType, typename DAsFieldType, typename Coeff_1DType, typename Coeff_2DType, typename BFieldType>
   VTKM_EXEC
   bool Evaluate(const vtkm::Vec3f& ptRPZ,
                 ParticleInfo& pInfo,
@@ -1158,6 +1173,7 @@ public:
                 const DAsFieldType& DAsPhiFF_RZP,
                 const Coeff_1DType& coeff_1D,
                 const Coeff_2DType& coeff_2D,
+                const BFieldType& B_RZP,
                 vtkm::Vec3f& res) const
   {
     auto R = ptRPZ[0];
@@ -1165,8 +1181,18 @@ public:
     auto Z = ptRPZ[2];
 
     //res is R,P,Z
-    if (!this->HighOrderB(ptRPZ, pInfo, coeff_1D, coeff_2D))
-      return false;
+    if (this->UseLinearB)
+    {
+      vtkm::Vec3f ptRZ(ptRPZ[0], ptRPZ[2], 0), param;
+      vtkm::Vec<vtkm::Id,3> vids;
+      this->PtLoc(ptRZ, pInfo, locator, cellSet, coords, param, vids);
+      pInfo.B0_rzp = this->EvalV(B_RZP, 0, param, vids);
+    }
+    else
+    {
+      if (!this->HighOrderB(ptRPZ, pInfo, coeff_1D, coeff_2D))
+        return false;
+    }
     if (this->UseBOnly)
     {
       pInfo.B0_rzp[2] /= R;
@@ -1320,6 +1346,7 @@ public:
 
   bool UseBOnly = false;
   bool SaveTraces = false;
+  bool UseLinearB = false;
 
   int nr, nz;
   vtkm::FloatDefault rmin, zmin, rmax, zmax;

@@ -40,8 +40,6 @@ adios2::ADIOS *adios = NULL;
 class adiosS;
 std::map<std::string, adiosS*> adiosStuff;
 
-bool useTurb=true;
-
 //#define VALGRIND
 #ifdef VALGRIND
 #include <valgrind/callgrind.h>
@@ -170,13 +168,6 @@ ReadOther(adiosS* stuff,
   std::vector<double> tmp;
   stuff->engine.Get(v, tmp, adios2::Mode::Sync);
 
-  if ((vname == "As_phi_ff" || vname == "dAs_phi_ff")&& useTurb == false)
-  {
-    std::cout<<"NO TURB. Zero everything out!"<<std::endl;
-    for (auto& x : tmp)
-      x = 0.0;
-  }
-
 #ifdef VTKM_USE_DOUBLE_PRECISION
   ds.AddField(vtkm::cont::make_Field(vname,
                                      vtkm::cont::Field::Association::WHOLE_MESH,
@@ -234,6 +225,27 @@ ReadScalar(adiosS* stuff,
   ds.AddField(vtkm::cont::make_FieldPoint(vname+"2D", vtkm::cont::make_ArrayHandle(tmpPlane, vtkm::CopyFlag::On)));
   if (add3D)
     ds.AddField(vtkm::cont::make_FieldPoint(vname, vtkm::cont::make_ArrayHandle(tmp, vtkm::CopyFlag::On)));
+}
+
+void
+ReadB(adiosS* stuff,
+      XGCParameters& xgcParams,
+      vtkm::cont::DataSet& ds)
+{
+  std::string fileName = "/node_data[0]/values";
+
+  auto Bvar = stuff->io.InquireVariable<double>(fileName);
+  std::vector<double> tmp;
+  stuff->engine.Get(Bvar, tmp, adios2::Mode::Sync);
+
+  std::vector<vtkm::Vec3f> b_rzp;
+  for (int i = 0; i < xgcParams.numNodes; i++)
+  {
+    vtkm::Vec3f v(tmp[i*3+0], tmp[i*3+1], tmp[i*3+2]);
+    b_rzp.push_back(v);
+  }
+
+  ds.AddField(vtkm::cont::make_FieldPoint("B_RZP",vtkm::cont::make_ArrayHandle(b_rzp, vtkm::CopyFlag::On)));
 }
 
 void
@@ -593,6 +605,7 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
 
   std::size_t nPts = static_cast<std::size_t>(outRZ.GetNumberOfValues());
 
+  //create a (R,Z,ID) and (Theta, Psi, ID) arrays.
   auto RZBuff = vtkm::cont::ArrayHandleBasic<vtkm::Vec2f>(outRZ).GetReadPointer();
   auto TPBuff = vtkm::cont::ArrayHandleBasic<vtkm::Vec2f>(outTP).GetReadPointer();
   auto IDBuff = vtkm::cont::ArrayHandleBasic<vtkm::Id>(outID).GetReadPointer();
@@ -600,7 +613,7 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
   std::vector<std::size_t> shape = {nPts*2}, offset = {0}, size = {nPts*2};
   auto vRZ = io.DefineVariable<vtkm::FloatDefault>("RZ", shape, offset, size);
   auto vTP = io.DefineVariable<vtkm::FloatDefault>("ThetaPsi", shape, offset, size);
-  std::vector<std::size_t> shape2 = {nPts},size2 = {nPts};
+  std::vector<std::size_t> shape2 = {nPts}, size2 = {nPts};
   auto vID = io.DefineVariable<vtkm::Id>("ID", shape2, offset, size2);
 
   adios2::Engine bpWriter = io.Open(adiosNm, adios2::Mode::Write);
@@ -622,10 +635,45 @@ SaveOutput(const std::vector<std::vector<vtkm::Vec3f>>& traces,
   */
 }
 
+/*
+vtkm::cont::ArrayHandle<vtkm::Particle>
+CreateParticles(const std::vector<vtkm::Vec3f>& pts,
+                std::map<std::string, std::vector<std::string>>& args)
+{
+  vtkm::cont::ArrayHandle<vtkm::Particle> seeds;
+  vtkm::Id n = static_cast<vtkm::Id>(pts.size());
+  seeds.Allocate(n);
+  auto sPortal = seeds.WritePortal();
+
+  bool isPsiRange = false;
+  int numPts = -1, numTheta = -1;
+  if (args.find("--psiRange") != args.end())
+  {
+    auto vals = args["--psiRange"];
+    numPts = std::atoi(vals[2].c_str());
+    numTheta = std::atoi(vals[3].c_str());
+    if (numTheta > 1)
+      isPsiRange = true;
+  }
+
+  for (vtkm::Id i = 0; i < n; i++)
+  {
+    vtkm::Id pid = i;
+
+    vtkm::Particle p(pts[i], pid);
+    sPortal.Set(i, p);
+  }
+
+  for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
+    s.push_back(vtkm::Particle(pts[i], i));
+  auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
+}
+*/
+
 void
 Poincare(const vtkm::cont::DataSet& ds,
          XGCParameters& xgcParams,
-         std::vector<vtkm::Vec3f>& pts,
+         vtkm::cont::ArrayHandle<vtkm::Particle>& seeds,
          std::map<std::string, std::vector<std::string>>& args)
 {
 
@@ -638,34 +686,40 @@ Poincare(const vtkm::cont::DataSet& ds,
   std::string outFileName = args["--output"][0];
   bool useBOnly = false;
   if (args.find("--useBOnly") != args.end()) useBOnly = true;
+  bool useLinearB = false;
+  if (args.find("--useLinearB") != args.end()) useLinearB = true;
 
-  std::vector<vtkm::Particle> s;
-  for (vtkm::Id i = 0; i < (vtkm::Id)pts.size(); i++)
-    s.push_back(vtkm::Particle(pts[i], i));
-  auto seeds = vtkm::cont::make_ArrayHandle(s, vtkm::CopyFlag::On);
+  if (useLinearB)
+  {
+    useBOnly = true;
+    std::cout<<"Warning: Using linear B, forcing UseBOnly = true."<<std::endl;
+  }
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff, coeff_1D, coeff_2D, psi;
   vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp;
+  //ds.GetField("As_phi_ff").GetData().AsArrayHandle(As_ff);
+  std::cout<<"DRP: Fix me?? "<<__FILE__<<" "<<__LINE__<<std::endl;
   ds.GetField("As_ff").GetData().AsArrayHandle(As_ff);
   ds.GetField("dAs_ff_rzp").GetData().AsArrayHandle(dAs_ff_rzp);
   ds.GetField("coeff_1D").GetData().AsArrayHandle(coeff_1D);
   ds.GetField("coeff_2D").GetData().AsArrayHandle(coeff_2D);
   ds.GetField("psi2D").GetData().AsArrayHandle(psi);
+  ds.GetField("B_RZP").GetData().AsArrayHandle(B_rzp);
 
   vtkm::cont::ArrayHandle<vtkm::Vec3f> tracesArr;
   vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
+  vtkm::Id nSeeds = seeds.GetNumberOfValues();
 
-  outRZ.Allocate(numPunc*pts.size());
-  outTP.Allocate(numPunc*pts.size());
-  outID.Allocate(numPunc*pts.size());
-
-
+  outRZ.Allocate(numPunc*nSeeds);
+  outTP.Allocate(numPunc*nSeeds);
+  outID.Allocate(numPunc*nSeeds);
 
   auto start = std::chrono::steady_clock::now();
   RunPoincare2(ds, seeds, xgcParams,
-               stepSize, numPunc, useBOnly, useTraces,
+               stepSize, numPunc, useBOnly, useTraces, useLinearB,
                As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+               B_rzp, psi,
                tracesArr, outRZ, outTP, outID);
   auto end = std::chrono::steady_clock::now();
 
@@ -698,12 +752,12 @@ Poincare(const vtkm::cont::DataSet& ds,
   SaveOutput(traces, outRZ, outTP, outID, outFileName);
 }
 
-void
-CalcAs(vtkm::cont::DataSet& ds, XGCParameters& xgcParams)
+vtkm::cont::ArrayHandle<vtkm::FloatDefault>
+CalcAs(const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& As, XGCParameters& xgcParams)
 {
-  vtkm::cont::ArrayHandle<vtkm::FloatDefault> As;
+//  vtkm::cont::ArrayHandle<vtkm::FloatDefault> As;
 
-  ds.GetField("As_phi_ff").GetData().AsArrayHandle(As);
+//  ds.GetField("As_phi_ff").GetData().AsArrayHandle(As);
   vtkm::Id numAs = As.GetNumberOfValues();
   auto asPortal = As.ReadPortal();
 
@@ -751,18 +805,22 @@ CalcAs(vtkm::cont::DataSet& ds, XGCParameters& xgcParams)
     }
   }
 
+  return vtkm::cont::make_ArrayHandle(arrAs, vtkm::CopyFlag::On);
+
+  /*
   ds.AddField(vtkm::cont::make_Field("As_ff",
                                      vtkm::cont::Field::Association::WHOLE_MESH,
                                      arrAs,
                                      vtkm::CopyFlag::On));
+  */
 }
 
-void
-Calc_dAs(vtkm::cont::DataSet& ds, XGCParameters& xgcParams)
+vtkm::cont::ArrayHandle<vtkm::Vec3f>
+Calc_dAs(const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& dAsAH, XGCParameters& xgcParams)
 {
   //Assumed that dAs_phi_ff is R,Z,Phi
-  vtkm::cont::ArrayHandle<vtkm::FloatDefault> dAsAH;
-  ds.GetField("dAs_phi_ff").GetData().AsArrayHandle(dAsAH);
+  //vtkm::cont::ArrayHandle<vtkm::FloatDefault> dAsAH;
+  //ds.GetField("dAs_phi_ff").GetData().AsArrayHandle(dAsAH);
   int nVals = dAsAH.GetNumberOfValues()/3;
 
   //Dim: (numPlanes, numNodes, idx)
@@ -849,15 +907,156 @@ Calc_dAs(vtkm::cont::DataSet& ds, XGCParameters& xgcParams)
     }
   }
 
+  return vtkm::cont::make_ArrayHandle(arr_ff, vtkm::CopyFlag::On);
+  /*
   ds.AddField(vtkm::cont::make_Field("dAs_ff_rzp",
                                      vtkm::cont::Field::Association::WHOLE_MESH,
                                      arr_ff,
                                      vtkm::CopyFlag::On));
+  */
+}
+
+template <typename T>
+void
+UpdateField(vtkm::cont::DataSet& ds,
+            const std::string& vName,
+            vtkm::cont::ArrayHandle<T> &var)
+{
+  if (ds.HasField(vName))
+  {
+    vtkm::cont::ArrayHandle<T> oldVar;
+    ds.GetField(vName).GetData().AsArrayHandle(oldVar);
+
+    vtkm::cont::Algorithm::Copy(var, oldVar);
+  }
+  else
+    ds.AddField(vtkm::cont::Field(vName,
+                                  vtkm::cont::Field::Association::WHOLE_MESH,
+                                  var));
+}
+
+void
+ReadTurbData(adiosS* turbStuff,
+             std::map<std::string, std::vector<std::string>>& args,
+             vtkm::cont::ArrayHandle<vtkm::FloatDefault>& As_arr,
+             vtkm::cont::ArrayHandle<vtkm::FloatDefault>& dAs_arr)
+{
+  auto asV = turbStuff->io.InquireVariable<double>("As_phi_ff");
+  auto dAsV = turbStuff->io.InquireVariable<double>("dAs_phi_ff");
+
+  std::vector<double> arrAs, arrdAs;
+  turbStuff->engine.Get(asV, arrAs, adios2::Mode::Sync);
+  turbStuff->engine.Get(dAsV, arrdAs, adios2::Mode::Sync);
+
+  bool useTurbulence = true;
+  if (args.find("--turbulence") != args.end())
+    useTurbulence = std::atoi(args["--turbulence"][0].c_str());
+  if (useTurbulence == false)
+  {
+    for (auto& x : arrAs)
+      x = 0.0;
+    for (auto& x : arrdAs)
+      x = 0.0;
+  }
+
+  As_arr = vtkm::cont::make_ArrayHandle(arrAs, vtkm::CopyFlag::On);
+  dAs_arr = vtkm::cont::make_ArrayHandle(arrdAs, vtkm::CopyFlag::On);
+  //auto AsPhi = vtkm::cont::make_ArrayHandle(arrAs, vtkm::CopyFlag::On);
+  //auto dAsPhi = vtkm::cont::make_ArrayHandle(arrdAs, vtkm::CopyFlag::On);
+  //UpdateField(ds, "As_phi_ff", AsPhi);
+  //UpdateField(ds, "dAs_phi_ff", dAsPhi);
 }
 
 vtkm::cont::DataSet
-ReadData_ORIG(std::map<std::string, std::vector<std::string>>& args, XGCParameters& xgcParams)
+ReadStaticData(std::map<std::string, std::vector<std::string>>& args,
+               XGCParameters& xgcParams,
+               const std::string& coeffFile)
 {
+  if (adios != nullptr)
+  {
+    std::cerr<<"Re-reading static data!!!"<<std::endl;
+  }
+
+  std::map<std::string, std::string> adiosArgs;
+  adiosArgs["--dir"] = args["--dir"][0];
+
+  adios = new adios2::ADIOS;
+
+  adiosStuff["mesh"] = new adiosS(adios, "xgc.mesh.bp", "mesh", adiosArgs);
+  adiosStuff["equil"] = new adiosS(adios, "xgc.equil.bp", "equil", adiosArgs);
+  adiosStuff["bfield"] = new adiosS(adios, "xgc.bfield.bp", "bfield", adiosArgs);
+  adiosStuff["coeff"] = new adiosS(adios, coeffFile, "coeff", adiosArgs);
+
+  auto meshStuff = adiosStuff["mesh"];
+  auto equilStuff = adiosStuff["equil"];
+  auto coeffStuff = adiosStuff["coeff"];
+  auto bfieldStuff = adiosStuff["bfield"];
+
+  meshStuff->engine.BeginStep();
+  equilStuff->engine.BeginStep();
+  coeffStuff->engine.BeginStep();
+  bfieldStuff->engine.BeginStep();
+
+  meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_n"), &xgcParams.numNodes, adios2::Mode::Sync);
+  meshStuff->engine.Get(meshStuff->io.InquireVariable<int>("n_t"), &xgcParams.numTri, adios2::Mode::Sync);
+  std::vector<double> psiVals;
+  meshStuff->engine.Get(meshStuff->io.InquireVariable<double>("psi"), psiVals, adios2::Mode::Sync);
+  xgcParams.psi_min = xgcParams.psi_max = psiVals[0];
+  for (const auto& p : psiVals)
+  {
+    if (p < xgcParams.psi_min) xgcParams.psi_min = p;
+    if (p > xgcParams.psi_max) xgcParams.psi_max = p;
+  }
+  std::cout<<"********                  PSI m/M = "<<xgcParams.psi_min<<" "<<xgcParams.psi_max<<std::endl;
+
+  auto ds = ReadMesh(meshStuff, xgcParams);
+  ReadPsiInterp(equilStuff, coeffStuff, ds, xgcParams);
+  ReadScalar(meshStuff, xgcParams, ds, "psi");
+  ReadB(bfieldStuff, xgcParams, ds);
+
+  meshStuff->engine.EndStep();
+  equilStuff->engine.EndStep();
+  coeffStuff->engine.EndStep();
+  bfieldStuff->engine.EndStep();
+
+  return ds;
+}
+
+vtkm::cont::DataSet
+ReadDataSet_ORIG(std::map<std::string, std::vector<std::string>>& args, XGCParameters& xgcParams)
+{
+  auto ds = ReadStaticData(args, xgcParams, "xgc.bfield-all.bp");
+
+  //Get the data...
+  std::map<std::string, std::string> adiosArgs;
+  adiosArgs["--dir"] = args["--dir"][0];
+
+  adiosStuff["data"] = new adiosS(adios, "xgc.3d.bp", "3d", adiosArgs);
+  adiosStuff["bfield-all"] = new adiosS(adios, "xgc.bfield-all.bp", "Bs", adiosArgs);
+
+  auto dataStuff = adiosStuff["data"];
+  auto bfieldStuff = adiosStuff["bfield-all"];
+
+  dataStuff->engine.BeginStep();
+  bfieldStuff->engine.BeginStep();
+
+  dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &xgcParams.numPlanes, adios2::Mode::Sync);
+
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_arr, dAs_arr;
+  ReadTurbData(bfieldStuff, args, As_arr, dAs_arr);
+
+  dataStuff->engine.EndStep();
+  bfieldStuff->engine.EndStep();
+
+  auto As = CalcAs(As_arr, xgcParams);
+  auto dAs = Calc_dAs(dAs_arr, xgcParams);
+  UpdateField(ds, "As_ff", As);
+  UpdateField(ds, "dAs_ff_rzp", dAs);
+
+  return ds;
+
+
+#if 0
   std::map<std::string, std::string> adiosArgs;
   adiosArgs["--dir"] = args["--dir"][0];
 
@@ -920,13 +1119,47 @@ ReadData_ORIG(std::map<std::string, std::vector<std::string>>& args, XGCParamete
 //  writer.WriteDataSet(ds);
 
   return ds;
+#endif
 }
 
 vtkm::cont::DataSet
-ReadData(std::map<std::string, std::vector<std::string>>& args, XGCParameters& xgcParams)
+ReadDataSet(std::map<std::string, std::vector<std::string>>& args, XGCParameters& xgcParams)
 {
+  if (args.find("--test") != args.end())
+    return ReadDataSet_ORIG(args, xgcParams);
+
+  std::map<std::string, std::string> adiosArgs;
+  adiosArgs["--dir"] = args["--dir"][0];
+
+  auto ds = ReadStaticData(args, xgcParams, "xgc.poincare_init.bp");
+  adiosStuff["data"] = new adiosS(adios, "xgc.3d.bp", "3d", adiosArgs);
+
+  auto dataStuff = adiosStuff["data"];
+
+  //Go to 2nd step.
+//  dataStuff->engine.BeginStep();
+//  dataStuff->engine.EndStep();
+
+  dataStuff->engine.BeginStep();
+  dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &xgcParams.numPlanes, adios2::Mode::Sync);
+
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_arr, dAs_arr;
+  ReadTurbData(dataStuff, args, As_arr, dAs_arr);
+  dataStuff->engine.EndStep();
+
+  auto As = CalcAs(As_arr, xgcParams);
+  auto dAs = Calc_dAs(dAs_arr, xgcParams);
+
+  //CalcAs(ds, xgcParams);
+  //Calc_dAs(ds, xgcParams);
+  UpdateField(ds, "As_ff", As);
+  UpdateField(ds, "dAs_ff_rzp", dAs);
+
+  return ds;
+
+#if 0
   if (args.find("--Step") == args.end())
-    return ReadData_ORIG(args, xgcParams);
+    return ReadDataSet_ORIG(args, xgcParams);
 
   int step = std::stoi(args["--Step"][0]);
 
@@ -988,10 +1221,16 @@ ReadData(std::map<std::string, std::vector<std::string>>& args, XGCParameters& x
   CalcAs(ds, xgcParams);
   Calc_dAs(ds, xgcParams);
 
+  initStuff->engine.EndStep();
+  meshStuff->engine.EndStep();
+  equilStuff->engine.EndStep();
+  bfieldStuff->engine.EndStep();
+
 //  vtkm::io::VTKDataSetWriter writer("grid.vtk");
 //  writer.WriteDataSet(ds);
 
   return ds;
+#endif
 }
 
 int oneDBlocks = 16;
@@ -1109,16 +1348,17 @@ InterpolatePsi(const vtkm::Vec2f& ptRZ,
   return psi;
 }
 
-void
+std::vector<vtkm::Particle>
 GeneratePsiRangeSeeds(vtkm::FloatDefault psiNorm0,
                       vtkm::FloatDefault psiNorm1,
                       int numPts,
                       int numTheta,
                       const vtkm::cont::DataSet& ds,
-                      std::vector<vtkm::Vec3f>& seeds,
                       XGCParameters& xgcParams)
 
 {
+  std::vector<vtkm::Particle> seeds;
+
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> maxR, thetas;
   FindMaxR(ds, xgcParams, numTheta, thetas, maxR);
   std::cout<<"MaxR= ";
@@ -1143,6 +1383,8 @@ GeneratePsiRangeSeeds(vtkm::FloatDefault psiNorm0,
   for (int i = 0; i < numPts; i++)
   {
     std::cout<<"Pt_"<<i<<" = psi= "<<psi<<" psiN= "<<(psi/xgcParams.eq_x_psi)<<std::endl;
+
+    vtkm::Id pid = static_cast<vtkm::Id>(i);
 
     for (vtkm::Id j = 0; j < thetaPortal.GetNumberOfValues(); j++)
     {
@@ -1177,21 +1419,24 @@ GeneratePsiRangeSeeds(vtkm::FloatDefault psiNorm0,
 
       vtkm::FloatDefault r = (rad0+rad1)/2.0;
       vtkm::Vec3f pt_rpz(xgcParams.eq_axis_r + r*cost, 0, xgcParams.eq_axis_z + r*sint);
-      seeds.push_back(pt_rpz);
+      seeds.push_back({pt_rpz, pid});
+      std::cout<<"   PSI_pt: "<<psi<<" "<<theta<<" id= "<<pid<<std::endl;
 
       //auto psi_ = InterpolatePsi({pt[0], pt[1]},  coeff, ncoeff, nrz, rzmin, drz);
       //std::cout<<"   "<<pt<<"  psi= "<<psi_/eq_x_psi<<std::endl;
     }
     psi += dPsi;
   }
+
+  return seeds;
 }
 
-std::vector<vtkm::Vec3f>
+vtkm::cont::ArrayHandle<vtkm::Particle>
 GenerateSeeds(const vtkm::cont::DataSet& ds,
               XGCParameters& xgcParams,
               std::map<std::string, std::vector<std::string>>& args)
 {
-  std::vector<vtkm::Vec3f> seeds;
+  std::vector<vtkm::Particle> seeds;
 
   if (args.find("--range") != args.end())
   {
@@ -1205,7 +1450,7 @@ GenerateSeeds(const vtkm::cont::DataSet& ds,
     vtkm::FloatDefault r = r0;
 
     for (vtkm::Id id = 0; id < numSeeds; id++, r+=dr)
-      seeds.push_back({r, .1, 0});
+      seeds.push_back({{r, .1, 0}, id});
     //std::cout<<"SEEDS= "<<seeds<<std::endl;
   }
   else if (args.find("--psiRange") != args.end())
@@ -1213,10 +1458,10 @@ GenerateSeeds(const vtkm::cont::DataSet& ds,
     auto vals = args["--psiRange"];
     vtkm::FloatDefault psi0 = std::atof(vals[0].c_str());
     vtkm::FloatDefault psi1 = std::atof(vals[1].c_str());
-    int numPts = std::atof(vals[2].c_str());
-    int numTheta = std::atof(vals[3].c_str());
+    int numPts = std::atoi(vals[2].c_str());
+    int numTheta = std::atoi(vals[3].c_str());
 
-    GeneratePsiRangeSeeds(psi0, psi1, numPts, numTheta, ds, seeds, xgcParams);
+    seeds = GeneratePsiRangeSeeds(psi0, psi1, numPts, numTheta, ds, xgcParams);
   }
   else if (args.find("--seed") != args.end())
   {
@@ -1224,13 +1469,13 @@ GenerateSeeds(const vtkm::cont::DataSet& ds,
     vtkm::FloatDefault r = std::atof(vals[0].c_str());
     vtkm::FloatDefault z = std::atof(vals[1].c_str());
     vtkm::FloatDefault t = std::atof(vals[2].c_str());
-    seeds.push_back({r, t, z});
+    seeds.push_back({{r, t, z}, 0});
   }
   else if (args.find("--jong1") != args.end())
   {
     //first point in traces.v2
     //zone = 3132, incident nodes: 1521, 1612, 1613
-    seeds = {{3.029365, 6.183185, 0.020600}};
+    seeds = {{{3.029365, 6.183185, 0.020600}, 0}};
   }
   else if (args.find("--jong6") != args.end())
   {
@@ -1251,31 +1496,35 @@ GenerateSeeds(const vtkm::cont::DataSet& ds,
     };
 
     if (vals.size() == 0) //all the points.
-      seeds = allSeeds;
+    {
+      std::size_t n = allSeeds.size();
+      for (std::size_t i = 0; i < n; i++)
+        seeds.push_back({allSeeds[i], static_cast<vtkm::Id>(i)});
+    }
     else
     {
       int n = std::stoi(vals[0]);
       if (n >= (int)allSeeds.size())
         std::cout<<"Bad seed!!! #allseeds= "<<allSeeds.size()<<std::endl;
 
-      seeds = {allSeeds[n]};
+      seeds = {{allSeeds[n], 0}};
     }
   }
   else if (args.find("--jongrz") != args.end())
   {
     //Seed from the blue island.
     //seeds = {{3.351443,             0, -0.451649}};
-    seeds = {{3.351443028564415449, 0, -0.45164880640275617552}};
+    seeds = {{{3.351443028564415449, 0, -0.45164880640275617552}, 0}};
   }
   else if (args.find("--afterN") != args.end())
   {
     seeds = {
-      {3.321888620239255019, 0.0, 0.478933972623594384},
-      {2.568934684085571352, 0.0, 0.731290913908178353},
-      {3.493628202658771720, 0.0, 0.433951677589735296},
-      {2.862485694515508605, 0.0, 0.208737305948038576},
-      {2.905837753215041008, 0.0, -0.397811882628356817},
-      {3.391834939600261389, 0.0, -0.350011953142094434},
+      {{3.321888620239255019, 0.0, 0.478933972623594384}, 0},
+      {{2.568934684085571352, 0.0, 0.731290913908178353}, 1},
+      {{3.493628202658771720, 0.0, 0.433951677589735296}, 2},
+      {{2.862485694515508605, 0.0, 0.208737305948038576}, 3},
+      {{2.905837753215041008, 0.0, -0.397811882628356817}, 4},
+      {{3.391834939600261389, 0.0, -0.350011953142094434}, 5}
     };
   }
   else if (args.find("--parse") != args.end())
@@ -1285,6 +1534,7 @@ GenerateSeeds(const vtkm::cont::DataSet& ds,
     std::ifstream seedFile;
     seedFile.open(args["--parse"][0]);
     std::string line;
+    vtkm::Id pid = 0;
     while (std::getline(seedFile, line))
     {
       vtkm::FloatDefault r, p, z;
@@ -1293,18 +1543,24 @@ GenerateSeeds(const vtkm::cont::DataSet& ds,
 #else
       sscanf(line.c_str(), "%f, %f, %f", &r, &p, &z);
 #endif
-      seeds.push_back({r,p,z});
+      seeds.push_back({{r,p,z}, pid});
+      pid++;
     }
-    std::cout<<"NumSeeds= "<<seeds.size()<<std::endl;
   }
 
-  return seeds;
+  auto seedsArray = vtkm::cont::make_ArrayHandle(seeds, vtkm::CopyFlag::On);
+
+  return seedsArray;
 }
 
 int
 main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
+  int rank, numRanks;
+  MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
   std::map<std::string, std::vector<std::string>> args;
   ParseArgs(argc, argv, args);
 
@@ -1341,37 +1597,34 @@ main(int argc, char** argv)
   else
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
 
-  useTurb = true;
-  if (args.find("--turbulence") != args.end())
-    useTurb = std::atoi(args["--turbulence"][0].c_str());
+  //if (args.find("--streaming") != args.end())
+  /*
+  XGCParameters xgcParams;
+  auto ds = ReadDataSet(args, xgcParams);
+  ds.PrintSummary(std::cout);
+  //auto seeds = GenerateSeeds(ds, xgcParams, args);
+  //Poincare(ds, xgcParams, seeds, args);
+  */
 
   XGCParameters xgcParams;
-  auto ds = ReadData(args, xgcParams);
+  auto ds = ReadDataSet(args, xgcParams);
+  ds.PrintSummary(std::cout);
+  //vtkm::io::VTKDataSetWriter writer2("grid.vtk");
+  //writer2.WriteDataSet(ds);
+
   auto seeds = GenerateSeeds(ds, xgcParams, args);
-
-  std::vector<std::vector<vtkm::Vec3f>> traces(seeds.size());
-  vtkm::cont::ArrayHandle<vtkm::Vec2f> outRZ, outTP;
-  vtkm::cont::ArrayHandle<vtkm::Id> outID;
-
-  std::cout<<"******************* NumSeeds= "<<seeds.size()<<std::endl;
   Poincare(ds, xgcParams, seeds, args);
 
   return 0;
 }
 
-
 /*
-XGC:
-3.029365, 0.020600, 6.183185
-3.029293, 0.021400, 6.180291
+//cyclone case
+
+./examples/poincare/Poincare  --vField B --dir ../data/run_1920 --traces 0 --useHighOrder --turbulence 1 --jong6 --openmp  --output bumm --numPunc 303 --gpuParams 256 128 --stepSize 0.1 --test
 
 
+//iter case
+./examples/poincare/Poincare  --vField B --dir ../data/XGC_GB/test_GB_small_su455 --traces 0 --useHighOrder --turbulence 1 --psiRange .1 .9 4 2 --openmp  --output bumm --numPunc 303 --gpuParams 256 128 --stepSize 0.1
 
-mine:
-3.02936, 0.0206, 6.18318
-3.02934, 0.0209196, 6.17947
-
-delta= -0.000047, .0004804, .000821
-
-
- */
+*/

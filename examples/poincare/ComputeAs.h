@@ -27,10 +27,10 @@ public:
   {
   }
 
-  ComputeAsWorklet()
+  ComputeAsWorklet(XGCParameters& xgcParams)
   {
-    this->NumNodes = numNodes;
-    this->NumPlanes = numPlanes;
+    this->NumNodes = xgcParams.numNodes;
+    this->NumPlanes = xgcParams.numPlanes;
   }
 
   template <typename CoordsType, typename LocatorType, typename CellSetType, typename AsPhiType, typename dAsPhiType, typename AsOutType, typename dAsOutType>

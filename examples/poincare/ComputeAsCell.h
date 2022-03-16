@@ -24,10 +24,10 @@ public:
   using ExecutionSignature = void(InputIndex, PointCount, PointIndices, _2, _3, _4, _5, _6, _7, _8);
   using InputDomain = _1;
 
-  ComputeAsCellWorklet()
+  ComputeAsCellWorklet(XGCParameters& xgcParams)
   {
-    this->NumNodes = numNodes;
-    this->NumPlanes = numPlanes;
+    this->NumNodes = xgcParams.numNodes;
+    this->NumPlanes = xgcParams.numPlanes;
   }
 
   template <typename CoordsType, typename VertexIndexType, typename LocatorType, typename CellSetType, typename AsPhiType, typename dAsPhiType, typename AsOutType, typename dAsOutType>
