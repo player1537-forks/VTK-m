@@ -1361,8 +1361,6 @@ GeneratePsiRangeSeeds(vtkm::FloatDefault psiNorm0,
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> maxR, thetas;
   FindMaxR(ds, xgcParams, numTheta, thetas, maxR);
-  std::cout<<"MaxR= ";
-  vtkm::cont::printSummary_ArrayHandle(maxR, std::cout, true);
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> arr;
   ds.GetField("coeff_2D").GetData().AsArrayHandle(arr);
@@ -1382,7 +1380,7 @@ GeneratePsiRangeSeeds(vtkm::FloatDefault psiNorm0,
 
   for (int i = 0; i < numPts; i++)
   {
-    std::cout<<"Pt_"<<i<<" = psi= "<<psi<<" psiN= "<<(psi/xgcParams.eq_x_psi)<<std::endl;
+    //std::cout<<"Pt_"<<i<<" = psi= "<<psi<<" psiN= "<<(psi/xgcParams.eq_x_psi)<<std::endl;
 
     vtkm::Id pid = static_cast<vtkm::Id>(i);
 
@@ -1420,7 +1418,7 @@ GeneratePsiRangeSeeds(vtkm::FloatDefault psiNorm0,
       vtkm::FloatDefault r = (rad0+rad1)/2.0;
       vtkm::Vec3f pt_rpz(xgcParams.eq_axis_r + r*cost, 0, xgcParams.eq_axis_z + r*sint);
       seeds.push_back({pt_rpz, pid});
-      std::cout<<"   PSI_pt: "<<psi<<" "<<theta<<" id= "<<pid<<std::endl;
+      //std::cout<<"   PSI_pt: "<<psi<<" "<<theta<<" id= "<<pid<<std::endl;
 
       //auto psi_ = InterpolatePsi({pt[0], pt[1]},  coeff, ncoeff, nrz, rzmin, drz);
       //std::cout<<"   "<<pt<<"  psi= "<<psi_/eq_x_psi<<std::endl;
@@ -1553,6 +1551,60 @@ GenerateSeeds(const vtkm::cont::DataSet& ds,
   return seedsArray;
 }
 
+void
+StreamingPoincare(std::map<std::string, std::vector<std::string>>& args)
+{
+  XGCParameters xgcParams;
+
+  std::map<std::string, std::string> adiosArgs;
+  adiosArgs["--dir"] = args["--dir"][0];
+  auto ds = ReadStaticData(args, xgcParams, "xgc.poincare_init.bp");
+
+  std::string fName = args["--streaming"][0];
+  std::string outFileNameBase = args["--output"][0];
+
+  adiosStuff["data"] = new adiosS(adios, fName, "3d", adiosArgs);
+  auto dataStuff = adiosStuff["data"];
+
+  adios2::StepStatus status;
+  int step = 0;
+  while (true)
+  {
+    status = dataStuff->engine.BeginStep(adios2::StepMode::Read, 1000.0);
+    if (status != adios2::StepStatus::OK)
+    {
+      std::cerr<<"Failed to read "<<fName<<" step "<<step<<". Exiting now"<<std::endl;
+      break;
+    }
+
+    //Initialize the num planes variable.
+    if (step == 0)
+      dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &xgcParams.numPlanes, adios2::Mode::Sync);
+
+    int timeStep;
+    dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("tindex"), &timeStep, adios2::Mode::Sync);
+
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_arr, dAs_arr;
+    ReadTurbData(dataStuff, args, As_arr, dAs_arr);
+    auto As = CalcAs(As_arr, xgcParams);
+    auto dAs = Calc_dAs(dAs_arr, xgcParams);
+    UpdateField(ds, "As_ff", As);
+    UpdateField(ds, "dAs_ff_rzp", dAs);
+
+    std::cout<<step<<": Read data timeStep= "<<timeStep<<std::endl;
+    dataStuff->engine.EndStep();
+
+    auto seeds = GenerateSeeds(ds, xgcParams, args);
+
+    std::string outputFile = outFileNameBase + "." + std::to_string(timeStep);
+    std::cout<<"Dump to "<<outputFile<<std::endl;
+    args["--output"][0] = outputFile;
+    Poincare(ds, xgcParams, seeds, args);
+
+    step++;
+  }
+}
+
 int
 main(int argc, char** argv)
 {
@@ -1597,23 +1649,20 @@ main(int argc, char** argv)
   else
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
 
-  //if (args.find("--streaming") != args.end())
-  /*
-  XGCParameters xgcParams;
-  auto ds = ReadDataSet(args, xgcParams);
-  ds.PrintSummary(std::cout);
-  //auto seeds = GenerateSeeds(ds, xgcParams, args);
-  //Poincare(ds, xgcParams, seeds, args);
-  */
-
-  XGCParameters xgcParams;
-  auto ds = ReadDataSet(args, xgcParams);
-  ds.PrintSummary(std::cout);
-  //vtkm::io::VTKDataSetWriter writer2("grid.vtk");
-  //writer2.WriteDataSet(ds);
-
-  auto seeds = GenerateSeeds(ds, xgcParams, args);
-  Poincare(ds, xgcParams, seeds, args);
+  if (args.find("--streaming") != args.end())
+  {
+    StreamingPoincare(args);
+  }
+  else
+  {
+    XGCParameters xgcParams;
+    auto ds = ReadDataSet(args, xgcParams);
+    //ds.PrintSummary(std::cout);
+    //vtkm::io::VTKDataSetWriter writer2("grid.vtk");
+    //writer2.WriteDataSet(ds);
+    auto seeds = GenerateSeeds(ds, xgcParams, args);
+    Poincare(ds, xgcParams, seeds, args);
+  }
 
   return 0;
 }
@@ -1626,5 +1675,8 @@ main(int argc, char** argv)
 
 //iter case
 ./examples/poincare/Poincare  --vField B --dir ../data/XGC_GB/test_GB_small_su455 --traces 0 --useHighOrder --turbulence 1 --psiRange .1 .9 4 2 --openmp  --output bumm --numPunc 303 --gpuParams 256 128 --stepSize 0.1
+
+//streaming case
+./examples/poincare/Poincare  --vField B --dir ../data/XGC_GB/test_GB_small_su455 --traces 0 --useHighOrder --turbulence 1 --psiRange .1 .9 4 2 --openmp  --output bumm --numPunc 500 --gpuParams 256 128 --stepSize 0.05 --useLinearB --streaming xgc.3d.panout.1.bp
 
 */

@@ -87,6 +87,4 @@ FindMaxR(const vtkm::cont::DataSet& ds,
   locator.SetCoordinates(ds.GetCoordinateSystem());
   locator.Update();
   invoker(worklet, thetas, locator, maxR);
-  std::cout<<"MaxR= ";
-  vtkm::cont::printSummary_ArrayHandle(maxR, std::cout, true);
 }
