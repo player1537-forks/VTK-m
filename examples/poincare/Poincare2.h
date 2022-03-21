@@ -415,26 +415,36 @@ public:
 
     ParticleInfo pInfo;
 
-    //Do some validation...
-    /*
-    std::vector<vtkm::Id> ptIds = {10, 100, 1000, 10000, 1893, 55121, 14993, 31922, 63239};
-    for (const auto& id : ptIds)
+    if (this->ValidateInterpolation)
     {
-      auto pt = coords.Get(id);
-      std::cout<<"COORDS_id= "<<pt<<" of "<<coords.GetNumberOfValues()<<std::endl;
-      vtkm::Vec3f ptRPZ(pt[0], 0, pt[1]);
+      vtkm::Id numPts = coords.GetNumberOfValues();
 
-      std::cout<<std::setprecision(15);
-      std::cout<<"Pt= "<<ptRPZ<<" id= "<<id<<std::endl;
+      const vtkm::FloatDefault epsPsi = 1e-13, epsB0 = 1e-12;
+      for (vtkm::Id i = 0; i < numPts; i += this->ValidateInterpolationSkip)
+      {
+        auto ptRZ = coords.Get(i);
+        vtkm::Vec3f ptRPZ(ptRZ[0], 0, ptRZ[1]);
+        this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D);
 
-      this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D);
+        //Compare interpolated values at nodes to the array values.
+        //The values in the array are computed by XGC.
+        auto dPsi = vtkm::Abs(pInfo.Psi - Psi.Get(i));
+        auto dB0 = vtkm::Magnitude(pInfo.B0_rzp - B_RZP.Get(i));
+        if (dPsi > epsPsi)
+        {
+          printf("Psi difference detected. Error= %16.15lf\n", dPsi);
+          printf("    Vals= %16.15lf %16.15lf\n", pInfo.Psi, Psi.Get(i));
+        }
+        if (dB0 > epsB0)
+        {
+          printf("B0 difference detected. Error= %16.15lf\n", dB0);
+          printf("   Vals= (%16.15lf, %16.15lf, %16.15lf)\n", pInfo.B0_rzp[0], pInfo.B0_rzp[1], pInfo.B0_rzp[2]);
+          printf("   Vals= (%16.15lf, %16.15lf, %16.15lf)\n", B_RZP.Get(i)[0], B_RZP.Get(i)[1], B_RZP.Get(i)[2]);
+        }
+      }
 
-      std::cout<<"       psi= "<<pInfo.Psi<<" B0= "<<pInfo.B0_rzp<<std::endl;
-      std::cout<<"    Interp= "<<Psi.Get(id)<<" B0= "<<B_RZP.Get(id)<<std::endl;
-      std::cout<<std::endl<<std::endl;
+      return;
     }
-    return;
-    */
 
     while (true)
     {
@@ -1406,6 +1416,9 @@ public:
   vtkm::FloatDefault min_psi, max_psi;
   vtkm::FloatDefault one_d_cub_dpsi_inv;
   vtkm::FloatDefault sml_bp_sign = -1.0f;
+
+  bool ValidateInterpolation = false;
+  vtkm::Id ValidateInterpolationSkip = 1;
 };
 
 #endif

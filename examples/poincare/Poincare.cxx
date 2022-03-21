@@ -12,7 +12,6 @@
 TODO:
 psi = max(0, psi);
 
-
 #endif
 
 #include <typeinfo>
@@ -703,25 +702,6 @@ Poincare(const vtkm::cont::DataSet& ds,
          std::map<std::string, std::vector<std::string>>& args,
          int timeStep=0)
 {
-
-  //Get the arguments.
-  vtkm::FloatDefault stepSize = std::atof(args["--stepSize"][0].c_str());
-  vtkm::Id numPunc = std::atoi(args["--numPunc"][0].c_str());
-
-  bool useTraces = false;
-  if (args.find("--traces") != args.end()) useTraces = std::atoi(args["--traces"][0].c_str());
-  std::string outFileName = args["--output"][0];
-  bool useBOnly = false;
-  if (args.find("--useBOnly") != args.end()) useBOnly = true;
-  bool useLinearB = false;
-  if (args.find("--useLinearB") != args.end()) useLinearB = true;
-
-  if (useLinearB)
-  {
-    useBOnly = true;
-    std::cout<<"Warning: Using linear B, forcing UseBOnly = true."<<std::endl;
-  }
-
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff, coeff_1D, coeff_2D, psi;
   vtkm::cont::ArrayHandle<vtkm::Vec3f> B_rzp, B_Norm_rzp, dAs_ff_rzp;
   //ds.GetField("As_phi_ff").GetData().AsArrayHandle(As_ff);
@@ -738,13 +718,13 @@ Poincare(const vtkm::cont::DataSet& ds,
   vtkm::cont::ArrayHandle<vtkm::Id> outID;
   vtkm::Id nSeeds = seeds.GetNumberOfValues();
 
+  vtkm::Id numPunc = std::atoi(args["--numPunc"][0].c_str());
   outRZ.Allocate(numPunc*nSeeds);
   outTP.Allocate(numPunc*nSeeds);
   outID.Allocate(numPunc*nSeeds);
 
   auto start = std::chrono::steady_clock::now();
-  RunPoincare2(ds, seeds, xgcParams,
-               stepSize, numPunc, useBOnly, useTraces, useLinearB,
+  RunPoincare2(ds, seeds, xgcParams, args,
                As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
                B_rzp, psi,
                tracesArr, outRZ, outTP, outID);
@@ -757,13 +737,13 @@ Poincare(const vtkm::cont::DataSet& ds,
   std::cout<<"outputRZ.size()= "<<outRZ.GetNumberOfValues()<<std::endl;
   std::cout<<"outputTP.size()= "<<outTP.GetNumberOfValues()<<std::endl;
   std::cout<<"punctureID.size()= "<<outID.GetNumberOfValues()<<std::endl;
-  //vtkm::cont::printSummary_ArrayHandle(output, std::cout);
-  //vtkm::cont::printSummary_ArrayHandle(punctureID, std::cout);
 
   //Save output
   std::vector<std::vector<vtkm::Vec3f>> traces;
 
   std::vector<std::vector<vtkm::Vec3f>> res;
+  bool useTraces = false;
+  if (args.find("--traces") != args.end()) useTraces = std::atoi(args["--traces"][0].c_str());
   if (useTraces)
   {
     auto portal = tracesArr.ReadPortal();
@@ -776,6 +756,7 @@ Poincare(const vtkm::cont::DataSet& ds,
     }
   }
 
+  std::string outFileName = args["--output"][0];
   SaveOutput(traces, outRZ, outTP, outID, outFileName, timeStep);
 }
 
