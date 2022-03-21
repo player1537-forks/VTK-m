@@ -8,6 +8,7 @@
 #include <vtkm/worklet/WorkletMapField.h>
 
 #include "XGCParameters.h"
+#include <iomanip>
 
 using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
 
@@ -171,7 +172,16 @@ public:
 
     //Get the coeffcients (z,r,4,4)
     vtkm::Matrix<vtkm::FloatDefault, 4, 4> acoeff;
-    vtkm::Id offset = (r_i * this->ncoeff + z_i) * 16;
+    //vtkm::Id offset = (r_i * this->ncoeff + z_i) * 16; //DRP
+    vtkm::Id offset = (z_i * ncoeff + r_i) * 16;
+
+    /*
+    std::cout<<"InterpolatePsi: "<<vtkm::Vec2f(R,Z)<<std::endl;
+    std::cout<<"  i/j= "<<r_i<<" "<<z_i<<std::endl;
+    std::cout<<"  ncoeff= "<<ncoeff<<std::endl;
+    std::cout<<"  offset= "<<offset<<std::endl;
+    std::cout<<"  Rc/Zc= "<<Rc<<" "<<Zc<<std::endl;
+    */
 
     vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
     //this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
@@ -211,8 +221,9 @@ public:
     //Get the coeffcients (z,r,4,4)
     vtkm::Matrix<vtkm::FloatDefault, 4, 4> acoeff;
     //offset = ri * nz + zi
-    vtkm::Id offset = (r_i * this->ncoeff + z_i) * 16;
-    //offset = (z_i * this->ncoeff + r_i)*16;
+    //vtkm::Id offset = (r_i * this->ncoeff + z_i) * 16; //DRP
+    vtkm::Id offset = (z_i * ncoeff + r_i) * 16;
+
 #if 0
     vtkm::Id idx = 0;
     //std::cout<<"Offset= "<<(offset/16)<<" 16: "<<offset<<std::endl;
@@ -223,6 +234,13 @@ public:
         idx++;
       }
 #endif
+
+    /*
+    std::cout<<"  i/j= "<<r_i<<" "<<z_i<<std::endl;
+    std::cout<<"  ncoeff= "<<ncoeff<<std::endl;
+    std::cout<<"  offset= "<<offset<<std::endl;
+    std::cout<<"  Rc/Zc= "<<Rc<<" "<<Zc<<std::endl;
+    */
 
     vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
     //this->eval_bicub_2(R, Z, Rc, Zc, acoeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
@@ -396,6 +414,27 @@ public:
     DBG("Begin: "<<particle<<std::endl);
 
     ParticleInfo pInfo;
+
+    //Do some validation...
+    /*
+    std::vector<vtkm::Id> ptIds = {10, 100, 1000, 10000, 1893, 55121, 14993, 31922, 63239};
+    for (const auto& id : ptIds)
+    {
+      auto pt = coords.Get(id);
+      std::cout<<"COORDS_id= "<<pt<<" of "<<coords.GetNumberOfValues()<<std::endl;
+      vtkm::Vec3f ptRPZ(pt[0], 0, pt[1]);
+
+      std::cout<<std::setprecision(15);
+      std::cout<<"Pt= "<<ptRPZ<<" id= "<<id<<std::endl;
+
+      this->HighOrderB(ptRPZ, pInfo, Coeff_1D, Coeff_2D);
+
+      std::cout<<"       psi= "<<pInfo.Psi<<" B0= "<<pInfo.B0_rzp<<std::endl;
+      std::cout<<"    Interp= "<<Psi.Get(id)<<" B0= "<<B_RZP.Get(id)<<std::endl;
+      std::cout<<std::endl<<std::endl;
+    }
+    return;
+    */
 
     while (true)
     {
@@ -848,11 +887,10 @@ public:
                const vtkm::FloatDefault& xmin,
                const vtkm::FloatDefault& dx_inv) const
   {
-    //std::cout<<"GetIndex: "<<x<<" "<<nx<<" min= "<<xmin<<" dx_inv "<<dx_inv<<std::endl;
-    //return std::max(0, std::min(nx-1, (int)((x-xmin)*dx_inv)) );
-    //return std::max(0, std::min(nx-1,    (int)((x-xmin)*dx_inv)) );
-    int idx = std::max(1, std::min(nx  , 1 + int ((x-xmin)*dx_inv)) );
-    return idx-1;
+    int idx = std::max(0, std::min(nx-1,
+                                   int((x-xmin)*dx_inv)) );
+    return idx;
+
   }
 
   template <typename Coeff_2DType>
@@ -880,6 +918,15 @@ public:
     vtkm::FloatDefault dfx2[4] = {0,0,0,0};
     vtkm::FloatDefault dfy2[4] = {0,0,0,0};
 
+    /*
+    for (int j = 0; j < 4; j++)
+    {
+      std::cout<<"acoeff_"<<j<<": ";
+      for (int i = 0; i < 4; i++)
+        std::cout<<Coeff_2D.Get(offset + j*4 + i)<<" ";
+      std::cout<<std::endl;
+    }
+    */
 
     for (int j=0; j<4; j++)
     {
@@ -1296,6 +1343,8 @@ public:
 
     deltaB_rzp[2] /= R;
     pInfo.B0_rzp[2] /= R;
+
+    //std::cout<<"Evaluate: "<<ptRPZ<<" : psi= "<<pInfo.Psi<<" B0= "<<pInfo.B0_rzp<<std::endl;
 
     vtkm::Vec3f vec_rzp = pInfo.B0_rzp + deltaB_rzp;
     vtkm::Vec3f vec_rpz(vec_rzp[0], vec_rzp[2], vec_rzp[1]);
