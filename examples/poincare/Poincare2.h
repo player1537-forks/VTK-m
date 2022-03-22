@@ -369,7 +369,7 @@ public:
     //Check divergence.
     auto divergence = dBr_dr + Br/R + dBz_dz;
 #ifdef VTKM_USE_DOUBLE_PRECISION
-    static const vtkm::FloatDefault divEps = 1e-16;
+    static const vtkm::FloatDefault divEps = 1e-12;
 #else
     static const vtkm::FloatDefault divEps = 1e-8;
 #endif
@@ -432,12 +432,12 @@ public:
         auto dB0 = vtkm::Magnitude(pInfo.B0_rzp - B_RZP.Get(i));
         if (dPsi > epsPsi)
         {
-          printf("Psi difference detected. Error= %16.15lf\n", dPsi);
+          printf("%lld: Psi difference detected. Error= %16.15lf\n", i, dPsi);
           printf("    Vals= %16.15lf %16.15lf\n", pInfo.Psi, Psi.Get(i));
         }
         if (dB0 > epsB0)
         {
-          printf("B0 difference detected. Error= %16.15lf\n", dB0);
+          printf("%lld: B0 difference detected. Error= %16.15lf\n", i, dB0);
           printf("   Vals= (%16.15lf, %16.15lf, %16.15lf)\n", pInfo.B0_rzp[0], pInfo.B0_rzp[1], pInfo.B0_rzp[2]);
           printf("   Vals= (%16.15lf, %16.15lf, %16.15lf)\n", B_RZP.Get(i)[0], B_RZP.Get(i)[1], B_RZP.Get(i)[2]);
         }
@@ -509,14 +509,14 @@ public:
       if (particle.NumSteps >= this->MaxIter || particle.NumPunctures >= this->MaxPunc)
       {
 #if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
-        std::cout<<"************************************* All done: "<<particle<<std::endl;
+        std::cout<<"************************************* All done: id= "<<particle.ID<<" #Punc= "<<particle.NumPunctures<<std::endl;
 #endif
         break;
       }
     }
 
 #if !defined(VTKM_CUDA) && !defined(VTKM_HIP)
-    std::cout<<"Particle done: "<<idx<<std::endl;
+    //std::cout<<"Particle done: "<<idx<<" "<<particle<<std::endl;
 #endif
 
 #ifdef VALGRIND
@@ -569,7 +569,7 @@ public:
 
     if (!(v1&&v2&&v3&&v4))
     {
-      printf("RK4 step failed\n");
+      //printf("RK4 step failed\n");
       return false;
     }
 
@@ -866,7 +866,7 @@ public:
     vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param, pInfo.PrevCell);
     if (status != vtkm::ErrorCode::Success)
     {
-      printf("Find Cell failed! pt= %lf %lf %lf\n", ptRZ[0], ptRZ[1], ptRZ[2]);
+      //printf("Find Cell failed! pt= %lf %lf %lf\n", ptRZ[0], ptRZ[1], ptRZ[2]);
       return false;
     }
 
@@ -1310,7 +1310,9 @@ public:
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
 
-    this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, coords, x_ff_param, x_ff_vids);
+    if (!this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, coords, x_ff_param, x_ff_vids))
+      return false;
+
     //this->PtLoc2(x_ff_rzp, pInfo, locator, cellSet, coords, x_ff_param, x_ff_vids);
     auto dAs_ff0_rzp = this->EvalV(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->EvalV(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);

@@ -60,6 +60,7 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
 
   PoincareWorklet2 worklet(numPunc, 0.0f, stepSize, useTraces, xgcParams);
   worklet.UseBOnly = useBOnly;
+
   worklet.one_d_cub_dpsi_inv = 1.0/dPsi;
   worklet.UseLinearB = useLinearB;
   worklet.ValidateInterpolation = validateInterp;

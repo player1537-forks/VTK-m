@@ -17,8 +17,10 @@ psi = max(0, psi);
 #include <typeinfo>
 #include <iomanip>
 #include <vtkm/cont/Initialize.h>
-#include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/ArrayHandle.h>
+#include <vtkm/cont/ArrayHandleConstant.h>
+#include <vtkm/cont/ArrayCopy.h>
+
 #include <vtkm/cont/DataSet.h>
 #include <vtkm/Particle.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
@@ -719,9 +721,11 @@ Poincare(const vtkm::cont::DataSet& ds,
   vtkm::Id nSeeds = seeds.GetNumberOfValues();
 
   vtkm::Id numPunc = std::atoi(args["--numPunc"][0].c_str());
+  vtkm::cont::ArrayHandleConstant<vtkm::Id> initIds(-1, numPunc*nSeeds);
   outRZ.Allocate(numPunc*nSeeds);
   outTP.Allocate(numPunc*nSeeds);
   outID.Allocate(numPunc*nSeeds);
+  vtkm::cont::ArrayCopy(initIds, outID);
 
   auto start = std::chrono::steady_clock::now();
   RunPoincare2(ds, seeds, xgcParams, args,
@@ -1550,8 +1554,6 @@ GeneratePsiRangeSeeds(std::map<std::string, std::vector<std::string>>& args,
     std::cout<<"Theta_"<<i<<" = "<<theta<<" psiN: "<<psiNorm0<<" "<<psiNorm1<<std::endl;
 
     auto psiTarget = psiMin;
-    auto psi0 = psiMin, psi1 = psiMin;
-
     vtkm::FloatDefault r0 = 0;
     for (int j = 0; j < numPts; j++)
     {
@@ -1827,6 +1829,35 @@ GenerateSeeds(const vtkm::cont::DataSet& ds,
       {{3.391834939600261389, 0.0, -0.350011953142094434}, 5}
     };
   }
+  else if (args.find("--parseAdios") != args.end())
+  {
+    auto dir = args["--dir"][0];
+    auto vals = args["--parseAdios"];
+    auto fname = dir + "/" + vals[0];
+    int skip = 1;
+    if (vals.size() > 1)
+      skip = std::atoi(vals[1].c_str());
+
+    std::cout<<"Reading seeds from "<<fname<<" skip= "<<skip<<std::endl;
+
+    auto io = adios2::IO(adios->DeclareIO("seedsIO"));
+    auto engine = io.Open(fname, adios2::Mode::Read);
+
+    auto v = io.InquireVariable<float>("ephase");
+    std::vector<float> tmp;
+    engine.Get(v, tmp, adios2::Mode::Sync);
+    engine.Close();
+
+    int n = tmp.size();
+    int id = 0;
+    for (int i = 0; i < n; i += (9*skip))
+    {
+      auto R = static_cast<vtkm::FloatDefault>(tmp[i + 0]);
+      auto Z = static_cast<vtkm::FloatDefault>(tmp[i + 1]);
+
+      seeds.push_back(vtkm::Particle(vtkm::Vec3f(R, 0.0, Z), id++));
+    }
+  }
   else if (args.find("--parse") != args.end())
   {
     //Generaate the seed list by running jongAll.py
@@ -2005,8 +2036,11 @@ main(int argc, char** argv)
     auto psiHigh = InterpolatePsi(ptRZ,  coeff, ncoeff, nrz, rzmin, drz, xgcParams, B0);
     vtkm::cont::ArrayHandle<vtkm::FloatDefault> coeff1D;
     ds.GetField("coeff_1D").GetData().AsArrayHandle(coeff1D);
-    vtkm::FloatDefault one_d_cub_dpsi_inv = 1;
-    one_d_cub_dpsi_inv = 1.0 / ((xgcParams.psi_max-xgcParams.psi_min)/vtkm::FloatDefault(ncoeff));
+
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> eq_psi_gridArr;
+    ds.GetField("eq_psi_grid").GetData().AsArrayHandle(eq_psi_gridArr);
+    auto dPsi = eq_psi_gridArr.ReadPortal().Get(1)-eq_psi_gridArr.ReadPortal().Get(0);
+    vtkm::FloatDefault one_d_cub_dpsi_inv = 1.0/dPsi;
     auto Ipsi = I_interpol(psiHigh, 0, one_d_cub_dpsi_inv, ncoeff, coeff1D.ReadPortal());  //rgn=1
     B0[2] = Ipsi / R;
 
