@@ -11,7 +11,7 @@
 #define vtk_m_filter_DotProduct_h
 
 #include <vtkm/Deprecated.h>
-#include <vtkm/filter/vector_calculus/DotProduct.h>
+#include <vtkm/filter/vector_analysis/DotProduct.h>
 
 namespace vtkm
 {
@@ -19,7 +19,7 @@ namespace filter
 {
 
 VTKM_DEPRECATED(1.8,
-                "Use vtkm/filter/vector_calculus/DotProduct.h instead of vtkm/filter/DotProduct.h.")
+                "Use vtkm/filter/vector_analysis/DotProduct.h instead of vtkm/filter/DotProduct.h.")
 inline void DotProduct_deprecated() {}
 
 inline void DotProduct_deprecated_warning()
@@ -27,11 +27,6 @@ inline void DotProduct_deprecated_warning()
   DotProduct_deprecated();
 }
 
-class VTKM_DEPRECATED(1.8, "Use vtkm::filter::vector_calculus::DotProduct.") DotProduct
-  : public vtkm::filter::vector_calculus::DotProduct
-{
-  using vector_calculus::DotProduct::DotProduct;
-};
 
 }
 } // namespace vtkm::filter

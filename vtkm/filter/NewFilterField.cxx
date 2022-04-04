@@ -14,6 +14,16 @@ namespace vtkm
 namespace filter
 {
 
+vtkm::cont::DataSet NewFilterField::CreateResultField(const vtkm::cont::DataSet& inDataSet,
+                                                      const vtkm::cont::Field& resultField) const
+{
+  vtkm::cont::DataSet outDataSet = this->CreateResult(inDataSet);
+  outDataSet.AddField(resultField);
+  VTKM_ASSERT(!resultField.GetName().empty());
+  VTKM_ASSERT(outDataSet.HasField(resultField.GetName(), resultField.GetAssociation()));
+  return outDataSet;
+}
+
 void NewFilterField::ResizeIfNeeded(size_t index_st)
 {
   if (this->ActiveFieldNames.size() <= index_st)
@@ -25,7 +35,7 @@ void NewFilterField::ResizeIfNeeded(size_t index_st)
     this->ActiveCoordinateSystemIndices.resize(index_st + 1);
     for (std::size_t i = oldSize; i <= index_st; ++i)
     {
-      this->ActiveFieldAssociation[i] = cont::Field::Association::ANY;
+      this->ActiveFieldAssociation[i] = cont::Field::Association::Any;
       this->UseCoordinateSystemAsField[i] = false;
       this->ActiveCoordinateSystemIndices[i] = 0;
     }

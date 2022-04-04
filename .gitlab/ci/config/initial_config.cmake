@@ -58,9 +58,11 @@ foreach(option IN LISTS options)
 
   elseif(no_testing STREQUAL option)
     set(VTKm_ENABLE_TESTING "OFF" CACHE STRING "")
+    set(VTKm_ENABLE_TESTING_LIBRARY "OFF" CACHE STRING "")
 
   elseif(examples STREQUAL option)
     set(VTKm_ENABLE_EXAMPLES "ON" CACHE STRING "")
+    set(VTKm_INSTALL_EXAMPLES "ON" CACHE STRING "")
 
   elseif(docs STREQUAL option)
     set(VTKm_ENABLE_DOCUMENTATION "ON" CACHE STRING "")
@@ -96,8 +98,10 @@ foreach(option IN LISTS options)
   elseif(volta STREQUAL option)
     set(VTKm_CUDA_Architecture "volta" CACHE STRING "")
 
+  # From turing we set the architecture using the cannonical
+  # CMAKE_CUDA_ARCHITECTURES
   elseif(turing STREQUAL option)
-    set(VTKm_CUDA_Architecture "turing" CACHE STRING "")
+    set(CMAKE_CUDA_ARCHITECTURES "75" CACHE STRING "")
 
   elseif(hip STREQUAL option)
     if(CMAKE_VERSION VERSION_LESS_EQUAL 3.20)
@@ -143,6 +147,10 @@ foreach(option IN LISTS options)
 
 endforeach()
 
+# Compile tutorials on all builders. The code is small and basic. And since
+# it is the tutorial, it should work really well.
+set(VTKm_ENABLE_TUTORIALS "ON" CACHE STRING "")
+
 set(CTEST_USE_LAUNCHERS "ON" CACHE STRING "")
 
 # We need to store the absolute path so that
@@ -159,7 +167,7 @@ if(SCCACHE_COMMAND)
 
   # Use VTKm_CUDA_Architecture to determine if we need CUDA sccache setup
   # since this will also capture when kokkos is being used with CUDA backing
-  if(DEFINED VTKm_CUDA_Architecture)
+  if(DEFINED VTKm_CUDA_Architecture OR DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_COMPILER_LAUNCHER "${SCCACHE_COMMAND}" CACHE STRING "")
   endif()
 endif()

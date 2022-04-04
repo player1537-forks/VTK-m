@@ -63,8 +63,6 @@ public:
   {
   }
 
-  UncertainArrayHandle(const Thisclass&) = default;
-
   template <typename OtherValues, typename OtherStorage>
   VTKM_CONT UncertainArrayHandle(const UncertainArrayHandle<OtherValues, OtherStorage>& src)
     : Superclass(src)
@@ -159,10 +157,7 @@ namespace cont
 template <typename ValueTypeList, typename StorageTypeList>
 struct SerializableTypeString<vtkm::cont::UncertainArrayHandle<ValueTypeList, StorageTypeList>>
 {
-  static VTKM_CONT std::string Get()
-  {
-    return SerializableTypeString<vtkm::cont::UnknownArrayHandle>::Get();
-  }
+  static VTKM_CONT std::string Get() { return "UncertainAH"; }
 };
 }
 } // namespace vtkm::cont

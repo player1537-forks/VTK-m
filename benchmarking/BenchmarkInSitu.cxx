@@ -25,12 +25,12 @@
 
 #include <vtkm/cont/internal/OptionParser.h>
 
-#include <vtkm/filter/Contour.h>
-#include <vtkm/filter/Gradient.h>
-#include <vtkm/filter/Slice.h>
 #include <vtkm/filter/Streamline.h>
-#include <vtkm/filter/Tetrahedralize.h>
-#include <vtkm/filter/Tube.h>
+#include <vtkm/filter/contour/Contour.h>
+#include <vtkm/filter/contour/Slice.h>
+#include <vtkm/filter/geometry_refinement/Tetrahedralize.h>
+#include <vtkm/filter/geometry_refinement/Tube.h>
+#include <vtkm/filter/vector_analysis/Gradient.h>
 
 #include <vtkm/rendering/Actor.h>
 #include <vtkm/rendering/CanvasRayTracer.h>
@@ -119,12 +119,12 @@ void BuildInputDataSet(uint32_t cycle, bool isStructured, bool isMultiBlock, vtk
   }
 
   // Generate Perln Noise Gradient point vector field
-  vtkm::filter::Gradient gradientFilter;
-  gradientFilter.SetActiveField(PointScalarsName, vtkm::cont::Field::Association::POINTS);
+  vtkm::filter::vector_analysis::Gradient gradientFilter;
+  gradientFilter.SetActiveField(PointScalarsName, vtkm::cont::Field::Association::Points);
   gradientFilter.SetComputePointGradient(true);
   gradientFilter.SetOutputFieldName(PointVectorsName);
   gradientFilter.SetFieldsToPass(
-    vtkm::filter::FieldSelection(vtkm::filter::FieldSelection::MODE_ALL));
+    vtkm::filter::FieldSelection(vtkm::filter::FieldSelection::Mode::All));
   if (isMultiBlock)
   {
     partitionedInputDataSet = gradientFilter.Execute(partitionedInputDataSet);
@@ -137,9 +137,9 @@ void BuildInputDataSet(uint32_t cycle, bool isStructured, bool isMultiBlock, vtk
   // Run Tetrahedralize filter to convert uniform dataset(s) into unstructured ones
   if (!isStructured)
   {
-    vtkm::filter::Tetrahedralize destructizer;
+    vtkm::filter::geometry_refinement::Tetrahedralize destructizer;
     destructizer.SetFieldsToPass(
-      vtkm::filter::FieldSelection(vtkm::filter::FieldSelection::MODE_ALL));
+      vtkm::filter::FieldSelection(vtkm::filter::FieldSelection::Mode::All));
     if (isMultiBlock)
     {
       partitionedInputDataSet = destructizer.Execute(partitionedInputDataSet);
@@ -259,7 +259,7 @@ void WriteToDisk(const vtkm::rendering::Canvas& canvas,
 
 
 template <typename DataSetType>
-DataSetType RunContourHelper(vtkm::filter::Contour& filter,
+DataSetType RunContourHelper(vtkm::filter::contour::Contour& filter,
                              vtkm::Id numIsoVals,
                              const DataSetType& input)
 {
@@ -293,8 +293,8 @@ void BenchContour(::benchmark::State& state)
   BuildInputDataSet(cycle, isStructured, isMultiBlock, DataSetDim);
   inputGenTimer.Stop();
 
-  vtkm::filter::Contour filter;
-  filter.SetActiveField(PointScalarsName, vtkm::cont::Field::Association::POINTS);
+  vtkm::filter::contour::Contour filter;
+  filter.SetActiveField(PointScalarsName, vtkm::cont::Field::Association::Points);
   filter.SetMergeDuplicatePoints(true);
   filter.SetGenerateNormals(true);
   filter.SetComputeFastNormalsForStructured(true);
@@ -577,7 +577,7 @@ void BenchSlice(::benchmark::State& state)
   BuildInputDataSet(cycle, isStructured, isMultiBlock, DataSetDim);
   inputGenTimer.Stop();
 
-  vtkm::filter::Slice filter;
+  vtkm::filter::contour::Slice filter;
 
   vtkm::cont::Timer totalTimer{ device };
   vtkm::cont::Timer filterTimer{ device };
