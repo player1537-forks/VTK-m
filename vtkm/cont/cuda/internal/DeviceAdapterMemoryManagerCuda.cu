@@ -20,6 +20,8 @@
 namespace
 {
 
+//DRP multi-block stuff.
+
 void* CudaAllocate(vtkm::BufferSizeType size)
 {
   try

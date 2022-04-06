@@ -22,6 +22,7 @@ namespace internal
 vtkm::cont::internal::BufferInfo DeviceAdapterMemoryManagerShared::Allocate(
   vtkm::BufferSizeType size) const
 {
+//  std::cout<<"******* Allocate "<<size<<std::endl;
   return vtkm::cont::internal::BufferInfo(vtkm::cont::internal::AllocateOnHost(size),
                                           this->GetDevice());
 }

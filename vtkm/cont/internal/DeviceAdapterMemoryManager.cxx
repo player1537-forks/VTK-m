@@ -15,6 +15,8 @@
 
 #include <atomic>
 #include <cstring>
+#include <list>
+#include <tuple>
 
 //----------------------------------------------------------------------------------------
 // Special allocation/deallocation code
@@ -45,6 +47,120 @@
 namespace
 {
 
+#if 0
+class MemoryPool
+{
+public:
+  MemoryPool()
+  {
+    this->Initialize();
+  }
+
+  ~MemoryPool()
+  {
+    VTKM_ASSERT(this->UsedPool.size() == 0);
+    for (auto& i : this->FreePool)
+      for (auto& j : i.second)
+        free(j);
+    this->FreePool.resize(0);
+  }
+
+  void* Allocate(vtkm::BufferSizeType size)
+  {
+    auto iter = this->FreePool.begin();
+    while (iter != this->FreePool.end() && iter->first <= size)
+      iter++;
+
+    if (iter == this->FreePool.end() || iter->second.empty())
+    {
+      std::cout<<"No buffer.. figure out what to do"<<std::endl;
+      void *buff = malloc(size);
+      return buff;
+    }
+
+    //Grab the last buffer
+    void *buff = iter->second.back();
+    iter->second.pop_back();
+
+    //Add it to the used pool.
+    iter = this->UsedPool.begin();
+    while (iter != this->UsedPool.end() && iter->first > size)
+    {
+      iter->second.push_back(buff);
+    }
+    if (iter == this->UsedPool.end())
+    {
+      std::list<void*> buffList;
+      buffList.push_back(buff);
+      auto entry = std::make_pair(size, buffList);
+      this->UsedPool.push_back(entry);
+    }
+
+    return buff;
+  }
+
+  void Alloc(vtkm::BufferSizeType size)
+  {
+    void *buffer = malloc(size);
+
+    auto iter = this->FreePool.begin();
+    while (iter != this->FreePool.end() && iter->first < size)
+      iter++;
+    if (iter == this->FreePool.end())
+      std::cout<<"No buffer.. figure out what to do"<<std::endl;
+    else
+      iter->second.push_back(buffer);
+
+  }
+
+  void Free(void* buff)
+  {
+    for (auto& i : this->UsedPool)
+      for (
+      for (auto& j : i.second)
+      {
+        j.meow();
+      }
+    /*
+        if (*j == buff)
+        {
+          i.second.erase(j);
+          auto size = i.first;
+
+          return;
+        }
+    */
+
+    //Didn't find it.... yikes...
+        }
+
+private:
+  void Initialize()
+  {
+    vtkm::BufferSizeType sz = 2048;
+    while (sz < this->MaxBufferSize)
+    {
+      std::list<void*> buffList;
+      for (int i = 0; i < 10; i++)
+        buffList.push_back(malloc(sz));
+
+      std::cout<<"MemoryPool::Initialize: "<<sz<<"  buffLen= "<<buffList.size()<<std::endl;
+      auto entry = std::make_pair(sz, buffList);
+      this->FreePool.push_back(entry);
+
+      sz *= 2;
+    }
+
+  }
+
+  vtkm::BufferSizeType MaxBufferSize = 10485760; //10MB
+  std::list<std::pair<vtkm::BufferSizeType, std::list<void*>>> FreePool;
+  std::list<std::pair<vtkm::BufferSizeType, std::list<void*>>> UsedPool;
+};
+
+MemoryPool global_memPool;
+#endif
+
 /// A deleter object that can be used with our aligned mallocs
 void HostDeleter(void* memory)
 {
@@ -52,6 +168,7 @@ void HostDeleter(void* memory)
   {
     return;
   }
+  std::cout<<"***** HostDeleter "<<memory<<std::endl;
 
 #if defined(VTKM_MEMALIGN_POSIX)
   free(memory);
@@ -90,6 +207,8 @@ void* HostAllocate(vtkm::BufferSizeType numBytes)
 #else
   void* memory = malloc(size);
 #endif
+
+//  std::cout<<"***** HostAllocate "<<numBytes<<" : "<<memory<<std::endl;
 
   return memory;
 }

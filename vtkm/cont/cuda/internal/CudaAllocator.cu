@@ -138,6 +138,15 @@ bool CudaAllocator::IsManagedPointer(const void* ptr)
 #endif
 }
 
+//DRP multiblock.
+//thread local variable with allocated memory.
+//c++14 thread local
+//managed memory: the ptr can be allocated in unified memory space (both host and device).
+//c++ stuff:
+// thread local variable.
+//  look how boost implements memory pools.
+//  pre allocate?
+//  or build the pool as you go.
 void* CudaAllocator::Allocate(std::size_t numBytes)
 {
   CudaAllocator::Initialize();
@@ -155,7 +164,9 @@ void* CudaAllocator::Allocate(std::size_t numBytes)
   }
   else
   {
-    VTKM_CUDA_CALL(cudaMalloc(&ptr, numBytes));
+    std::cout<<"CudaAllocator::Allocate("<<numBytes<<") ASYNC"<<std::endl;
+    VTKM_CUDA_CALL(cudaMallocAsync(&ptr, numBytes, cudaStreamPerThread));
+    //VTKM_CUDA_CALL(cudaMalloc(&ptr, numBytes));
   }
 
   {
@@ -171,7 +182,9 @@ void* CudaAllocator::Allocate(std::size_t numBytes)
 void* CudaAllocator::AllocateUnManaged(std::size_t numBytes)
 {
   void* ptr = nullptr;
-  VTKM_CUDA_CALL(cudaMalloc(&ptr, numBytes));
+  std::cout<<"CudaAllocator::AllocateUnManaged("<<numBytes<<") ASYNC"<<std::endl;
+  VTKM_CUDA_CALL(cudaMallocAsync(&ptr, numBytes, cudaStreamPerThread));
+  //VTKM_CUDA_CALL(cudaMalloc(&ptr, numBytes));
   {
     VTKM_LOG_F(vtkm::cont::LogLevel::MemExec,
                "Allocated CUDA array of %s at %p.",
