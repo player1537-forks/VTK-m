@@ -197,7 +197,9 @@ void* CudaAllocator::AllocateUnManaged(std::size_t numBytes)
 void CudaAllocator::Free(void* ptr)
 {
   VTKM_LOG_F(vtkm::cont::LogLevel::MemExec, "Freeing CUDA allocation at %p.", ptr);
-  VTKM_CUDA_CALL(cudaFree(ptr));
+  std::cout<<"CudaAllocator::Free() ASYNC"<<std::endl;
+  VTKM_CUDA_CALL(cudaFreeAsync(ptr, cudaStreamPerThread));
+  //VTKM_CUDA_CALL(cudaFree(ptr));
 }
 
 void CudaAllocator::FreeDeferred(void* ptr, std::size_t numBytes)
@@ -230,7 +232,9 @@ void CudaAllocator::FreeDeferred(void* ptr, std::size_t numBytes)
   for (auto&& p : toFree)
   {
     VTKM_LOG_F(vtkm::cont::LogLevel::MemExec, "Freeing deferred CUDA allocation at %p.", p);
-    VTKM_CUDA_CALL(cudaFree(p));
+    std::cout<<"CudaAllocator::FreeDeferred() ASYNC"<<std::endl;
+    VTKM_CUDA_CALL(cudaFreeAsync(p, cudaStreamPerThread));
+    //VTKM_CUDA_CALL(cudaFree(p));
   }
 }
 
