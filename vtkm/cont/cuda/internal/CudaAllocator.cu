@@ -165,8 +165,11 @@ void* CudaAllocator::Allocate(std::size_t numBytes)
   else
   {
     std::cout<<"CudaAllocator::Allocate("<<numBytes<<") ASYNC"<<std::endl;
+#if CUDART_VERSION >= 11200
     VTKM_CUDA_CALL(cudaMallocAsync(&ptr, numBytes, cudaStreamPerThread));
-    //VTKM_CUDA_CALL(cudaMalloc(&ptr, numBytes));
+#else
+    VTKM_CUDA_CALL(cudaMalloc(&ptr, numBytes));
+#endif //CUDA >= 11.2
   }
 
   {
@@ -183,8 +186,8 @@ void* CudaAllocator::AllocateUnManaged(std::size_t numBytes)
 {
   void* ptr = nullptr;
   std::cout<<"CudaAllocator::AllocateUnManaged("<<numBytes<<") ASYNC"<<std::endl;
-  VTKM_CUDA_CALL(cudaMallocAsync(&ptr, numBytes, cudaStreamPerThread));
-  //VTKM_CUDA_CALL(cudaMalloc(&ptr, numBytes));
+  //VTKM_CUDA_CALL(cudaMallocAsync(&ptr, numBytes, cudaStreamPerThread));
+  VTKM_CUDA_CALL(cudaMalloc(&ptr, numBytes));
   {
     VTKM_LOG_F(vtkm::cont::LogLevel::MemExec,
                "Allocated CUDA array of %s at %p.",
@@ -198,8 +201,11 @@ void CudaAllocator::Free(void* ptr)
 {
   VTKM_LOG_F(vtkm::cont::LogLevel::MemExec, "Freeing CUDA allocation at %p.", ptr);
   std::cout<<"CudaAllocator::Free() ASYNC"<<std::endl;
+#if CUDART_VERSION >= 11200
   VTKM_CUDA_CALL(cudaFreeAsync(ptr, cudaStreamPerThread));
-  //VTKM_CUDA_CALL(cudaFree(ptr));
+#else
+  VTKM_CUDA_CALL(cudaFree(ptr));
+#endif //CUDA >= 11.2
 }
 
 void CudaAllocator::FreeDeferred(void* ptr, std::size_t numBytes)
@@ -233,8 +239,8 @@ void CudaAllocator::FreeDeferred(void* ptr, std::size_t numBytes)
   {
     VTKM_LOG_F(vtkm::cont::LogLevel::MemExec, "Freeing deferred CUDA allocation at %p.", p);
     std::cout<<"CudaAllocator::FreeDeferred() ASYNC"<<std::endl;
-    VTKM_CUDA_CALL(cudaFreeAsync(p, cudaStreamPerThread));
-    //VTKM_CUDA_CALL(cudaFree(p));
+    //VTKM_CUDA_CALL(cudaFreeAsync(p, cudaStreamPerThread));
+    VTKM_CUDA_CALL(cudaFree(p));
   }
 }
 
