@@ -40,8 +40,8 @@ set(deprecated_headers
   MeshQuality.h
   NDEntropy.h
   NDHistogram.h
-  ParticleDensityCloudInCell.h
-  ParticleDensityNearestGridPoint.h
+#  ParticleDensityCloudInCell.h
+#  ParticleDensityNearestGridPoint.h
   PointAverage.h
   PointElevation.h
   PointTransform.h
@@ -191,7 +191,7 @@ install(TARGETS vtkm_filter EXPORT ${VTKm_EXPORT_NAME})
 add_subdirectory(clean_grid)
 add_subdirectory(connected_components)
 add_subdirectory(contour)
-add_subdirectory(density_estimate)
+#add_subdirectory(density_estimate)
 add_subdirectory(entity_extraction)
 add_subdirectory(image_processing)
 add_subdirectory(internal)

@@ -44,8 +44,8 @@ set(unit_tests
   UnitTestWorkletMapField.cxx
   UnitTestWorkletMapField3d.cxx
   UnitTestWorkletMapFieldExecArg.cxx
-  UnitTestWorkletMapFieldWholeArray.cxx
-  UnitTestWorkletMapFieldWholeArrayAtomic.cxx
+#  UnitTestWorkletMapFieldWholeArray.cxx
+#  UnitTestWorkletMapFieldWholeArrayAtomic.cxx
   UnitTestWorkletMapPointNeighborhood.cxx
   UnitTestWorkletMapTopologyExplicit.cxx
   UnitTestWorkletMapTopologyUniform.cxx
