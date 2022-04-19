@@ -15,6 +15,7 @@
 
 int UnitTestCudaArrayHandleFancy(int argc, char* argv[])
 {
+  vtkm::cont::cuda::internal::ForceManagedMemoryOff();
   auto& tracker = vtkm::cont::GetRuntimeDeviceTracker();
   tracker.ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
   int result = vtkm::cont::testing::TestingFancyArrayHandles<vtkm::cont::DeviceAdapterTagCuda>::Run(
