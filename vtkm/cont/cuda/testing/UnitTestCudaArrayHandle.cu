@@ -10,6 +10,7 @@
 
 #include <vtkm/cont/cuda/DeviceAdapterCuda.h>
 #include <vtkm/cont/testing/TestingArrayHandles.h>
+#include <vtkm/cont/cuda/internal/CudaAllocator.h>
 
 int UnitTestCudaArrayHandle(int argc, char* argv[])
 {
