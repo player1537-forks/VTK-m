@@ -9,9 +9,12 @@
 //============================================================================
 
 #include <vtkm/cont/testing/TestingCellLocatorRectilinearGrid.h>
+#include <vtkm/cont/cuda/internal/CudaAllocator.h>
 
 int UnitTestCudaCellLocatorRectilinearGrid(int argc, char* argv[])
 {
+  vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
+
   auto& tracker = vtkm::cont::GetRuntimeDeviceTracker();
   tracker.ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
   return vtkm::cont::testing::Testing::Run(

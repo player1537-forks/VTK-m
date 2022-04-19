@@ -9,10 +9,12 @@
 //============================================================================
 
 #include <vtkm/cont/cuda/DeviceAdapterCuda.h>
+#include <vtkm/cont/cuda/internal/CudaAllocator.h>
 #include <vtkm/cont/testing/TestingArrayHandleMultiplexer.h>
 
 int UnitTestCudaArrayHandleMultiplexer(int argc, char* argv[])
 {
+  vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
   auto& tracker = vtkm::cont::GetRuntimeDeviceTracker();
   tracker.ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
   return vtkm::cont::testing::TestingArrayHandleMultiplexer<vtkm::cont::DeviceAdapterTagCuda>::Run(

@@ -8,10 +8,13 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
+#include <vtkm/cont/cuda/internal/CudaAllocator.h>
 #include <vtkm/cont/testing/TestingCellLocatorTwoLevel.h>
 
 int UnitTestCudaCellLocatorTwoLevel(int argc, char* argv[])
 {
+  vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
+
   auto& tracker = vtkm::cont::GetRuntimeDeviceTracker();
   tracker.ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
   return vtkm::cont::testing::Testing::Run(
