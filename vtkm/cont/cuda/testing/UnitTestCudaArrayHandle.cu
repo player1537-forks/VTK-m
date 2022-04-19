@@ -14,7 +14,7 @@
 
 int UnitTestCudaArrayHandle(int argc, char* argv[])
 {
-  vtkm::cont::cuda::internal::ForceManagedMemoryOff();
+  vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
 
   auto& tracker = vtkm::cont::GetRuntimeDeviceTracker();
   tracker.ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
