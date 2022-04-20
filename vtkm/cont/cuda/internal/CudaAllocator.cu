@@ -155,7 +155,12 @@ void* CudaAllocator::Allocate(std::size_t numBytes)
   }
   else
   {
+#if CUDART_VERSION >= 11200
+    printf("DRP. Using Async cuda Malloc\n");
+    VTKM_CUDA_CALL(cudaMallocAsync(&ptr, numBytes, cudaStreamPerThread));
+#else
     VTKM_CUDA_CALL(cudaMalloc(&ptr, numBytes));
+#endif
   }
 
   {
@@ -184,6 +189,16 @@ void* CudaAllocator::AllocateUnManaged(std::size_t numBytes)
 void CudaAllocator::Free(void* ptr)
 {
   VTKM_LOG_F(vtkm::cont::LogLevel::MemExec, "Freeing CUDA allocation at %p.", ptr);
+#if CUDART_VERSION >= 11200
+  if (!ManagedMemoryEnabled)
+  {
+    printf("DRP. Using Async cuda Free\n");
+    VTKM_CUDA_CALL(cudaFreeAsync(ptr, cudaStreamPerThread));
+  }
+  else
+    VTKM_CUDA_CALL(cudaFree(ptr));
+#else
+#endif
   VTKM_CUDA_CALL(cudaFree(ptr));
 }
 
