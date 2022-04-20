@@ -162,7 +162,9 @@ void TestMultiBlockFilter()
 
 int UnitTestMultiBlockFilter(int argc, char* argv[])
 {
+#ifdef VTKM_CUDA
   vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
+#endif
 
   return vtkm::cont::testing::Testing::Run(TestMultiBlockFilter, argc, argv);
 }
