@@ -15,6 +15,7 @@
 #include "TaskQueue.h"
 
 #include <thread>
+#include <functional>
 
 using RuntimeTaskQueue = TaskQueue<std::function<void()>>;
 
