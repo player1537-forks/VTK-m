@@ -23,6 +23,14 @@ class VTKM_FILTER_CORE_EXPORT NewFilterField : public vtkm::filter::NewFilter
 public:
   NewFilterField() { this->SetActiveCoordinateSystem(0); }
 
+  vtkm::filter::NewFilterField& operator=(const vtkm::filter::NewFilterField&) = default;
+//  VTKM_CONT
+//  bool CanThread() const { return false; }
+  //DRP begin
+  VTKM_CONT
+  void CopyStateFrom(const NewFilterField* filter) {*this = *filter;}
+  //DRP end
+
   VTKM_CONT
   void SetOutputFieldName(const std::string& name) { this->OutputFieldName = name; }
 

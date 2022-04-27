@@ -203,6 +203,32 @@ public:
   }
 
   VTKM_CONT
+  void SetThreadsPerCPU(vtkm::Id val)
+  {
+    if (this->CanThread())
+      this->ThreadsPerCPU = val;
+    else
+    {
+      std::string msg =
+        "Multi threaded filter not supported for " + std::string(typeid(Derived).name());
+      VTKM_LOG_S(vtkm::cont::LogLevel::Info, msg);
+    }
+  }
+
+  VTKM_CONT
+  void SetThreadsPerGPU(vtkm::Id val)
+  {
+    if (this->CanThread())
+      this->ThreadsPerGPU = val;
+    else
+    {
+      std::string msg =
+        "Multi threaded filter not supported for " + std::string(typeid(Derived).name());
+      VTKM_LOG_S(vtkm::cont::LogLevel::Info, msg);
+    }
+  }
+
+  VTKM_CONT
   virtual Filter* Clone() const
   {
     throw vtkm::cont::ErrorExecution("You must implement Clone in the derived class.");
@@ -341,6 +367,9 @@ protected:
 private:
   vtkm::filter::FieldSelection FieldsToPass;
   bool RunFilterWithMultipleThreads = false;
+  //Aribitrary constants.
+  vtkm::Id ThreadsPerGPU = 8;
+  vtkm::Id ThreadsPerCPU = 4;
 };
 }
 } // namespace vtkm::filter

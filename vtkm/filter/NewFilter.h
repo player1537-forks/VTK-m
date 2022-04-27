@@ -220,6 +220,57 @@ public:
   VTKM_CONT
   virtual ~NewFilter();
 
+//DRP begin
+private:
+  //Aribitrary constants.
+  vtkm::Id ThreadsPerGPU = 8;
+  vtkm::Id ThreadsPerCPU = 4;
+
+public:
+  VTKM_CONT
+  void SetThreadsPerCPU(vtkm::Id val)
+  {
+    if (this->CanThread())
+      this->ThreadsPerCPU = val;
+    else
+    {
+      /*
+      std::string msg =
+        "Multi threaded filter not supported for " + std::string(typeid(Derived).name());
+      VTKM_LOG_S(vtkm::cont::LogLevel::Info, msg);
+      */
+    }
+  }
+
+  VTKM_CONT
+  void SetThreadsPerGPU(vtkm::Id val)
+  {
+    if (this->CanThread())
+      this->ThreadsPerGPU = val;
+    else
+    {
+      /*
+      std::string msg =
+        "Multi threaded filter not supported for " + std::string(typeid(Derived).name());
+      VTKM_LOG_S(vtkm::cont::LogLevel::Info, msg);
+      */
+    }
+  }
+
+  vtkm::filter::NewFilter& operator=(const vtkm::filter::NewFilter&) = default;
+
+  VTKM_CONT
+  void CopyStateFrom(const NewFilter* filter) { *this = *filter; }
+
+  VTKM_CONT
+  virtual NewFilter* Clone() const
+  {
+    std::cerr<<"You must implement Clone in the derived class."<<std::endl;
+    throw "You must implement Clone in the derived class.";
+    //throw vtkm::cont::ErrorExecution("You must implement Clone in the derived class.");
+  }
+//DRP end
+
   VTKM_CONT
   virtual bool CanThread() const;
 

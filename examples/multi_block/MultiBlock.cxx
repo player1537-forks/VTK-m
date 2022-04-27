@@ -24,6 +24,8 @@ int numRanks = 1;
 struct Options
 {
 public:
+  enum RunModeType {SERIAL, OPENMP, GPU};
+
   std::string DataPath = "";
   std::string DataFile = "";
   std::string Field = "";
@@ -37,6 +39,7 @@ public:
   bool Tangle = false;
   vtkm::Id NumTangle;
   vtkm::Id3 TangleDims;
+  RunModeType RunMode = SERIAL;
 
   bool ParseOptions(int argc, char **argv)
   {
@@ -104,7 +107,8 @@ public:
           this->ThreadMode = "openmp";
         else if (a.second[0] == "task")
         {
-          if (a.second.size() != 2) return false;
+          if (a.second.size() != 2)
+            return false;
           this->NumTasks = std::stoi(a.second[1]);
           this->ThreadMode = "task";
         }
@@ -121,6 +125,12 @@ public:
         for (const auto& aa : a.second)
           this->IsoValues.push_back(std::stod(aa));
       }
+      else if (a.first == "--serial")
+        this->RunMode = SERIAL;
+      else if (a.first == "--openmp")
+        this->RunMode = OPENMP;
+      else if (a.first == "--gpu")
+        this->RunMode = GPU;
     }
 
     if (this->MapField == "")
@@ -215,11 +225,25 @@ int main(int argc, char** argv)
     return 0;
   }
 
+  vtkm::Id numCPUThreads = 1, numGPUThreads = 1;
 #ifdef VTKM_CUDA
   vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOn();
   if (opts.ThreadMode == "task")
     vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
 #endif
+
+  if (opts.ThreadMode == "task")
+  {
+    numCPUThreads = opts.NumTasks;
+    numGPUThreads = opts.NumTasks;
+  }
+  if (opts.RunMode == Options::RunModeType::SERIAL)
+    vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagSerial{});
+  else if (opts.RunMode == Options::RunModeType::OPENMP)
+    vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagOpenMP{});
+  else if (opts.RunMode == Options::RunModeType::GPU)
+    vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
+
 
   vtkm::cont::PartitionedDataSet dataSets;
   if (opts.Tangle)
@@ -229,12 +253,13 @@ int main(int argc, char** argv)
       vtkm::source::Tangle tangle(opts.TangleDims);
       dataSets.AppendPartition(tangle.Execute());
     }
-
   }
   //dataSets = ReadVisItFile(opts.DataPath, opts.DataFile);
 
   vtkm::filter::contour::Contour contour;
   contour.SetRunMultiThreadedFilter(opts.ThreadMode == "task");
+  contour.SetThreadsPerCPU(numCPUThreads);
+  contour.SetThreadsPerGPU(numGPUThreads);
   contour.SetGenerateNormals(true);
   contour.SetActiveField(opts.Field);
 

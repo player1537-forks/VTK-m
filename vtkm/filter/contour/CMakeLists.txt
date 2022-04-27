@@ -49,6 +49,6 @@ target_link_libraries(vtkm_filter PUBLIC INTERFACE
 add_subdirectory(worklet)
 
 #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
-if (VTKm_ENABLE_TESTING)
-  add_subdirectory(testing)
-endif ()
+#if (VTKm_ENABLE_TESTING)
+#  add_subdirectory(testing)
+#endif ()

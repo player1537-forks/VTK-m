@@ -13,21 +13,21 @@ set(headers
 )
 
 set(unit_tests
-  UnitTestContourTreeUniformFilter.cxx
-  UnitTestContourTreeUniformAugmentedFilter.cxx
-  UnitTestContourTreeUniformDistributedFilter.cxx
-  UnitTestFieldMetadata.cxx
-  UnitTestFieldSelection.cxx
-  UnitTestLagrangianFilter.cxx
-  UnitTestLagrangianStructuresFilter.cxx
-  UnitTestMapFieldMergeAverage.cxx
-  UnitTestMapFieldPermutation.cxx
-  UnitTestMIRFilter.cxx
+#  UnitTestContourTreeUniformFilter.cxx
+#  UnitTestContourTreeUniformAugmentedFilter.cxx
+#  UnitTestContourTreeUniformDistributedFilter.cxx
+#  UnitTestFieldMetadata.cxx
+#  UnitTestFieldSelection.cxx
+#  UnitTestLagrangianFilter.cxx
+#  UnitTestLagrangianStructuresFilter.cxx
+#  UnitTestMapFieldMergeAverage.cxx
+#  UnitTestMapFieldPermutation.cxx
+#  UnitTestMIRFilter.cxx
   UnitTestMultiBlockFilter.cxx
-  UnitTestPartitionedDataSetFilters.cxx
-  UnitTestProbe.cxx
-  UnitTestStreamlineFilter.cxx
-  UnitTestStreamSurfaceFilter.cxx
+#  UnitTestPartitionedDataSetFilters.cxx
+#  UnitTestProbe.cxx
+#  UnitTestStreamlineFilter.cxx
+#  UnitTestStreamSurfaceFilter.cxx
 )
 
 #Taking too long to compile with HIPCC

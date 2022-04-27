@@ -29,6 +29,34 @@ namespace contour
 /// This filter is currently only supports 3D volumes.
 class VTKM_FILTER_CONTOUR_EXPORT Contour : public vtkm::filter::NewFilterField
 {
+  //DRP begin
+public:
+  VTKM_CONT
+  Contour* Clone() const override
+  {
+    Contour* clone = new Contour();
+    clone->CopyStateFrom(this);
+    return clone;
+  }
+
+  VTKM_CONT
+  bool CanThread() const override { return true; }
+
+  VTKM_CONT
+  void CopyStateFrom(const Contour* contour)
+  {
+    this->NewFilterField::CopyStateFrom(contour);
+
+    this->IsoValues = contour->IsoValues;
+    this->GenerateNormals = contour->GenerateNormals;
+    this->AddInterpolationEdgeIds = contour->AddInterpolationEdgeIds;
+    this->ComputeFastNormalsForStructured = contour->ComputeFastNormalsForStructured;
+    this->ComputeFastNormalsForUnstructured = contour->ComputeFastNormalsForUnstructured;
+    this->NormalArrayName = contour->NormalArrayName;
+    this->InterpolationEdgeIdsArrayName = contour->InterpolationEdgeIdsArrayName;
+  }
+
+  //DRP end
 public:
   void SetNumberOfIsoValues(vtkm::Id num)
   {
