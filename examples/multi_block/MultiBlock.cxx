@@ -13,6 +13,7 @@
 #include <vtkm/cont/Initialize.h>
 #include <vtkm/filter/contour/Contour.h>
 #include <vtkm/source/Tangle.h>
+#include <vtkm/cont/cuda/internal/CudaAllocator.h>
 
 #include <cstdlib>
 #include <iostream>
@@ -225,13 +226,7 @@ int main(int argc, char** argv)
     return 0;
   }
 
-  vtkm::Id numCPUThreads = 1, numGPUThreads = 1;
-#ifdef VTKM_CUDA
-  vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOn();
-  if (opts.ThreadMode == "task")
-    vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
-#endif
-
+  vtkm::Id numCPUThreads = 1, numGPUThreads = 1;  
   if (opts.ThreadMode == "task")
   {
     numCPUThreads = opts.NumTasks;
@@ -242,7 +237,17 @@ int main(int argc, char** argv)
   else if (opts.RunMode == Options::RunModeType::OPENMP)
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagOpenMP{});
   else if (opts.RunMode == Options::RunModeType::GPU)
+  {
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
+#ifdef VTKM_CUDA
+    std::cout<<"MULTIBLOCK:                           Turn ManagedMemoryOff()"<<std::endl;
+    //vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOn();
+    vtkm::cont::cuda::internal::CudaAllocator::UsingManagedMemory();
+    vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
+#endif
+  }
+
+  
 
 
   vtkm::cont::PartitionedDataSet dataSets;
