@@ -240,15 +240,14 @@ int main(int argc, char** argv)
   {
     vtkm::cont::GetRuntimeDeviceTracker().ForceDevice(vtkm::cont::DeviceAdapterTagCuda{});
 #ifdef VTKM_CUDA
-    std::cout<<"MULTIBLOCK:                           Turn ManagedMemoryOff()"<<std::endl;
-    //vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOn();
-    vtkm::cont::cuda::internal::CudaAllocator::UsingManagedMemory();
-    vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
+    if (opts.ThreadMode == "task")
+    {
+        vtkm::cont::cuda::internal::CudaAllocator::UsingManagedMemory();
+        std::cout<<"MULTIBLOCK:                           Turn ManagedMemoryOff()"<<std::endl;
+        vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
+    }
 #endif
   }
-
-  
-
 
   vtkm::cont::PartitionedDataSet dataSets;
   if (opts.Tangle)
