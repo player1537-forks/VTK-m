@@ -24,7 +24,7 @@ int numRanks = 1;
 struct Options
 {
 public:
-  enum RunModeType {SERIAL, OPENMP, GPU};
+  enum RunModeType {SERIAL=0, OPENMP=1, GPU=2};
 
   std::string DataPath = "";
   std::string DataFile = "";
@@ -40,6 +40,7 @@ public:
   vtkm::Id NumTangle;
   vtkm::Id3 TangleDims;
   RunModeType RunMode = SERIAL;
+  std::string OutputFile = "./";
 
   bool ParseOptions(int argc, char **argv)
   {
@@ -68,7 +69,9 @@ public:
     this->DataPath = ".";
     for (const auto& a : args)
     {
-      if (a.first == "--data")
+      if (a.first == "--output")
+        this->OutputFile = a.second[0];
+      else if (a.first == "--data")
       {
         if (a.second.empty()) return false;
 
@@ -288,6 +291,9 @@ int main(int argc, char** argv)
 
   std::chrono::duration<double> dt = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
   std::cout<<"Timer= "<<dt.count()<<std::endl;
+
+  std::ofstream out(opts.OutputFile, std::ios_base::app);
+  out<<opts.RunMode<<", "<<opts.NumTasks<<", "<<opts.NumTangle<<", "<<opts.TangleDims[0]<<", "<<opts.IsoLevels<<", "<<dt.count()<<std::endl;
 
   return 0;
 }
