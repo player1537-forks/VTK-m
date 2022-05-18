@@ -36,12 +36,27 @@ public:
   int Rank = 0;
   int NumRanks = 1;
   std::string ThreadMode = "serial";
-  int NumTasks = 1;
+  bool UseManagedMemory = false;
+  int NumTasks = 0;
   bool Tangle = false;
   vtkm::Id NumTangle;
   vtkm::Id3 TangleDims;
   RunModeType RunMode = SERIAL;
   std::string OutputFile = "./";
+
+  int ThreadModeToInt() const
+  {
+      if (this->ThreadMode == "serial")
+          return 0;
+      else if (this->ThreadMode == "openmp")
+          return 1;
+      else if (this->ThreadMode == "task" && !this->UseManagedMemory)
+          return 2;      
+      else if (this->ThreadMode == "task" && this->UseManagedMemory)
+          return 3;
+
+      return -1;
+  }
 
   bool ParseOptions(int argc, char **argv)
   {
@@ -109,12 +124,14 @@ public:
           this->ThreadMode = "serial";
         else if (a.second[0] == "openmp")
           this->ThreadMode = "openmp";
-        else if (a.second[0] == "task")
+        else if (a.second[0] == "task" || a.second[0] == "taskOld")
         {
           if (a.second.size() != 2)
             return false;
           this->NumTasks = std::stoi(a.second[1]);
           this->ThreadMode = "task";
+          if (a.second[0] == "taskOld")
+              this->UseManagedMemory = true;
         }
       }
       else if (a.first == "--isolevels")
@@ -246,8 +263,16 @@ int main(int argc, char** argv)
     if (opts.ThreadMode == "task")
     {
         vtkm::cont::cuda::internal::CudaAllocator::UsingManagedMemory();
-        std::cout<<"MULTIBLOCK:                           Turn ManagedMemoryOff()"<<std::endl;
-        vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
+        if (opts.UseManagedMemory)
+        {
+            std::cout<<"    Task: managed memory = ON"<<std::endl;
+            vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOn();
+        }
+        else
+        {
+            std::cout<<"    Task: managed memory = OFF"<<std::endl;            
+            vtkm::cont::cuda::internal::CudaAllocator::ForceManagedMemoryOff();
+        }
     }
 #endif
   }
@@ -297,7 +322,7 @@ int main(int argc, char** argv)
   std::cout<<"Timer= "<<dt.count()<<std::endl;
 
   std::ofstream out(opts.OutputFile, std::ios_base::app);
-  out<<opts.RunMode<<", "<<opts.NumTasks<<", "<<opts.NumTangle<<", "<<opts.TangleDims[0]<<", "<<opts.IsoLevels<<", "<<dt.count()<<std::endl;
+  out<<opts.ThreadModeToInt()<<", "<<opts.NumTasks<<", "<<opts.NumTangle<<", "<<opts.TangleDims[0]<<", "<<opts.IsoLevels<<", "<<dt.count()<<std::endl;
 
   return 0;
 }
