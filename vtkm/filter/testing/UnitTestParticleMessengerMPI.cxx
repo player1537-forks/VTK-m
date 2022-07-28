@@ -11,7 +11,6 @@
 #include <vtkm/cont/Serialization.h>
 #include <vtkm/cont/testing/Testing.h>
 #include <vtkm/filter/particleadvection/ParticleMessenger.h>
-
 #include <vtkm/thirdparty/diy/diy.h>
 
 #include <random>
