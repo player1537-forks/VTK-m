@@ -560,7 +560,7 @@ public:
       DBG("\n\n\n*********************************************"<<std::endl);
       DBG("   "<<particle.Pos<<" #s= "<<particle.NumSteps<<std::endl);
 
-      if (!this->TakeRK4Step(particle.Pos, pInfo, locator, cellSet, coords,
+      if (!this->TakeRK4Step(particle.Pos, pInfo, locator, cellSet,
                              AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, newPos))
       {
         break;
@@ -600,7 +600,7 @@ public:
         {
           vtkm::Vec3f ptRZ(R, Z, 0), param;
           vtkm::Vec<vtkm::Id,3> vids;
-          this->PtLoc(ptRZ, pInfo, locator, cellSet, coords, param, vids);
+          this->PtLoc(ptRZ, pInfo, locator, cellSet, param, vids);
           pInfo.Psi = this->Eval(Psi, 0, param, vids);
         }
         else
@@ -689,10 +689,10 @@ public:
 
     vtkm::Vec3f tmp;
     ParticleInfo pInfo;
-    this->TakeRK4Step2(y, h0, pInfo, locator, cellSet, coords,
+    this->TakeRK4Step2(y, h0, pInfo, locator, cellSet,
                        AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, tmp);
     auto err0 = vtkm::Magnitude(yNew-tmp);
-    this->TakeRK4Step2(y, h1, pInfo, locator, cellSet, coords,
+    this->TakeRK4Step2(y, h1, pInfo, locator, cellSet,
                        AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, tmp);
     auto err1 = vtkm::Magnitude(yNew-tmp);
 
@@ -701,7 +701,7 @@ public:
     {
       auto hMid = (h0+h1) / 2.0;
 
-      this->TakeRK4Step2(y, hMid, pInfo, locator, cellSet, coords,
+      this->TakeRK4Step2(y, hMid, pInfo, locator, cellSet,
                          AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, tmp);
 
       vtkm::FloatDefault errMid = vtkm::Magnitude(yNew-tmp);
@@ -727,7 +727,6 @@ public:
                    ParticleInfo& pInfo,
                    const LocatorType& locator,
                    const CellSetType& cellSet,
-                   const WholeArrayInType<vtkm::Vec3f>& coords,
                    const WholeArrayInType<vtkm::FloatDefault>& AsPhiFF,
                    const WholeArrayInType<vtkm::Vec3f>& DAsPhiFF_RZP,
                    const WholeArrayInType<vtkm::FloatDefault>& Coeff_1D,
@@ -748,19 +747,19 @@ public:
 
     DBG("    ****** K1"<<std::endl);
     bool v1, v2, v3, v4;
-    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k1);
+    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k1);
     tmp = p0 + k1*h_2;
 
     DBG("    ****** K2"<<std::endl);
-    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k2);
+    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k2);
     tmp = p0 + k2*h_2;
 
     DBG("    ****** K3"<<std::endl);
-    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k3);
+    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k3);
     tmp = p0 + k3*h;
 
     DBG("    ****** K4"<<std::endl);
-    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k4);
+    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k4);
 
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + h * vec;
@@ -780,7 +779,6 @@ public:
                     ParticleInfo& pInfo,
                     const LocatorType& locator,
                     const CellSetType& cellSet,
-                    const WholeArrayInType<vtkm::Vec3f>& coords,
                     const WholeArrayInType<vtkm::FloatDefault>& AsPhiFF,
                     const WholeArrayInType<vtkm::Vec3f>& DAsPhiFF_RZP,
                     const WholeArrayInType<vtkm::FloatDefault>& Coeff_1D,
@@ -801,19 +799,19 @@ public:
 
     DBG("    ****** K1"<<std::endl);
     bool v1, v2, v3, v4;
-    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k1);
+    v1 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k1);
     tmp = p0 + k1*h_2;
 
     DBG("    ****** K2"<<std::endl);
-    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k2);
+    v2 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k2);
     tmp = p0 + k2*h_2;
 
     DBG("    ****** K3"<<std::endl);
-    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k3);
+    v3 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k3);
     tmp = p0 + k3*h;
 
     DBG("    ****** K4"<<std::endl);
-    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, coords, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k4);
+    v4 = this->Evaluate(tmp, pInfo, locator, cellSet, AsPhiFF, DAsPhiFF_RZP, Coeff_1D, Coeff_2D, B_RZP, k4);
 
     vtkm::Vec3f vec = (k1 + 2*k2 + 2*k3 + k4)/6.0;
     res = p0 + h * vec;
@@ -857,37 +855,11 @@ public:
     return ret;
   }
 
-  /*
-  template <typename LocatorType>
-  VTKM_EXEC
-  bool PtLoc2(const vtkm::Vec3f& ptRZ,
-              ParticleInfo& pInfo,
-              const LocatorType& locator,
-              const CellSetType& cs,
-              const WholeArrayInType<vtkm::Vec3f>& coords,
-              vtkm::Vec3f& param,
-              vtkm::Vec<vtkm::Id, 3>& vIds) const
-  {
-    vtkm::Id cellId;
-    if (!this->FindCell(ptRZ, pInfo, locator, cs, coords, param, cellId))
-      return false;
-
-    auto tmp =  cs.GetIndices(cellId);
-    vIds[0] = tmp[0];
-    vIds[1] = tmp[1];
-    vIds[2] = tmp[2];
-
-    return true;
-  }
-  */
-
-  //template <typename LocatorType>
   VTKM_EXEC
   bool PtLoc(const vtkm::Vec3f& ptRZ,
              ParticleInfo& pInfo,
              const LocatorType& locator,
              const CellSetType& cs,
-             const WholeArrayInType<vtkm::Vec3f>& /*coords*/,
              vtkm::Vec3f& param,
              vtkm::Vec<vtkm::Id, 3>& vIds) const
   {
@@ -1131,7 +1103,6 @@ public:
                 ParticleInfo& pInfo,
                 const LocatorType& locator,
                 const CellSetType& cellSet,
-                const WholeArrayInType<vtkm::Vec3f>& coords,
                 const WholeArrayInType<vtkm::FloatDefault>& AsPhiFF,
                 const WholeArrayInType<vtkm::Vec3f>& DAsPhiFF_RZP,
                 const WholeArrayInType<vtkm::FloatDefault>& coeff_1D,
@@ -1148,7 +1119,7 @@ public:
     {
       vtkm::Vec3f ptRZ(ptRPZ[0], ptRPZ[2], 0), param;
       vtkm::Vec<vtkm::Id,3> vids;
-      this->PtLoc(ptRZ, pInfo, locator, cellSet, coords, param, vids);
+      this->PtLoc(ptRZ, pInfo, locator, cellSet, param, vids);
       pInfo.B0_rzp = this->Eval(B_RZP, 0, param, vids);
     }
     else
@@ -1214,13 +1185,12 @@ public:
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
 
-    if (!this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, coords, x_ff_param, x_ff_vids))
+    if (!this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, x_ff_param, x_ff_vids))
       return false;
 
     //std::cout<<" *** Indexing: "<<planeIdx0<<" offsets: = "<<offsets[0]<<" "<<offsets[1]<<" vids= "<<x_ff_vids<<std::endl;
 
 
-    //this->PtLoc2(x_ff_rzp, pInfo, locator, cellSet, coords, x_ff_param, x_ff_vids);
     auto dAs_ff0_rzp = this->Eval(DAsPhiFF_RZP, offsets[0], x_ff_param, x_ff_vids);
     auto dAs_ff1_rzp = this->Eval(DAsPhiFF_RZP, offsets[1], x_ff_param, x_ff_vids);
 
