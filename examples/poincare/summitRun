@@ -1,0 +1,96 @@
+#!/bin/bash
+#BSUB -env "all"
+#BSUB -P PHY122
+#BSUB -J Poincare
+#BSUB -W 2:00
+#BSUB -nnodes 1
+#BSUB -o run-%J.log
+#BSUB -e run-%J.log
+#BSUB -q debug 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.000 --stepSize 0.010000 --3DFile xgc.3d.00406.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.000 --stepSize -0.010000 --3DFile xgc.3d.00406.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.001 --stepSize 0.010000 --3DFile xgc.3d.00408.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.001 --stepSize -0.010000 --3DFile xgc.3d.00408.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.002 --stepSize 0.010000 --3DFile xgc.3d.00410.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.002 --stepSize -0.010000 --3DFile xgc.3d.00410.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.003 --stepSize 0.010000 --3DFile xgc.3d.00412.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.003 --stepSize -0.010000 --3DFile xgc.3d.00412.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.004 --stepSize 0.010000 --3DFile xgc.3d.00414.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.004 --stepSize -0.010000 --3DFile xgc.3d.00414.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.005 --stepSize 0.010000 --3DFile xgc.3d.00416.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.005 --stepSize -0.010000 --3DFile xgc.3d.00416.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.006 --stepSize 0.010000 --3DFile xgc.3d.00418.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.006 --stepSize -0.010000 --3DFile xgc.3d.00418.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.007 --stepSize 0.010000 --3DFile xgc.3d.00420.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.007 --stepSize -0.010000 --3DFile xgc.3d.00420.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.008 --stepSize 0.010000 --3DFile xgc.3d.00422.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.008 --stepSize -0.010000 --3DFile xgc.3d.00422.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.009 --stepSize 0.010000 --3DFile xgc.3d.00424.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.009 --stepSize -0.010000 --3DFile xgc.3d.00424.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.010 --stepSize 0.010000 --3DFile xgc.3d.00426.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.010 --stepSize -0.010000 --3DFile xgc.3d.00426.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.011 --stepSize 0.010000 --3DFile xgc.3d.00428.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.011 --stepSize -0.010000 --3DFile xgc.3d.00428.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.012 --stepSize 0.010000 --3DFile xgc.3d.00430.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.012 --stepSize -0.010000 --3DFile xgc.3d.00430.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.013 --stepSize 0.010000 --3DFile xgc.3d.00432.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.013 --stepSize -0.010000 --3DFile xgc.3d.00432.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.014 --stepSize 0.010000 --3DFile xgc.3d.00434.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.014 --stepSize -0.010000 --3DFile xgc.3d.00434.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.015 --stepSize 0.010000 --3DFile xgc.3d.00436.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.015 --stepSize -0.010000 --3DFile xgc.3d.00436.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.016 --stepSize 0.010000 --3DFile xgc.3d.00438.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.016 --stepSize -0.010000 --3DFile xgc.3d.00438.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.017 --stepSize 0.010000 --3DFile xgc.3d.00440.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.017 --stepSize -0.010000 --3DFile xgc.3d.00440.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.018 --stepSize 0.010000 --3DFile xgc.3d.00442.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.018 --stepSize -0.010000 --3DFile xgc.3d.00442.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.019 --stepSize 0.010000 --3DFile xgc.3d.00444.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.019 --stepSize -0.010000 --3DFile xgc.3d.00444.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.020 --stepSize 0.010000 --3DFile xgc.3d.00446.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.020 --stepSize -0.010000 --3DFile xgc.3d.00446.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.021 --stepSize 0.010000 --3DFile xgc.3d.00448.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.021 --stepSize -0.010000 --3DFile xgc.3d.00448.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.022 --stepSize 0.010000 --3DFile xgc.3d.00450.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.022 --stepSize -0.010000 --3DFile xgc.3d.00450.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.023 --stepSize 0.010000 --3DFile xgc.3d.00452.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.023 --stepSize -0.010000 --3DFile xgc.3d.00452.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.024 --stepSize 0.010000 --3DFile xgc.3d.00454.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.024 --stepSize -0.010000 --3DFile xgc.3d.00454.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.025 --stepSize 0.010000 --3DFile xgc.3d.00456.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.025 --stepSize -0.010000 --3DFile xgc.3d.00456.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.026 --stepSize 0.010000 --3DFile xgc.3d.00458.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.026 --stepSize -0.010000 --3DFile xgc.3d.00458.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.027 --stepSize 0.010000 --3DFile xgc.3d.00460.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.027 --stepSize -0.010000 --3DFile xgc.3d.00460.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.028 --stepSize 0.010000 --3DFile xgc.3d.00462.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.028 --stepSize -0.010000 --3DFile xgc.3d.00462.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.029 --stepSize 0.010000 --3DFile xgc.3d.00464.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.029 --stepSize -0.010000 --3DFile xgc.3d.00464.bp & 
+wait 
+
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.030 --stepSize 0.010000 --3DFile xgc.3d.00466.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.030 --stepSize -0.010000 --3DFile xgc.3d.00466.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output pos.out.031 --stepSize 0.010000 --3DFile xgc.3d.00468.bp & 
+jsrun -n1 -a1 -c2 -g1 ./examples/poincare/Poincare --gpuParams 256 128 --dir ../ITER-data --numPunc 1000 --psiRange 0.99 1.0 3 --thetaRange 0 360 3 --output neg.out.031 --stepSize -0.010000 --3DFile xgc.3d.00468.bp & 
+wait 
+
