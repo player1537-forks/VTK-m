@@ -864,28 +864,18 @@ public:
              vtkm::Vec<vtkm::Id, 3>& vIds) const
   {
     vtkm::Id cellId;
-    vtkm::ErrorCode status = locator.FindCell(ptRZ, cellId, param, pInfo.PrevCell);
+    vtkm::ErrorCode status;
+    if (this->UsePrevCell)
+      status = locator.FindCell(ptRZ, cellId, param, pInfo.PrevCell);
+    else
+      status = locator.FindCell(ptRZ, cellId, param);
+
     if (status != vtkm::ErrorCode::Success)
     {
       //printf("Find Cell failed! pt= %lf %lf %lf\n", ptRZ[0], ptRZ[1], ptRZ[2]);
       return false;
     }
 
-#if 0
-    if (0)
-    {
-      vtkm::Vec3f p2;
-      vtkm::Id cid2;
-
-      ParticleInfo p2Info = pInfo;
-      p2Info.PrevCell = vtkm::Id3(-1,-1,-1);
-      this->FindCell(ptRZ, p2Info, locator, cs, coords, p2, cid2);
-      //if (cid2 != cellId) std::cout<<" **************************** WRONG"<<std::endl;
-      //if (vtkm::Magnitude(p2-param) > 1e-10) std::cout<<" **************************** WRONG"<<std::endl;
-    }
-#endif
-
-    //vtkm::VecVariable<vtkm::Id, 3> tmp;
     auto tmp =  cs.GetIndices(cellId);
     vIds[0] = tmp[0];
     vIds[1] = tmp[1];
@@ -1185,6 +1175,7 @@ public:
     vtkm::Vec3f x_ff_param;
     vtkm::Vec<vtkm::Id,3> x_ff_vids;
 
+    //Hotspot..
     if (!this->PtLoc(x_ff_rzp, pInfo, locator, cellSet, x_ff_param, x_ff_vids))
       return false;
 
@@ -1311,6 +1302,7 @@ public:
   bool UseBOnly = false;
   bool SaveTraces = false;
   bool UseLinearB = false;
+  bool UsePrevCell = true;
 
   int nr, nz;
   vtkm::FloatDefault rmin, zmin, rmax, zmax;

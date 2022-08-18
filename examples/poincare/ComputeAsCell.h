@@ -1,3 +1,8 @@
+#include <vtkm/worklet/WorkletMapTopology.h>
+
+#ifndef ComputeASCell_h
+#define ComputeASCell_h
+
 
 //#define PRINT_STUFF
 #ifdef PRINT_STUFF
@@ -154,3 +159,5 @@ public:
   vtkm::Id NumNodes;
   vtkm::Id NumPlanes;
 };
+
+#endif // ComputeASCell_h

@@ -135,3 +135,68 @@ DataSet:
    eq_psi_grid assoc= Mesh valueType=double
    eq_psi_rz assoc= Mesh valueType=double
    psi2D assoc= Points valueType=double
+
+
+
+
+
+
+Uniform As, dAs
+64, 64
+AsError: m/M 0 0.0017124 Avg= 8.30805e-05
+dAsError: m/M 0 0.187909 Avg= 0.00633954
+
+128, 128
+AsError: m/M 0 0.00139152 Avg= 5.04781e-05
+dAsError: m/M 0 0.171016 Avg= 0.00553445
+
+256, 256
+AsError: m/M 0 0.000762354 Avg= 2.71545e-05
+dAsError: m/M 0 0.168878 Avg= 0.00430975
+
+512, 512
+AsError: m/M 0 0.000531075 Avg= 1.38219e-05
+dAsError: m/M 0 0.163907 Avg= 0.00305653
+
+1024, 1024
+
+AsError: m/M 0 0.000298219 Avg= 6.94288e-06
+dAsError: m/M 0 0.138446 Avg= 0.00188512
+
+1024, 2048
+AsError: m/M 0 0.000217496 Avg= 5.31274e-06
+dAsError: m/M 0 0.131774 Avg= 0.00156493
+
+2000, 4000
+AsError: m/M 0 0.000119375 Avg= 2.69632e-06
+dAsError: m/M 0 0.0858445 Avg= 0.000818306
+
+4000, 8000
+AsError: m/M 0 6.82741e-05 Avg= 1.34617e-06
+dAsError: m/M 0 0.0443282 Avg= 0.000405618
+
+
+2000, 5000
+AsError: m/M 0 0.000119922 Avg= 2.5577e-06
+dAsError: m/M 0 0.0858181 Avg= 0.000785382
+
+
+With PrevCell:
+********************************************************
+  Timers
+FindCell    : 20.767006523  3286452 avg: 6.3189745424549e-06
+FindCellImpl: 12.209288772  2524566 avg: 4.8361931405239e-06
+PointInCell : 12.803338266993  33774087 avg: 3.7908762025138e-07
+*********************************************************
+
+w/o PrevCell
+*********************************************************
+  Timers
+FindCell    : 0  0 avg: -nan
+FindCellImpl: 12.216213857  3286452 avg: 3.7171435508567e-06
+PointInCell : 5.4034148489998  13668081 avg: 3.953309062918e-07
+*********************************************************
+
+
+cuda timings:
+https://stackoverflow.com/questions/7876624/timing-cuda-operations

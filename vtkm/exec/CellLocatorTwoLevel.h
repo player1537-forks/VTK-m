@@ -22,6 +22,12 @@
 #include <vtkm/VecFromPortalPermute.h>
 #include <vtkm/VecTraits.h>
 
+#include <vtkm/exec/LocatorTimer.h>
+
+#if !defined(VTKM_CUDA)
+extern vtkm::exec::LocatorTimer locTimer;
+#endif
+
 namespace vtkm
 {
 namespace internal
@@ -124,6 +130,7 @@ private:
       inside = false;
     }
     // Return success error code even point is not inside this cell
+
     return vtkm::ErrorCode::Success;
   }
 
@@ -172,6 +179,10 @@ public:
                            FloatVec3& parametric,
                            LastCell& lastCell) const
   {
+#if !defined(VTKM_CUDA)
+    auto start = std::chrono::steady_clock::now();
+#endif
+
     vtkm::Vec3f pc;
     //See if point is inside the last cell.
     if ((lastCell.CellId >= 0) && (lastCell.CellId < this->CellSet.GetNumberOfElements()) &&
@@ -179,6 +190,9 @@ public:
     {
       parametric = pc;
       cellId = lastCell.CellId;
+#if !defined(VTKM_CUDA)
+      locTimer.Update(LocatorTimer::FindCell_IDX, start);
+#endif
       return vtkm::ErrorCode::Success;
     }
 
@@ -188,8 +202,14 @@ public:
     {
       parametric = pc;
       lastCell.CellId = cellId;
+#if !defined(VTKM_CUDA)
+      locTimer.Update(LocatorTimer::FindCell_IDX, start);
+#endif
       return vtkm::ErrorCode::Success;
     }
+#if !defined(VTKM_CUDA)
+    locTimer.Update(LocatorTimer::FindCell_IDX, start);
+#endif
 
     //Call the full point search.
     return this->FindCellImpl(point, cellId, parametric, lastCell);
@@ -206,6 +226,9 @@ private:
                               const vtkm::Id& cid,
                               vtkm::Vec3f& parametric) const
   {
+#if !defined(VTKM_CUDA)
+    auto start = std::chrono::steady_clock::now();
+#endif
     auto indices = this->CellSet.GetIndices(cid);
     auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
     vtkm::Vec3f pc;
@@ -214,9 +237,14 @@ private:
     if (status == vtkm::ErrorCode::Success && inside)
     {
       parametric = pc;
+#if !defined(VTKM_CUDA)
+      locTimer.Update(LocatorTimer::PointInCell_IDX, start);
+#endif
       return vtkm::ErrorCode::Success;
     }
-
+#if !defined(VTKM_CUDA)
+    locTimer.Update(LocatorTimer::PointInCell_IDX, start);
+#endif
     return vtkm::ErrorCode::CellNotFound;
   }
 
@@ -253,6 +281,9 @@ private:
                                LastCell& lastCell) const
   {
     using namespace vtkm::internal::cl_uniform_bins;
+#if !defined(VTKM_CUDA)
+    auto start = std::chrono::steady_clock::now();
+#endif
 
     cellId = -1;
     lastCell.CellId = -1;
@@ -268,6 +299,9 @@ private:
       auto ldim = this->LeafDimensions.Get(binId);
       if (!ldim[0] || !ldim[1] || !ldim[2])
       {
+#if !defined(VTKM_CUDA)
+        locTimer.Update(LocatorTimer::FindCellImpl_IDX, start);
+#endif
         return vtkm::ErrorCode::CellNotFound;
       }
 
@@ -284,10 +318,15 @@ private:
       {
         lastCell.CellId = cellId;
         lastCell.LeafIdx = leafIdx;
+#if !defined(VTKM_CUDA)
+        locTimer.Update(LocatorTimer::FindCellImpl_IDX, start);
+#endif
         return vtkm::ErrorCode::Success;
       }
     }
-
+#if !defined(VTKM_CUDA)
+    locTimer.Update(LocatorTimer::FindCellImpl_IDX, start);
+#endif
     return vtkm::ErrorCode::CellNotFound;
   }
 
@@ -302,6 +341,9 @@ private:
 
   CellStructureType CellSet;
   CoordsPortalType Coords;
+
+//  vtkm::FloatDefault FindCellTime = 0.0;
+//  vtkm::FloatDefault TriIntersectType = 0.0;
 };
 }
 } // vtkm::exec
