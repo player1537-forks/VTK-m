@@ -200,3 +200,19 @@ PointInCell : 5.4034148489998  13668081 avg: 3.953309062918e-07
 
 cuda timings:
 https://stackoverflow.com/questions/7876624/timing-cuda-operations
+
+
+
+Using point in cell
+PointInCell       : 18.537706510002  33774087 avg: 5.4887365304654e-07
+
+2D triangle  specific.
+PointInCell       : 18.113520089002  33774087 avg: 5.3631413009039e-07
+PointInCell       : 17.684055220002  33765917 avg: 5.2372501004494e-07
+
+
+
+Validation testing:
+./examples/poincare/Poincare --openmp --dir /media/dpn/disk2TB/proj/vtkm/XGCLocator/data/XGC_GB/su458_ITER_data --output OUT  --numPunc 100 --gpuParams 256 128 --stepSize 0.5 --psiRange .1 1.0 10 --thetaRange 2 --openmp
+
+Differences occur at particle # 9

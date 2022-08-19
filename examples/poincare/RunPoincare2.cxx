@@ -280,12 +280,16 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
   std::cout<<std::setprecision(14);
   auto T = locTimer.GetTime();
   auto C = locTimer.GetCounters();
-  std::vector<std::string> N = {"FindCell    ",
-                                "FindCellImpl",
-                                "PointInCell "};
-  for (int i = 0; i < 3; i++)
+  std::vector<std::string> N = {"FindCell0     ",
+                                "FindCell1     ",
+                                "FindCell2     ",
+                                "FindCellImpl0 ",
+                                "FindCellImpl1 ",
+                                "FindCellImpl2 ",
+                                "PointInCell   "};
+  for (std::size_t i = 0; i < vtkm::exec::LocatorTimer::NUM_IDX; i++)
   {
-    std::cout<<N[i]<<": "<<T[i]<<"  "<<C[i]<<" avg: "<<T[i]/C[i]<<std::endl;
+    std::cout<<locTimer.Names[i]<<": "<<T[i]<<"  "<<C[i]<<" avg: "<<T[i]/C[i]<<std::endl;
   }
   std::cout<<"*********************************************************"<<std::endl<<std::endl;
 
