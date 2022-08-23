@@ -115,9 +115,14 @@ public:
                                 WholeArrayIn As_phi_ff_uniform,
                                 WholeArrayIn dAs_phi_ff_RZP_uniform,
                                 WholeArrayOut AsError,
-                                WholeArrayOut dAsError);
+                                WholeArrayOut dAsError,
+                                FieldOut AsErrorPlane,
+                                FieldOut dAsErrorMagPlane,
+                                FieldOut dAsErrorRPlane,
+                                FieldOut dAsErrorZPlane,
+                                FieldOut dAsErrorPPlane);
 
-  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9);
+  using ExecutionSignature = void(InputIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14);
   using InputDomain = _1;
 
   AsErrorWorklet(const XGCParameters& xgcParams, vtkm::Id num2dPts)
@@ -138,7 +143,12 @@ public:
                             const AsType& As_phi_ff_uniform,
                             const dAsType& dAs_phi_ff_uniform,
                             AsErrorType& AsError,
-                            dAsErrorType& dAsError) const
+                            dAsErrorType& dAsError,
+                            vtkm::FloatDefault& AsErrorPlane,
+                            vtkm::FloatDefault& dAsErrorMagPlane,
+                            vtkm::FloatDefault& dAsErrorRPlane,
+                            vtkm::FloatDefault& dAsErrorZPlane,
+                            vtkm::FloatDefault& dAsErrorPPlane) const
   {
     vtkm::Id cellId;
     vtkm::Vec3f param;
@@ -149,6 +159,10 @@ public:
     }
 
     auto vIds = cellSetUniform.GetIndices(cellId);
+
+    AsErrorPlane = 0;
+    dAsErrorMagPlane = 0;
+    dAsErrorRPlane = dAsErrorZPlane = dAsErrorPPlane = 0;
     for (vtkm::Id n = 0; n < this->NumPlanes*2; n++)
     {
       vtkm::Id offset = n*this->NumNodes;
@@ -172,6 +186,8 @@ public:
       vtkm::exec::CellInterpolate(valsVec, param, vtkm::CellShapeTagQuad(), dAsU);
 
       auto errAs = vtkm::Abs(As - AsU);
+      AsErrorPlane += errAs;
+
       AsError.Set(idx + offset, errAs);
 
       vtkm::FloatDefault errdAs;
@@ -182,10 +198,16 @@ public:
       else
         errdAs = vtkm::Magnitude(dAs - dAsU);
       */
-      errdAs = vtkm::Magnitude(dAs - dAsU);
+      auto d_dAs = dAs - dAsU;
+      errdAs = vtkm::Magnitude(d_dAs);
 
       dAsError.Set(idx+offset, errdAs);
+      dAsErrorMagPlane += errdAs;
+      dAsErrorRPlane += vtkm::Abs(d_dAs[0]);
+      dAsErrorZPlane += vtkm::Abs(d_dAs[1]);
+      dAsErrorPPlane += vtkm::Abs(d_dAs[2]);
     }
+
   }
 
   vtkm::Id NumNodes;

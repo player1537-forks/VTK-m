@@ -104,7 +104,7 @@ RunSamplingTest(const vtkm::cont::DataSet& ds,
 
   AsErrorWorklet asErrorWorklet(xgcParams, uniform2DCoords.GetNumberOfValues());
 
-  vtkm::cont::ArrayHandle<vtkm::FloatDefault> AsError, dAsError;
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> AsError, dAsError, AsErrorPlane, dAsErrorMagPlane, dAsErrorRPlane, dAsErrorZPlane, dAsErrorPPlane;
   AsError.Allocate(ds.GetNumberOfPoints() * xgcParams.numPlanes * 2);
   dAsError.Allocate(ds.GetNumberOfPoints() * xgcParams.numPlanes * 2);
   invoker(asErrorWorklet,
@@ -118,7 +118,12 @@ RunSamplingTest(const vtkm::cont::DataSet& ds,
           dAsUniform,
 
           AsError,
-          dAsError);
+          dAsError,
+          AsErrorPlane,
+          dAsErrorMagPlane,
+          dAsErrorRPlane,
+          dAsErrorZPlane,
+          dAsErrorPPlane);
 
   auto AsErrorTot = vtkm::cont::Algorithm::Reduce(AsError, 0.0f);
   auto AsErrorMin = vtkm::cont::Algorithm::Reduce(AsError, 1e10f, vtkm::Minimum());
@@ -129,6 +134,17 @@ RunSamplingTest(const vtkm::cont::DataSet& ds,
   auto dAsErrorMin = vtkm::cont::Algorithm::Reduce(dAsError, 1e10f, vtkm::Minimum());
   auto dAsErrorMax = vtkm::cont::Algorithm::Reduce(dAsError, -1e10f, vtkm::Maximum());
   std::cout<<"dAsError: m/M "<<dAsErrorMin<<" "<<dAsErrorMax<<" Avg= "<<dAsErrorTot/(double)dAsError.GetNumberOfValues()<<std::endl;
+
+  auto dumpDS = ds;
+  dumpDS.AddField(vtkm::cont::make_FieldPoint("AsError", AsErrorPlane));
+  dumpDS.AddField(vtkm::cont::make_FieldPoint("dAsError", dAsErrorMagPlane));
+  dumpDS.AddField(vtkm::cont::make_FieldPoint("dAsErrorR", dAsErrorRPlane));
+  dumpDS.AddField(vtkm::cont::make_FieldPoint("dAsErrorZ", dAsErrorZPlane));
+  dumpDS.AddField(vtkm::cont::make_FieldPoint("dAsErrorP", dAsErrorPPlane));
+
+  std::cout<<"Write file......"<<std::endl;
+  vtkm::io::VTKDataSetWriter writer("AsError.vtk");
+  writer.WriteDataSet(dumpDS);
 }
 
 
