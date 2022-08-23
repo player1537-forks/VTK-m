@@ -26,6 +26,7 @@ extern std::vector<std::vector<vtkm::Id>> vtkm::exec::counters;
 
 void
 RunSamplingTest(const vtkm::cont::DataSet& ds,
+                const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& coeff_2D,
                 const XGCParameters& xgcParams,
                 std::map<std::string, std::vector<std::string>>& args)
 {
@@ -82,6 +83,7 @@ RunSamplingTest(const vtkm::cont::DataSet& ds,
           uniform2DCoords,
           locator2L,
           ds.GetCellSet(),
+          coeff_2D,
           As_ff, dAs_ff_rzp,
           AsUniform, dAsUniform);
 
@@ -169,7 +171,7 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
 
   if (args.find("--AsGridSize") != args.end())
   {
-    RunSamplingTest(ds, xgcParams, args);
+    RunSamplingTest(ds, coeff_2D, xgcParams, args);
     return;
   }
 
