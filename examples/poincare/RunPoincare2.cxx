@@ -2,7 +2,9 @@
 #include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
 #include <vtkm/cont/CellLocatorUniformGrid.h>
+#include <vtkm/cont/CellLocatorUniformBins.h>
 #include <vtkm/cont/Algorithm.h>
+#include <vtkm/cont/ParticleArrayCopy.h>
 #include <vtkm/io/VTKDataSetWriter.h>
 #include <vtkm/cont/Timer.h>
 
@@ -44,12 +46,78 @@ RunSamplingTest(const vtkm::cont::DataSet& ds,
   }
 
   //Compute the As values on a uniform grid.
-  vtkm::Id3 dims(AsGridSizeX, AsGridSizeY, xgcParams.numPlanes*2);
+  vtkm::Id3 dimsRZ(AsGridSizeX, AsGridSizeY, 1);
+
+  //create a uniform RZ dataset.
   vtkm::FloatDefault dR = (xgcParams.eq_max_r-xgcParams.eq_min_r) / static_cast<vtkm::FloatDefault>(AsGridSizeX-1);
   vtkm::FloatDefault dZ = (xgcParams.eq_max_z-xgcParams.eq_min_z) / static_cast<vtkm::FloatDefault>(AsGridSizeY-1);
-  vtkm::Vec3f origin(xgcParams.eq_min_r, xgcParams.eq_min_z, 0), maxPt(xgcParams.eq_max_r, xgcParams.eq_max_z, xgcParams.numPlanes*2);
-  vtkm::Vec3f spacing(dR, dZ, 1);
+  vtkm::Vec3f originRZ(xgcParams.eq_min_r, xgcParams.eq_min_z, 0);
+  vtkm::Vec3f spacingRZ(dR, dZ, 1);
+  auto gridRZ = vtkm::cont::DataSetBuilderUniform::Create(dimsRZ, originRZ, spacingRZ);
+  std::cout<<"GridRZ**************************"<<std::endl;
+  gridRZ.PrintSummary(std::cout);
 
+  //create a uniform psi-theta dataset.
+  vtkm::FloatDefault psiNorm0 = xgcParams.psi_min / xgcParams.eq_x_psi;
+  vtkm::FloatDefault psiNorm1 = xgcParams.psi_max / xgcParams.eq_x_psi;
+  vtkm::FloatDefault dPsi = (psiNorm1 - psiNorm0) / static_cast<vtkm::FloatDefault>(AsGridSizeX-1);
+  vtkm::FloatDefault dTheta = vtkm::TwoPi() / static_cast<vtkm::FloatDefault>(AsGridSizeY-1);
+  vtkm::Vec3f originTP(0, psiNorm0, 0);
+  vtkm::Vec3f spacingTP(dTheta, dPsi, 1);
+  vtkm::Id3 dimsTP(AsGridSizeX, AsGridSizeY, 1); //xgcParams.numPlanes*2);
+  auto gridTP = vtkm::cont::DataSetBuilderUniform::Create(dimsTP, originTP, spacingTP);
+  std::cout<<std::endl<<std::endl<<"GridTP**************************"<<std::endl;
+  gridTP.PrintSummary(std::cout);
+
+  vtkm::cont::Invoker invoker;
+  //vtkm::cont::CellLocatorTwoLevel locator2L;
+  vtkm::cont::CellLocatorUniformBins locator2L;
+  locator2L.SetDimensions({512, 512, 1});
+  locator2L.SetCellSet(ds.GetCellSet());
+  locator2L.SetCoordinates(ds.GetCoordinateSystem());
+  locator2L.Update();
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_ff;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> dAs_ff_rzp;
+  ds.GetField("As_ff").GetData().AsArrayHandle(As_ff);
+  ds.GetField("dAs_ff_rzp").GetData().AsArrayHandle(dAs_ff_rzp);
+
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> dAsUniform;
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> AsUniform;
+
+  ComputeAsWorklet computeAs(xgcParams, AsGridSizeX, AsGridSizeY);
+
+  AsUniform.AllocateAndFill(gridTP.GetNumberOfPoints(), 0.0);
+  dAsUniform.AllocateAndFill(gridTP.GetNumberOfPoints(), 0.0);
+
+  invoker(computeAs,
+          gridRZ.GetCoordinateSystem(),
+          locator2L,
+          ds.GetCellSet(),
+          coeff_2D,
+          As_ff, dAs_ff_rzp,
+          AsUniform, dAsUniform);
+
+  std::string fname = "AsGrid.vtk";
+  gridTP.AddField(vtkm::cont::make_FieldPoint("As_ff", AsUniform));
+  gridTP.AddField(vtkm::cont::make_FieldPoint("dAs_ff", dAsUniform));
+  gridRZ.AddField(vtkm::cont::make_FieldPoint("As_ff", AsUniform));
+
+  std::cout<<"Saving As file: "<<fname<<std::endl;
+  vtkm::io::VTKDataSetWriter writer(fname.c_str());
+  writer.WriteDataSet(gridTP);
+
+/*
+  {
+    vtkm::io::VTKDataSetWriter writer("ds.vtk");
+    writer.WriteDataSet(ds);
+  }
+*/
+
+
+  return;
+
+
+#if 0
   auto grid = vtkm::cont::DataSetBuilderUniform::Create(dims, origin, spacing);
   vtkm::cont::ArrayHandleUniformPointCoordinates uniform2DCoords({AsGridSizeX, AsGridSizeY, 1}, origin, spacing);
   vtkm::cont::CellSetStructured<2> uniform2DCells;
@@ -77,7 +145,8 @@ RunSamplingTest(const vtkm::cont::DataSet& ds,
   vtkm::Id nPts = uniform2DCoords.GetNumberOfValues() * xgcParams.numPlanes * 2;
   AsUniform.Allocate(nPts);
   dAsUniform.Allocate(nPts);
-  computeAs.Num2DPts = uniform2DCoords.GetNumberOfValues();
+  computeAs.NumSampsX = AsGridSizeX;
+  computeAs.NumSampsY = AsGridSizeY;
 
   invoker(computeAs,
           uniform2DCoords,
@@ -87,7 +156,6 @@ RunSamplingTest(const vtkm::cont::DataSet& ds,
           As_ff, dAs_ff_rzp,
           AsUniform, dAsUniform);
 
-  /*
   std::string fname = "AsGrid.vtk";
   grid.AddField(vtkm::cont::make_FieldPoint("As_ff", AsUniform));
   grid.AddField(vtkm::cont::make_FieldPoint("dAs_ff", dAsUniform));
@@ -96,7 +164,8 @@ RunSamplingTest(const vtkm::cont::DataSet& ds,
   std::cout<<"Saving As file: "<<fname<<std::endl;
   vtkm::io::VTKDataSetWriter writer(fname.c_str());
   writer.WriteDataSet(grid);
-  */
+
+
 
   //Check the errors.
   vtkm::cont::CellLocatorUniformGrid locatorU;
@@ -144,9 +213,13 @@ RunSamplingTest(const vtkm::cont::DataSet& ds,
   dumpDS.AddField(vtkm::cont::make_FieldPoint("dAsErrorZ", dAsErrorZPlane));
   dumpDS.AddField(vtkm::cont::make_FieldPoint("dAsErrorP", dAsErrorPPlane));
 
+  /*
   std::cout<<"Write file......"<<std::endl;
   vtkm::io::VTKDataSetWriter writer("AsError.vtk");
   writer.WriteDataSet(dumpDS);
+  */
+
+#endif
 }
 
 
@@ -221,6 +294,19 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
   auto cellSet = ds.GetCellSet().AsCellSet<vtkm::cont::CellSetSingleType<>>();
 
   vtkm::cont::CellLocatorTwoLevel locator2L;
+  vtkm::cont::CellLocatorUniformBins locatorUB;
+
+  bool useUB = false;
+  if (args.find("--UniformBins") != args.end())
+  {
+    auto a = args["--UniformBins"];
+    vtkm::Id nx = std::atoi(a[0].c_str());
+    vtkm::Id ny = std::atoi(a[1].c_str());
+    locatorUB.SetDimensions({nx, ny, 1});
+    useUB = true;
+    std::cout<<"SetUniformBins: "<<nx<<" "<<ny<<std::endl;
+  }
+
   if (args.find("--LocatorDensity") != args.end())
   {
     auto d = args["--LocatorDensity"];
@@ -231,12 +317,21 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
     std::cout<<"SetDensity: "<<density1<<" "<<density2<<std::endl;
   }
 
-  locator2L.SetCellSet(cellSet);
-  locator2L.SetCoordinates(ds.GetCoordinateSystem());
   auto startL = std::chrono::steady_clock::now();
-  locator2L.Update();
+  if (useUB)
+  {
+    locatorUB.SetCellSet(cellSet);
+    locatorUB.SetCoordinates(ds.GetCoordinateSystem());
+    locatorUB.Update();
+  }
+  else
+  {
+    locator2L.SetCellSet(cellSet);
+    locator2L.SetCoordinates(ds.GetCoordinateSystem());
+    locator2L.Update();
+  }
   std::chrono::duration<double> dt = std::chrono::steady_clock::now()-startL;
-  std::cout<<"2L build= "<<dt.count()<<std::endl;
+  std::cout<<"Locator build= "<<dt.count()<<std::endl;
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> eq_psi_gridArr;
   ds.GetField("eq_psi_grid").GetData().AsArrayHandle(eq_psi_gridArr);
@@ -283,12 +378,24 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
   vtkm::cont::ArrayCopy(ds.GetCoordinateSystem().GetData(), coords);
 
   locTimer.Reset();
-  invoker(worklet, seedsArray,
-          locator2L,
-          cellSet, coords,
-          As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
-          B_RZP, psi,
-          tracesArr, outR, outZ, outTheta, outPsi, outID);
+  if (useUB)
+  {
+    invoker(worklet, seedsArray,
+            locatorUB,
+            cellSet, coords,
+            As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+            B_RZP, psi,
+            tracesArr, outR, outZ, outTheta, outPsi, outID);
+  }
+  else
+  {
+    invoker(worklet, seedsArray,
+            locator2L,
+            cellSet, coords,
+            As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+            B_RZP, psi,
+            tracesArr, outR, outZ, outTheta, outPsi, outID);
+  }
 
   outID.SyncControlArray();
 
@@ -310,5 +417,21 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
     std::cout<<locTimer.Names[i]<<": "<<T[i]<<"  "<<C[i]<<" avg: "<<T[i]/C[i]<<std::endl;
   }
   std::cout<<"*********************************************************"<<std::endl<<std::endl;
+
+
+  //Look for min/max and avg num steps.
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> outP;
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> outTime;
+  vtkm::cont::ArrayHandle<vtkm::Id> _outID, outSteps;
+  vtkm::cont::ArrayHandle<vtkm::ParticleStatus> outStatus;
+  vtkm::cont::ParticleArrayCopy(seedsArray, outP, _outID, outSteps, outStatus, outTime);
+  vtkm::Id minVal = vtkm::cont::Algorithm::Reduce(outSteps, 0, vtkm::Minimum());
+  vtkm::Id maxVal = vtkm::cont::Algorithm::Reduce(outSteps, 0, vtkm::Maximum());
+  vtkm::Id sum = vtkm::cont::Algorithm::Reduce(outSteps, 0);
+
+  vtkm::FloatDefault avg = vtkm::FloatDefault(sum) / vtkm::FloatDefault(seedsArray.GetNumberOfValues());
+
+  std::cout<<"NumSteps: mM: "<<minVal<<" "<<maxVal<<" AVG= "<<avg<<std::endl;
+
 
 }

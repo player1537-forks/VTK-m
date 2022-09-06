@@ -200,6 +200,7 @@ set(device_sources
   ArrayRangeCompute.cxx
   CellLocatorBoundingIntervalHierarchy.cxx
   CellLocatorTwoLevel.cxx
+  CellLocatorUniformBins.cxx
   CellSetExplicit.cxx
   CellSetExtrude.cxx
   ColorTable.cxx

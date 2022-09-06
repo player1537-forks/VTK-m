@@ -10,21 +10,67 @@
 #ifndef vtk_m_cont_CellLocatorUniformBins_h
 #define vtk_m_cont_CellLocatorUniformBins_h
 
-#include <vtkm/Deprecated.h>
+#include <vtkm/cont/ArrayHandle.h>
+#include <vtkm/cont/CellSetList.h>
 
-#include <vtkm/cont/CellLocatorTwoLevel.h>
+#include <vtkm/cont/internal/CellLocatorBase.h>
+
+#include <vtkm/exec/CellLocatorMultiplexer.h>
+#include <vtkm/exec/CellLocatorUniformBins.h>
+
 
 namespace vtkm
 {
 namespace cont
 {
 
-struct VTKM_ALWAYS_EXPORT VTKM_DEPRECATED(1.6, "Replaced with CellLocatorTwoLevel.")
-  CellLocatorUniformBins : vtkm::cont::CellLocatorTwoLevel
+class VTKM_CONT_EXPORT CellLocatorUniformBins
+  : public vtkm::cont::internal::CellLocatorBase<CellLocatorUniformBins>
 {
+  using Superclass = vtkm::cont::internal::CellLocatorBase<CellLocatorUniformBins>;
+
+  template <typename CellSetCont>
+  using CellSetContToExec =
+    typename CellSetCont::template ExecConnectivityType<vtkm::TopologyElementTagCell,
+                                                        vtkm::TopologyElementTagPoint>;
+
+public:
+  using SupportedCellSets = VTKM_DEFAULT_CELL_SET_LIST;
+
+  using CellExecObjectList = vtkm::ListTransform<SupportedCellSets, CellSetContToExec>;
+  using CellLocatorExecList =
+    vtkm::ListTransform<CellExecObjectList, vtkm::exec::CellLocatorUniformBins>;
+
+  using ExecObjType = vtkm::ListApply<CellLocatorExecList, vtkm::exec::CellLocatorMultiplexer>;
+  using LastCell = typename ExecObjType::LastCell;
+
+  CellLocatorUniformBins() {}
+  void SetDimensions(const vtkm::Id3& dims) {this->UniformCellDims = dims;}
+
+  void PrintSummary(std::ostream& out) const;
+
+public:
+  ExecObjType PrepareForExecution(vtkm::cont::DeviceAdapterId device,
+                                  vtkm::cont::Token& token) const;
+
+private:
+  friend Superclass;
+  VTKM_CONT void Build();
+
+  vtkm::Vec3f InvSpacing;
+  vtkm::Vec3f MaxPoint;
+  vtkm::Vec3f Origin;
+  vtkm::Id3 UniformCellDims;
+  vtkm::Id3 MaxCellIds;
+
+  vtkm::cont::ArrayHandle<vtkm::Id> CellCount;
+  vtkm::cont::ArrayHandle<vtkm::Id> CellIds;
+  vtkm::cont::ArrayHandle<vtkm::Id> CellStartIdx;
+
+  struct MakeExecObject;
 };
 
 }
-} // namespace vtkm::cont
+} // vtkm::cont
 
-#endif //vtk_m_cont_CellLocatorUniformBins_h
+#endif // vtk_m_cont_CellLocatorUniformBins_h

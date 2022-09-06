@@ -17,17 +17,10 @@
 #include <vtkm/cont/CoordinateSystem.h>
 
 #include <vtkm/Math.h>
-#include <vtkm/VectorAnalysis.h>
 #include <vtkm/TopologyElementTag.h>
 #include <vtkm/Types.h>
 #include <vtkm/VecFromPortalPermute.h>
 #include <vtkm/VecTraits.h>
-
-#include <vtkm/exec/LocatorTimer.h>
-
-#include <iomanip>
-
-extern vtkm::exec::LocatorTimer locTimer;
 
 namespace vtkm
 {
@@ -108,54 +101,6 @@ private:
   using CoordsPortalType =
     typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
 
-  VTKM_EXEC
-  static vtkm::FloatDefault Area(const vtkm::FloatDefault& x1, const vtkm::FloatDefault& y1,
-                                 const vtkm::FloatDefault& x2, const vtkm::FloatDefault& y2,
-                                 const vtkm::FloatDefault& x3, const vtkm::FloatDefault& y3)
-  {
-    return vtkm::Abs((x1*y2 + x2*y3 + x3*y1 - y1*x2 - y2*x3 - y3*x1)/2.0);
-    //return vtkm::Abs((x1*(y2-y3) + x2*(y3-y1)+ x3*(y1-y2))/2.0);
-  }
-
-  template <typename CoordsType>
-  VTKM_EXEC
-  static vtkm::Vec3f PCoords(const vtkm::Vec3f& pt,
-                             const CoordsType& cellPoints)
-  {
-    vtkm::Vec3f Norm(0,0,1), pc(0,0,0);
-
-    for (int i = 0; i < 2; i++)
-    {
-      const auto& p0 = cellPoints[0];
-      const auto& p1 = cellPoints[i+1];
-      const auto& p2 = cellPoints[2-i];
-      const auto planeNorm = vtkm::Cross(Norm, (p2-p0));
-      pc[i] = vtkm::Dot((pt-p0), planeNorm) / vtkm::Dot((p1-p0), planeNorm);
-    }
-
-    return pc;
-  }
-
-  template <typename CoordsType>
-  VTKM_EXEC
-  static bool PtInCell(const vtkm::Vec3f& point,
-                       const CoordsType& cellPoints,
-                       vtkm::Vec3f& pcoords)
-  {
-    auto bounds = vtkm::internal::cl_uniform_bins::ComputeCellBounds(cellPoints);
-
-    auto xMin = vtkm::Min(cellPoints[0][0], vtkm::Min(cellPoints[1][0], cellPoints[2][0]));
-    auto xMax = vtkm::Max(cellPoints[0][0], vtkm::Max(cellPoints[1][0], cellPoints[2][0]));
-    auto yMin = vtkm::Min(cellPoints[0][1], vtkm::Min(cellPoints[1][1], cellPoints[2][1]));
-    auto yMax = vtkm::Max(cellPoints[0][1], vtkm::Max(cellPoints[1][1], cellPoints[2][1]));
-    if (point[0] < xMin || point[0] > xMax || point[1] < yMin || point[1] > yMax)
-      return false;
-
-    pcoords = PCoords(point, cellPoints);
-    return (pcoords[0] >=0 && pcoords[0] <= 1 && pcoords[1] >= 0 && pcoords[1] <= 1 && pcoords[0]+pcoords[1] <= 1);
-  }
-
-
   // TODO: This function may return false positives for non 3D cells as the
   // tests are done on the projection of the point on the cell. Extra checks
   // should be added to test if the point actually falls on the cell.
@@ -163,103 +108,22 @@ private:
   VTKM_EXEC static vtkm::ErrorCode PointInsideCell(FloatVec3 point,
                                                    CellShapeTag cellShape,
                                                    CoordsType cellPoints,
-                                                   FloatVec3& pcoords,
+                                                   FloatVec3& parametricCoordinates,
                                                    bool& inside)
   {
-#if 1
-    inside = PtInCell(point, cellPoints, pcoords);
-
-#if 0
-    auto xMin = vtkm::Min(cellPoints[0][0], vtkm::Min(cellPoints[1][0], cellPoints[2][0]));
-    auto xMax = vtkm::Max(cellPoints[0][0], vtkm::Max(cellPoints[1][0], cellPoints[2][0]));
-    auto yMin = vtkm::Min(cellPoints[0][1], vtkm::Min(cellPoints[1][1], cellPoints[2][1]));
-    auto yMax = vtkm::Max(cellPoints[0][1], vtkm::Max(cellPoints[1][1], cellPoints[2][1]));
-    if (point[0] < xMin || point[0] > xMax || point[1] < yMin || point[1] > yMax)
-      inside = false;
-    else
-    {
-      pcoords = PCoords(point, cellPoints);
-      inside = (pcoords[0] >=0 && pcoords[0] <= 1 && pcoords[1] >= 0 && pcoords[1] <= 1 && pcoords[0]+pcoords[1] <= 1);
-    }
-
-    /*
-    const auto& p1 = cellPoints[0];
-    const auto& p2 = cellPoints[1];
-    const auto& p3 = cellPoints[2];
-
-    auto A = Area(    p1[0],    p1[1],    p2[0],    p2[1],    p3[0],    p3[1]);
-    auto A1 = Area(point[0], point[1],    p2[0],    p2[1],    p3[0],    p3[1]);
-    auto A2 = Area(   p1[0],    p1[1], point[0], point[1],    p3[0],    p3[1]);
-    auto A3 = Area(   p1[0],    p1[1],    p2[0],    p2[1], point[0], point[1]);
-    auto dA = A-(A1+A2+A3));
-    inside = vtkm::Abs(dA) <= 1e-6;
-    */
-#endif
-#else
-
     auto bounds = vtkm::internal::cl_uniform_bins::ComputeCellBounds(cellPoints);
     if (point[0] >= bounds.Min[0] && point[0] <= bounds.Max[0] && point[1] >= bounds.Min[1] &&
         point[1] <= bounds.Max[1] && point[2] >= bounds.Min[2] && point[2] <= bounds.Max[2])
     {
       VTKM_RETURN_ON_ERROR(vtkm::exec::WorldCoordinatesToParametricCoordinates(
-        cellPoints, point, cellShape, pcoords));
-
-      inside = vtkm::exec::CellInside(pcoords, cellShape);
+        cellPoints, point, cellShape, parametricCoordinates));
+      inside = vtkm::exec::CellInside(parametricCoordinates, cellShape);
     }
     else
     {
       inside = false;
     }
-
-    vtkm::Vec3f pcoords2;
-    bool inside2 = PtInCell(point, cellPoints, pcoords2);
-    if (inside != inside2)
-    {
-      std::cout<<"Wrong answer."<<std::endl;
-    }
-
-    if (inside && vtkm::Magnitude(pcoords-pcoords2) > 1e-14)
-    {
-      std::cout<<"***** "<<std::endl;
-      std::cout<<std::setprecision(20);
-      std::cout<<pcoords<<" "<<pcoords2<<" :: "<<vtkm::Magnitude(pcoords-pcoords2)<<std::endl;
-      inside2 = PtInCell(point, cellPoints, pcoords2);
-      inside2 = PtInCell(point, cellPoints, pcoords2);
-      inside2 = PtInCell(point, cellPoints, pcoords2);
-    }
-#endif
-
-    /*
-   if (!inside && omp_get_thread_num() == 0)
-   {
-     auto p1 = cellPoints[0];
-     auto p2 = cellPoints[1];
-     auto p3 = cellPoints[2];
-
-//     p1[0] = -2; p1[1] =  3;
-//     p2[0] = -3; p2[1] = -1;
-//     p3[0] =  3; p3[1] = -2;
-
-     auto A = Area(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1]);
-     auto A1 = Area(point[0], point[1], p2[0], p2[1], p3[0], p3[1]);
-     auto A2 = Area(p1[0], p1[1], point[0], point[1], p3[0], p3[1]);
-     auto A3 = Area(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1]);
-     auto dA = vtkm::Abs(A-(A1+A2+A3));
-     if (dA > 0)
-     {
-       std::cout<<std::setprecision(20)<<" ********ERROR:  "<<dA<<" "<<A<<" "<<A1<<" "<<A2<<" "<<A3<<std::endl;
-       std::cout<<p1<<" "<<p2<<" "<<p3<<std::endl;
-     }
-
-     auto pc = PCoords(point, cellPoints);
-
-     auto b1 = A1/A;
-     auto b2 = A2/A;
-     auto b3 = A3/A;
-     std::cout<<" Param: "<<parametricCoordinates<<" me: "<<pc<<std::endl;
-   }
-    */
-
+    // Return success error code even point is not inside this cell
     return vtkm::ErrorCode::Success;
   }
 
@@ -308,7 +172,6 @@ public:
                            FloatVec3& parametric,
                            LastCell& lastCell) const
   {
-    locTimer.Start();
     vtkm::Vec3f pc;
     //See if point is inside the last cell.
     if ((lastCell.CellId >= 0) && (lastCell.CellId < this->CellSet.GetNumberOfElements()) &&
@@ -316,8 +179,6 @@ public:
     {
       parametric = pc;
       cellId = lastCell.CellId;
-      locTimer.Update(LocatorTimer::FindCell0_IDX);
-
       return vtkm::ErrorCode::Success;
     }
 
@@ -327,11 +188,8 @@ public:
     {
       parametric = pc;
       lastCell.CellId = cellId;
-      locTimer.Update(LocatorTimer::FindCell1_IDX);
       return vtkm::ErrorCode::Success;
     }
-    locTimer.Update(LocatorTimer::FindCell2_IDX);
-
 
     //Call the full point search.
     return this->FindCellImpl(point, cellId, parametric, lastCell);
@@ -348,7 +206,6 @@ private:
                               const vtkm::Id& cid,
                               vtkm::Vec3f& parametric) const
   {
-    locTimer.Start();
     auto indices = this->CellSet.GetIndices(cid);
     auto pts = vtkm::make_VecFromPortalPermute(&indices, this->Coords);
     vtkm::Vec3f pc;
@@ -357,11 +214,9 @@ private:
     if (status == vtkm::ErrorCode::Success && inside)
     {
       parametric = pc;
-      locTimer.Update(LocatorTimer::PointInCell_IDX);
-
       return vtkm::ErrorCode::Success;
     }
-    locTimer.Update(LocatorTimer::PointInCell_IDX);
+
     return vtkm::ErrorCode::CellNotFound;
   }
 
@@ -398,7 +253,6 @@ private:
                                LastCell& lastCell) const
   {
     using namespace vtkm::internal::cl_uniform_bins;
-    locTimer.Start();
 
     cellId = -1;
     lastCell.CellId = -1;
@@ -414,7 +268,6 @@ private:
       auto ldim = this->LeafDimensions.Get(binId);
       if (!ldim[0] || !ldim[1] || !ldim[2])
       {
-        locTimer.Update(LocatorTimer::FindCellImpl0_IDX);
         return vtkm::ErrorCode::CellNotFound;
       }
 
@@ -431,11 +284,10 @@ private:
       {
         lastCell.CellId = cellId;
         lastCell.LeafIdx = leafIdx;
-        locTimer.Update(LocatorTimer::FindCellImpl1_IDX);
         return vtkm::ErrorCode::Success;
       }
     }
-    locTimer.Update(LocatorTimer::FindCellImpl2_IDX);
+
     return vtkm::ErrorCode::CellNotFound;
   }
 
@@ -450,9 +302,6 @@ private:
 
   CellStructureType CellSet;
   CoordsPortalType Coords;
-
-//  vtkm::FloatDefault FindCellTime = 0.0;
-//  vtkm::FloatDefault TriIntersectType = 0.0;
 };
 }
 } // vtkm::exec

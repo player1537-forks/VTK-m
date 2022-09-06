@@ -4,7 +4,9 @@
 #include <vtkm/Geometry.h>
 #include <vtkm/Matrix.h>
 #include <vtkm/Particle.h>
+#include <vtkm/cont/CellLocatorGeneral.h>
 #include <vtkm/cont/CellLocatorTwoLevel.h>
+#include <vtkm/cont/CellLocatorUniformBins.h>
 #include <vtkm/worklet/WorkletMapField.h>
 
 #include "XGCParameters.h"
@@ -89,7 +91,9 @@ class PoincareWorklet2 : public vtkm::worklet::WorkletMapField
     ParticleInfo& operator=(const ParticleInfo&) = default;
 
     vtkm::Id Idx = -1;
-    vtkm::cont::CellLocatorTwoLevel::LastCell PrevCell;
+    //vtkm::cont::CellLocatorTwoLevel::LastCell PrevCell;
+    //vtkm::cont::CellLocatorUniformBins::LastCell PrevCell;
+    vtkm::cont::CellLocatorGeneral::LastCell PrevCell;
     vtkm::FloatDefault Psi = 0;
     vtkm::FloatDefault dpsi_dr=0, dpsi_dz=0, d2psi_drdz=0, d2psi_d2r=0, d2psi_d2z=0;
     vtkm::Vec3f gradPsi_rzp, B0_rzp, curlB_rzp, curl_nb_rzp;
@@ -180,7 +184,7 @@ public:
   using CellSetType = vtkm::exec::ConnectivityExplicit<vtkm::internal::ArrayPortalImplicit<vtkm::cont::internal::ConstantFunctor<unsigned char>>,
                                                        vtkm::internal::ArrayPortalBasicRead<vtkm::Id>,
                                                        vtkm::cont::internal::ArrayPortalCounting<vtkm::Id>>;
-
+/*
   using LocatorType = vtkm::exec::CellLocatorMultiplexer<vtkm::exec::CellLocatorTwoLevel<vtkm::exec::ConnectivityStructured<vtkm::TopologyElementTagCell, vtkm::TopologyElementTagPoint, 2> >,
                                                          vtkm::exec::CellLocatorTwoLevel<vtkm::exec::ConnectivityStructured<vtkm::TopologyElementTagCell, vtkm::TopologyElementTagPoint, 3> >,
                                                          vtkm::exec::CellLocatorTwoLevel<vtkm::exec::ConnectivityExplicit<vtkm::internal::ArrayPortalBasicRead<unsigned char>,
@@ -188,6 +192,7 @@ public:
                                                                                                                               vtkm::internal::ArrayPortalBasicRead<long long int> > >,
                                                          vtkm::exec::CellLocatorTwoLevel<vtkm::exec::ConnectivityExplicit<vtkm::internal::ArrayPortalImplicit<vtkm::cont::internal::ConstantFunctor<unsigned char> >,
                                                                                                                           vtkm::internal::ArrayPortalBasicRead<long long int>, vtkm::cont::internal::ArrayPortalCounting<long long int>>>>;
+*/
 
 
 
@@ -479,6 +484,7 @@ public:
     return true;
   }
 
+  template <typename LocatorType>
   VTKM_EXEC void operator()(const vtkm::Id& idx,
                             vtkm::Particle& particle,
                             const LocatorType& locator,
@@ -721,7 +727,7 @@ public:
   }
 #endif
 
-  //template <typename LocatorType>
+  template <typename LocatorType>
   VTKM_EXEC
   bool TakeRK4Step(const vtkm::Vec3f& ptRPZ,
                    ParticleInfo& pInfo,
@@ -773,6 +779,7 @@ public:
     return true;
   }
 
+  template <typename LocatorType>
   VTKM_EXEC
   bool TakeRK4Step2(const vtkm::Vec3f& ptRPZ,
                     const vtkm::FloatDefault& h,
@@ -855,6 +862,7 @@ public:
     return ret;
   }
 
+  template <typename LocatorType>
   VTKM_EXEC
   bool PtLoc(const vtkm::Vec3f& ptRZ,
              ParticleInfo& pInfo,
@@ -866,7 +874,7 @@ public:
     vtkm::Id cellId;
     vtkm::ErrorCode status;
     if (this->UsePrevCell)
-      status = locator.FindCell(ptRZ, cellId, param, pInfo.PrevCell);
+      status = locator.FindCell(ptRZ, cellId, param); //, pInfo.PrevCell);
     else
       status = locator.FindCell(ptRZ, cellId, param);
 
@@ -1087,7 +1095,7 @@ public:
     return true;
   }
 
-  //template <typename LocatorType>
+  template <typename LocatorType>
   VTKM_EXEC
   bool Evaluate(const vtkm::Vec3f& ptRPZ,
                 ParticleInfo& pInfo,

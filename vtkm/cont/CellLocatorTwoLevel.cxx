@@ -452,6 +452,10 @@ VTKM_CONT void CellLocatorTwoLevel::Build()
   vtkm::cont::ArrayCopy(vtkm::cont::ArrayHandleConstant<vtkm::Id>(0, numberOfLeaves),
                         this->CellCount);
   invoke(GenerateBinsL2{}, bins, cellsStart, cellsPerBin, this->CellStartIndex, this->CellCount);
+
+  auto minCount = vtkm::cont::Algorithm::Reduce(this->CellCount, vtkm::Id(this->CellCount.ReadPortal().Get(0)), vtkm::Minimum());
+  auto maxCount = vtkm::cont::Algorithm::Reduce(this->CellCount, vtkm::Id(0), vtkm::Maximum());
+  std::cout<<"CellLocatorTwoLevel:: Cell counts: "<<minCount<<" "<<maxCount<<std::endl;
 }
 
 //----------------------------------------------------------------------------

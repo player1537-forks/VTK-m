@@ -17,8 +17,8 @@ class ComputeAsWorklet : public vtkm::worklet::WorkletMapField
 {
 public:
   using ControlSignature = void(FieldIn CoordsRZ,
-                                ExecObject locatorRZ,
-                                WholeCellSetIn<> cellSetRZ,
+                                ExecObject locator2L,
+                                WholeCellSetIn<> cellSetExplicit,
                                 WholeArrayIn Coeff_2D,
                                 WholeArrayIn As_phi_ff,
                                 WholeArrayIn dAs_phi_ff_RZP,
@@ -32,17 +32,69 @@ public:
   {
   }
 
-  ComputeAsWorklet(const XGCParameters& xgcParams)
+  ComputeAsWorklet(const XGCParameters& xgcParams, int nX, int nY)
+    : NumSampsX(nX)
+    , NumSampsY(nY)
   {
     this->NumNodes = xgcParams.numNodes;
     this->NumPlanes = xgcParams.numPlanes;
+
+    this->nr = xgcParams.eq_mr-1;
+    this->nz = xgcParams.eq_mz-1;
+    this->rmin = xgcParams.eq_min_r;
+    this->rmax = xgcParams.eq_max_r;
+    this->zmin = xgcParams.eq_min_z;
+    this->zmax = xgcParams.eq_max_z;
+    this->eq_axis_r = xgcParams.eq_axis_r;
+    this->eq_axis_z = xgcParams.eq_axis_z;
+    this->eq_x_r = xgcParams.eq_x_r;
+    this->eq_x_z = xgcParams.eq_x_z;
+    this->eq_x_psi = xgcParams.eq_x_psi;
+    this->eq_x2_r = xgcParams.eq_axis_r;
+    this->eq_x2_z = xgcParams.eq_max_z;
+    this->eq_x2_psi = xgcParams.eq_x_psi;
+    this->eq_x_slope = -(this->eq_x_r - this->eq_axis_r) / (this->eq_x_z - this->eq_axis_z);
+    this->eq_x2_slope = -(this->eq_x2_r - this->eq_axis_r) / (this->eq_x2_z - this->eq_axis_z);
+
+    this->dr = (xgcParams.eq_max_r - xgcParams.eq_min_r) / vtkm::FloatDefault(this->nr);
+    this->dz = (xgcParams.eq_max_z - xgcParams.eq_min_z) / vtkm::FloatDefault(this->nz);
+    this->dr_inv = 1.0/this->dr;
+    this->dz_inv = 1.0/this->dz;
+
+    this->ncoeff_r = xgcParams.eq_mr-1;
+    this->ncoeff_z = xgcParams.eq_mz-1;
+    this->ncoeff_psi = xgcParams.eq_mpsi-1;
+    this->min_psi = xgcParams.psi_min / this->eq_x_psi;
+    this->max_psi = xgcParams.psi_max / this->eq_x_psi;
+    this->itp_min_psi = xgcParams.itp_min_psi;
+    this->itp_max_psi = xgcParams.itp_max_psi;
+    this->one_d_cub_dpsi_inv = 1.0 / ((this->max_psi-this->min_psi)/vtkm::FloatDefault(this->ncoeff_psi));
+
+    this->dpsi = (this->max_psi - this->min_psi) / vtkm::FloatDefault(this->NumSampsX);
+    this->dtheta = vtkm::TwoPi() / vtkm::FloatDefault(this->NumSampsY);
+    this->dpsi_inv = 1.0 / this->dpsi;
+    this->dtheta_inv = 1.0 / this->dtheta;
+
+    this->SpacingRZ = vtkm::Vec3f((this->rmax-this->rmin)/vtkm::FloatDefault(this->NumSampsX-1),
+                                  (this->zmax-this->zmin)/vtkm::FloatDefault(this->NumSampsY-1),
+                                  1);
+    this->SpacingPT = vtkm::Vec3f((this->max_psi-this->min_psi)/vtkm::FloatDefault(this->NumSampsX-1),
+                                  vtkm::TwoPi()/vtkm::FloatDefault(this->NumSampsY-1),
+                                  1);
+
+    this->InvSpacingRZ = vtkm::Vec3f(1.0f/this->SpacingRZ[0],
+                                     1.0f/this->SpacingRZ[1],
+                                     1.0f/this->SpacingRZ[2]);
+    this->InvSpacingPT = vtkm::Vec3f(1.0f/this->SpacingPT[0],
+                                     1.0f/this->SpacingPT[1],
+                                     1.0f/this->SpacingPT[2]);
   }
 
   template <typename CoordsType, typename CoeffType, typename LocatorType, typename CellSetType, typename AsPhiType, typename dAsPhiType, typename AsOutType, typename dAsOutType>
   VTKM_EXEC void operator()(const vtkm::Id& idx,
-                            const CoordsType& CoordRZ,            //uniform2D
-                            const LocatorType& locatorRZ,         //uniformLocator
-                            const CellSetType& cellSetRZ,         //explicit cellset
+                            const CoordsType& uniformRZ,          //uniform2D  gridRZ
+                            const LocatorType& locator2L,         //locator2L
+                            const CellSetType& cellSetExplicit,   //explicit cellset
                             const CoeffType& Coeff_2D,            // bicubic interpolation coeff
                             const AsPhiType& As_phi_ff,
                             const dAsPhiType& dAs_phi_ff_RZP,
@@ -52,27 +104,155 @@ public:
     vtkm::Id cellId;
     vtkm::Vec3f param;
 
-    //Find the triangle.
-    vtkm::ErrorCode status = locatorRZ.FindCell(CoordRZ, cellId, param);
+    auto R = uniformRZ[0];
+    auto Z = uniformRZ[1];
 
+    //R = 7.90; //7.80503;
+    //Z = 0.00; //0.831567;
+
+    //R = 6.20;
+    //Z = 0.0;
+    vtkm::Vec3f CoordRZ(R,Z,0);
+
+    /*
+    if (idx == 5049)
+    {
+      std::cout<<"Weird land...."<<std::endl;
+      vtkm::Vec3f invSp(1.0/(double)this->NumSampsX, 1.0/(double)this->NumSampsY, 1.0);
+      vtkm::Vec3f origin(this->rmin, this->zmin, 0);
+      std::cout<<"invSp: "<<invSp<<" O= "<<origin<<std::endl;
+
+      auto tmp = CoordRZ - origin;
+      std::cout<<"   "<<CoordRZ<<" --> "<<tmp<<std::endl;
+      tmp = tmp * this->InvSpacingRZ;
+      std::cout<<"       ----> "<<tmp<<std::endl;
+      vtkm::Id3 logicalCell(tmp);
+      vtkm::Id idx2 = (logicalCell[2] * this->NumSampsY + logicalCell[1]) * this->NumSampsX + logicalCell[0];
+
+      std::cout<<"      "<<idx2<<std::endl;
+    }
+    */
+
+
+    //Find the triangle.
+    vtkm::ErrorCode status = locator2L.FindCell(CoordRZ, cellId, param);
+
+    auto dR = (this->rmax-this->rmin), dZ = (this->zmax-this->zmin);
+    auto drInv = dR / vtkm::FloatDefault(this->NumSampsX);
+    auto dzInv = dZ / vtkm::FloatDefault(this->NumSampsY);
+    auto R_i = this->GetIndex(CoordRZ[0], this->NumSampsX, this->rmin, this->InvSpacingRZ[0]);
+    auto Z_i = this->GetIndex(CoordRZ[1], this->NumSampsY, this->zmin, this->InvSpacingRZ[1]);
+    /*
+    std::cout<<"**********************************************************"<<std::endl;
+    std::cout<<"   "<<idx<<" RZ= "<<CoordRZ<<std::endl;
+    std::cout<<"        RZ_i= "<<R_i<<" "<<Z_i<<std::endl;
+    */
     if (status != vtkm::ErrorCode::Success)
     {
-      vtkm::Vec3f tmp(0,0,0);
+      return;
+
+
+
+
+
+      /*
+      vtkm::Vec3f tmp(-10000,-1, -1);
       for (vtkm::Id n = 0; n < this->NumPlanes*2; n++)
       {
-        vtkm::Id outIdx = n * this->Num2DPts + idx;
-        AsOut.Set(outIdx, 0);
+        vtkm::Id outIdx = n*(this->NumSampsX * this->NumSampsY) + idx;
+        if (outIdx >= AsOut.GetNumberOfValues())
+        {
+          std::cout<<"Crashing coming at: "<<idx<<" outIdx= "<<outIdx<<std::endl;
+        }
+        //vtkm::Id outIdx = n * this->Num2DPts + idx;
+        AsOut.Set(outIdx, -1);
         dAsOut_RZP.Set(outIdx, tmp);
       }
-
       return;
+      */
     }
 
-    auto tmp =  cellSetRZ.GetIndices(cellId);
+    auto tmp =  cellSetExplicit.GetIndices(cellId);
     vtkm::Vec<vtkm::Id,3> vIds;
     vIds[0] = tmp[0];
     vIds[1] = tmp[1];
     vIds[2] = tmp[2];
+
+    R_i = this->GetIndex(CoordRZ[0], this->NumSampsX, this->rmin, this->InvSpacingRZ[0]);
+    Z_i = this->GetIndex(CoordRZ[1], this->NumSampsY, this->zmin, this->InvSpacingRZ[1]);
+
+    vtkm::Vec3f ptPT;
+    vtkm::Id PTidx;
+    this->CalcPsiTheta(CoordRZ, Coeff_2D, ptPT, PTidx);
+    //ptPT[0] = 0.75;
+
+    vtkm::Id idx_x = idx / this->NumSampsX;
+    vtkm::Id idx_y = idx % this->NumSampsY;
+
+    auto P_i = this->GetIndex(ptPT[0], this->NumSampsX, this->min_psi, this->InvSpacingPT[0]);
+    auto T_i = this->GetIndex(ptPT[1], this->NumSampsY, 0, this->InvSpacingPT[1]);
+
+    //vtkm::Id idxOut = T_i*idx_x + P_i;
+    //vtkm::Id idxOut = (this->NumSampsY+T_i) * this->NumSampsX + P_i;
+    //vtkm::Id idxOut = (this->NumSampsY+T_i) * this->NumSampsX + P_i;
+    vtkm::Id idxOut = P_i*this->NumSampsX + T_i;
+    idxOut = T_i*this->NumSampsX + P_i;
+    idxOut = P_i*this->NumSampsY + T_i;
+
+    if (idxOut == 5049)
+    {
+      std::cout<<"****************************** bum bum"<<std::endl;
+      std::cout<<CoordRZ<<" "<<R_i<<" "<<Z_i<<" idx= "<<idx<<std::endl;
+      std::cout<<"  "<<ptPT<<" "<<P_i<<" "<<T_i<<std::endl;
+    }
+
+    AsOut.Set(idxOut, AsOut.Get(idxOut) + ptPT[0]); //ptPT[1]);
+    return;
+
+
+
+    if (idx == 10)
+      std::cout<<"*********************** pPT= "<<ptPT<<std::endl;
+    /*
+    //P_i = 27;
+    if (idx % 3 == 0)
+      P_i = 16;
+    else
+      P_i = 29;
+    */
+
+//    std::cout<<"        PT_i= "<<P_i<<" "<<T_i<<std::endl;
+
+    //vtkm::Id idx2 =   (this->NumSampsY + logicalCell[1]) * this->NumSampsX + logicalCell[0];
+    vtkm::Id outIdx = (this->NumSampsY+T_i) * this->NumSampsX + P_i;
+
+    vtkm::FloatDefault as;
+    as = 10;
+    AsOut.Set(outIdx, as);
+
+    /*
+    for (vtkm::Id n = 0; n < this->NumPlanes*2; n++)
+    {
+      vtkm::Id rzIdx = (Z_i*this->NumSampsX) + R_i;
+
+      vtkm::Id outIdx = (n*this->NumSampsX*this->NumSampsY) + idx;      //this works. Make the red outline shape.
+      //vtkm::Id outIdx = (n*this->NumSampsX*this->NumSampsY) + rzIdx;
+      //outIdx = (n*this->NumSampsX*this->NumSampsY) + rzIdx;
+
+      auto ptIdx = (T_i * this->NumSampsX) + P_i;
+      //ptIdx = (P_i*256) + T_i;
+      outIdx = (n*this->NumSampsX*this->NumSampsY) + ptIdx;
+
+
+      vtkm::FloatDefault as = ptPT[0];
+      AsOut.Set(outIdx, as);
+    }
+    */
+    return;
+
+//    vtkm::Vec3f ptPT;
+//    vtkm::Id PTidx;
+    this->CalcPsiTheta(CoordRZ, Coeff_2D, ptPT, PTidx);
 
     //Use the param values to set the point for each plane.
     for (vtkm::Id n = 0; n < this->NumPlanes*2; n++)
@@ -93,10 +273,76 @@ public:
       valv.Append(dAs_phi_ff_RZP.Get(vIds[2]+offset));
       vtkm::exec::CellInterpolate(valv, param, vtkm::CellShapeTagTriangle(), das_rzp);
 
-      vtkm::Id outIdx = n * this->Num2DPts + idx;
+      vtkm::Id outIdx = n*(this->NumSampsX * this->NumSampsY) + idx; //works
+      //vtkm::Id outIdx = n*(this->NumSampsX * this->NumSampsY) + PTidx;
+      as = idx;
+      as = ptPT[0];
+      as = 10;
       AsOut.Set(outIdx, as);
       dAsOut_RZP.Set(outIdx, das_rzp);
     }
+  }
+
+  template <typename CoeffType>
+  VTKM_EXEC
+  void CalcPsiTheta(const vtkm::Vec3f& ptRZ,
+                    const CoeffType& Coeff_2D,
+                    vtkm::Vec3f& ptPT,
+                    vtkm::Id& idxPT) const
+  {
+    auto R = ptRZ[0], Z = ptRZ[1];
+    auto r_i = this->GetIndex(R, this->nr, this->rmin, this->dr_inv);
+    auto z_i = this->GetIndex(Z, this->nz, this->zmin, this->dz_inv);
+
+    // rc(i), zc(j)
+    vtkm::FloatDefault Rc = this->rmin + (vtkm::FloatDefault)(r_i)*this->dr;
+    vtkm::FloatDefault Zc = this->zmin + (vtkm::FloatDefault)(z_i)*this->dz;
+    auto Rc_1 = Rc + this->dr;
+    auto Zc_1 = Zc + this->dz;
+    Rc = (Rc + Rc_1) * 0.5;
+    Zc = (Zc + Zc_1) * 0.5;
+    vtkm::Id offset = (z_i * this->ncoeff_r + r_i) * 16;
+    vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
+    this->EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+
+    auto theta = vtkm::ATan2(Z-this->eq_axis_z, R-this->eq_axis_r);
+    if (theta < 0)
+      theta += vtkm::TwoPi();
+
+    //calc idx.
+    auto P_i = this->GetIndex(psi, this->NumSampsX, this->min_psi, this->InvSpacingPT[0]);
+    auto T_i = this->GetIndex(theta, this->NumSampsY, 0, this->InvSpacingPT[1]);
+    if (P_i < 0 || P_i >= this->NumSampsX)
+      std::cout<<" issue with P_i: "<<P_i<<std::endl;
+    if (T_i < 0 || T_i >= this->NumSampsY)
+      std::cout<<" issue with T_i: "<<T_i<<std::endl;
+
+    psi = psi / this->eq_x_psi;
+
+    ptPT[0] = psi;
+    ptPT[1] = theta;
+    ptPT[2] = 0;
+
+    idxPT = T_i * this->NumSampsX + P_i;
+    //idxPT = P_i * this->NumSampsY + T_i;
+  }
+
+  VTKM_EXEC
+  int GetIndex(const vtkm::FloatDefault& x,
+               const int& nx,
+               const vtkm::FloatDefault& xmin,
+               const vtkm::FloatDefault& dx_inv) const
+  {
+    int A = nx-1;
+    auto B = (x-xmin)*dx_inv;
+    vtkm::FloatDefault B0 = (x-xmin);
+    vtkm::FloatDefault B1 = B0*dx_inv;
+    int C = int(B1);
+    int D = std::min(nx-1, C);
+    int idx = std::max(0, std::min(nx-1,
+                                   int((x-xmin)*dx_inv)) );
+    return idx;
+
   }
 
   template <typename CoeffType>
@@ -165,9 +411,27 @@ public:
     }
   }
 
-  vtkm::Id Num2DPts;
+  vtkm::Vec3f SpacingRZ, SpacingPT;
+  vtkm::Vec3f InvSpacingRZ, InvSpacingPT;
   vtkm::Id NumNodes;
   vtkm::Id NumPlanes;
+
+  vtkm::Id NumSampsX = 256;
+  vtkm::Id NumSampsY = 256;
+
+  int nr, nz;
+  vtkm::FloatDefault rmin, zmin, rmax, zmax;
+  vtkm::FloatDefault dr, dz, dr_inv, dz_inv;
+  vtkm::FloatDefault eq_axis_z, eq_axis_r, eq_axis_psi;
+  vtkm::FloatDefault eq_x_r, eq_x_z, eq_x_psi, eq_x2_z, eq_x2_r, eq_x2_psi;
+  vtkm::FloatDefault eq_x_slope, eq_x2_slope;
+
+  int ncoeff_r, ncoeff_z, ncoeff_psi;
+  vtkm::FloatDefault min_psi, max_psi;
+  vtkm::FloatDefault itp_min_psi, itp_max_psi;
+  vtkm::FloatDefault one_d_cub_dpsi_inv;
+  vtkm::FloatDefault sml_bp_sign = -1.0f;
+  vtkm::FloatDefault dpsi, dtheta, dpsi_inv, dtheta_inv;
 };
 
 

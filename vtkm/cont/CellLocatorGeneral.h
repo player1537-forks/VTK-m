@@ -12,6 +12,7 @@
 
 #include <vtkm/cont/CellLocatorRectilinearGrid.h>
 #include <vtkm/cont/CellLocatorTwoLevel.h>
+#include <vtkm/cont/CellLocatorUniformBins.h>
 #include <vtkm/cont/CellLocatorUniformGrid.h>
 
 #include <vtkm/exec/CellLocatorMultiplexer.h>
@@ -45,11 +46,13 @@ class VTKM_CONT_EXPORT CellLocatorGeneral
 
 public:
   using ContLocatorList = vtkm::List<vtkm::cont::CellLocatorUniformGrid,
+                                     vtkm::cont::CellLocatorUniformBins,
                                      vtkm::cont::CellLocatorRectilinearGrid,
                                      vtkm::cont::CellLocatorTwoLevel>;
 
   using ExecLocatorList =
     vtkm::List<vtkm::cont::internal::ExecutionObjectType<vtkm::cont::CellLocatorUniformGrid>,
+               vtkm::cont::internal::ExecutionObjectType<vtkm::cont::CellLocatorUniformBins>,
                vtkm::cont::internal::ExecutionObjectType<vtkm::cont::CellLocatorRectilinearGrid>,
                vtkm::cont::internal::ExecutionObjectType<vtkm::cont::CellLocatorTwoLevel>>;
 
