@@ -78,6 +78,7 @@ public:
 
 private:
 
+  VTKM_EXEC
   vtkm::Id3 GetFlatIndex(const vtkm::Vec3f& pt) const
   {
     vtkm::Id3 logicalIdx(0, 0, 0);
