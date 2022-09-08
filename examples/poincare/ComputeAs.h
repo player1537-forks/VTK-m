@@ -201,9 +201,9 @@ public:
 
     if (idxOut == 5049)
     {
-      std::cout<<"****************************** bum bum"<<std::endl;
-      std::cout<<CoordRZ<<" "<<R_i<<" "<<Z_i<<" idx= "<<idx<<std::endl;
-      std::cout<<"  "<<ptPT<<" "<<P_i<<" "<<T_i<<std::endl;
+//      std::cout<<"****************************** bum bum"<<std::endl;
+//      std::cout<<CoordRZ<<" "<<R_i<<" "<<Z_i<<" idx= "<<idx<<std::endl;
+//      std::cout<<"  "<<ptPT<<" "<<P_i<<" "<<T_i<<std::endl;
     }
 
     AsOut.Set(idxOut, AsOut.Get(idxOut) + ptPT[0]); //ptPT[1]);
@@ -211,8 +211,8 @@ public:
 
 
 
-    if (idx == 10)
-      std::cout<<"*********************** pPT= "<<ptPT<<std::endl;
+//    if (idx == 10)
+//      std::cout<<"*********************** pPT= "<<ptPT<<std::endl;
     /*
     //P_i = 27;
     if (idx % 3 == 0)
@@ -312,10 +312,12 @@ public:
     //calc idx.
     auto P_i = this->GetIndex(psi, this->NumSampsX, this->min_psi, this->InvSpacingPT[0]);
     auto T_i = this->GetIndex(theta, this->NumSampsY, 0, this->InvSpacingPT[1]);
+    /*
     if (P_i < 0 || P_i >= this->NumSampsX)
       std::cout<<" issue with P_i: "<<P_i<<std::endl;
     if (T_i < 0 || T_i >= this->NumSampsY)
       std::cout<<" issue with T_i: "<<T_i<<std::endl;
+    */
 
     psi = psi / this->eq_x_psi;
 
@@ -485,10 +487,12 @@ public:
     vtkm::Id cellId;
     vtkm::Vec3f param;
     auto statusU = locatorUniform.FindCell(coordRZ, cellId, param);
+    /*
     if (statusU != vtkm::ErrorCode::Success)
     {
       std::cout<<"Locator Error at "<<idx<<" "<<coordRZ<<std::endl;
     }
+    */
 
     auto vIds = cellSetUniform.GetIndices(cellId);
 
