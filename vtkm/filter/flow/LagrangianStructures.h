@@ -8,28 +8,25 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtk_m_filter_LagrangianStructures_h
-#define vtk_m_filter_LagrangianStructures_h
+#ifndef vtk_m_filter_flow_LagrangianStructures_h
+#define vtk_m_filter_flow_LagrangianStructures_h
 
-#include <vtkm/cont/DataSetBuilderUniform.h>
-
-#include <vtkm/filter/FilterDataSetWithField.h>
-
-#include <vtkm/filter/flow/worklet/GridEvaluators.h>
-#include <vtkm/filter/flow/worklet/ParticleAdvection.h>
-#include <vtkm/filter/flow/worklet/Stepper.h>
+#include <vtkm/filter/flow/FlowTypes.h>
+#include <vtkm/filter/flow/NewFilterParticleAdvectionSteadyState.h>
+#include <vtkm/filter/flow/vtkm_filter_flow_export.h>
 
 namespace vtkm
 {
 namespace filter
 {
+namespace flow
+{
 
-class LagrangianStructures : public vtkm::filter::FilterDataSetWithField<LagrangianStructures>
+class VTKM_FILTER_FLOW_EXPORT LagrangianStructures : public vtkm::filter::NewFilterField
 {
 public:
-  using SupportedTypes = vtkm::TypeListFieldVec3;
-
-  LagrangianStructures();
+  VTKM_CONT
+  bool CanThread() const override { return false; }
 
   void SetStepSize(vtkm::FloatDefault s) { this->StepSize = s; }
   vtkm::FloatDefault GetStepSize() { return this->StepSize; }
@@ -58,34 +55,21 @@ public:
   }
   inline vtkm::cont::ArrayHandle<vtkm::Vec3f> GetFlowMapOutput() { return this->FlowMapOutput; }
 
-  template <typename T, typename StorageType, typename DerivedPolicy>
-  VTKM_CONT vtkm::cont::DataSet DoExecute(
-    const vtkm::cont::DataSet& input,
-    const vtkm::cont::ArrayHandle<vtkm::Vec<T, 3>, StorageType>& field,
-    const vtkm::filter::FieldMetadata& fieldMeta,
-    const vtkm::filter::PolicyBase<DerivedPolicy>& policy);
-
-  //Map a new field onto the resulting dataset after running the filter
-  //this call is only valid after calling DoExecute
-  template <typename DerivedPolicy>
-  VTKM_CONT bool MapFieldOntoOutput(vtkm::cont::DataSet& result,
-                                    const vtkm::cont::Field& field,
-                                    vtkm::filter::PolicyBase<DerivedPolicy> policy);
-
 private:
+  VTKM_CONT vtkm::cont::DataSet DoExecute(const vtkm::cont::DataSet& inData) override;
+
+  vtkm::FloatDefault AdvectionTime;
+  vtkm::Id3 AuxiliaryDims;
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> FlowMapOutput;
+  std::string OutputFieldName = "FTLE";
   vtkm::FloatDefault StepSize;
   vtkm::Id NumberOfSteps;
-  vtkm::FloatDefault AdvectionTime;
   bool UseAuxiliaryGrid = false;
-  vtkm::Id3 AuxiliaryDims;
   bool UseFlowMapOutput = false;
-  std::string OutputFieldName;
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> FlowMapOutput;
 };
 
-} // namespace filter
+}
+}
 } // namespace vtkm
 
-#include <vtkm/filter/LagrangianStructures.hxx>
-
-#endif // vtk_m_filter_LagrangianStructures_h
+#endif // vtk_m_filter_flow_LagrangianStructures_h

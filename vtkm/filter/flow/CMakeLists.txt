@@ -12,6 +12,7 @@ set(flow_headers
   NewFilterParticleAdvection.h
   NewFilterParticleAdvectionSteadyState.h
   NewFilterParticleAdvectionUnsteadyState.h
+  LagrangianStructures.h
   ParticleAdvection.h
   Pathline.h
   PathParticle.h
@@ -22,6 +23,7 @@ set(flow_headers
 set(flow_sources
   internal/Messenger.cxx
   NewFilterParticleAdvection.cxx
+  LagrangianStructures.cxx
   ParticleAdvection.cxx
   Pathline.cxx
   PathParticle.cxx
