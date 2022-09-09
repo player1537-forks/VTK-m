@@ -95,6 +95,7 @@ set(unit_tests_device
   UnitTestCellLocatorGeneral.cxx
   UnitTestCellLocatorRectilinearGrid.cxx
   UnitTestCellLocatorTwoLevel.cxx
+  UnitTestCellLocatorUniformBins.cxx
   UnitTestCellLocatorUniformGrid.cxx
   UnitTestCellSet.cxx
   UnitTestCellSetExplicit.cxx

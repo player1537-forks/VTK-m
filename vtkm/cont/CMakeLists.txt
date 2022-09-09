@@ -148,6 +148,7 @@ set(sources
   BoundsGlobalCompute.cxx
   CellLocatorGeneral.cxx
   CellLocatorRectilinearGrid.cxx
+  CellLocatorUniformBins.cxx
   CellLocatorUniformGrid.cxx
   CellSet.cxx
   CellSetStructured.cxx
