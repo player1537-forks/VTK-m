@@ -7,8 +7,9 @@
 //  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
-#ifndef vtkm_worklet_flow_LagrangianStructures_h
-#define vtkm_worklet_flow_LagrangianStructures_h
+
+#ifndef vtk_m_filter_flow_worklet_LagrangianStructures_h
+#define vtk_m_filter_flow_worklet_LagrangianStructures_h
 
 #include <vtkm/Matrix.h>
 #include <vtkm/Types.h>
@@ -192,4 +193,4 @@ public:
 }
 } //vtkm::worklet::flow
 
-#endif //vtkm_worklet_flow_LagrangianStructures_h
+#endif //vtk_m_filter_flow_worklet_LagrangianStructures_h

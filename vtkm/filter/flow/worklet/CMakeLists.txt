@@ -15,6 +15,7 @@ set(headers
   Field.h
   GridEvaluators.h
   GridEvaluatorStatus.h
+  GridMetaData.h
   IntegratorStatus.h
   LagrangianStructures.h
   Particles.h
