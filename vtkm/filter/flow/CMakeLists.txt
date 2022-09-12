@@ -23,7 +23,6 @@ set(flow_headers
 set(flow_sources
   internal/Messenger.cxx
   NewFilterParticleAdvection.cxx
-  LagrangianStructures.cxx
   ParticleAdvection.cxx
   Pathline.cxx
   PathParticle.cxx
@@ -31,6 +30,7 @@ set(flow_sources
   )
 
 set(flow_device_sources
+  LagrangianStructures.cxx
   NewFilterParticleAdvectionSteadyState.cxx
   NewFilterParticleAdvectionUnsteadyState.cxx
   StreamSurface.cxx
