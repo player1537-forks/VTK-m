@@ -90,7 +90,6 @@ set(common_headers
   PolicyBase.h
   PolicyDefault.h
   Lagrangian.h
-  LagrangianStructures.h
   )
 
 vtkm_declare_headers(${common_headers})
@@ -101,7 +100,6 @@ set(common_header_template_sources
   FilterField.hxx
   Filter.hxx
   Lagrangian.hxx
-  LagrangianStructures.hxx
   )
 
 vtkm_declare_headers(${common_header_template_sources})
