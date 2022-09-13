@@ -89,7 +89,6 @@ set(common_headers
   FilterTraits.h
   PolicyBase.h
   PolicyDefault.h
-  Lagrangian.h
   )
 
 vtkm_declare_headers(${common_headers})
@@ -99,7 +98,6 @@ set(common_header_template_sources
   FilterDataSetWithField.hxx
   FilterField.hxx
   Filter.hxx
-  Lagrangian.hxx
   )
 
 vtkm_declare_headers(${common_header_template_sources})

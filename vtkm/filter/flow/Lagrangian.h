@@ -8,26 +8,27 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtk_m_filter_Lagrangian_h
-#define vtk_m_filter_Lagrangian_h
+#ifndef vtk_m_filter_flow_Lagrangian_h
+#define vtk_m_filter_flow_Lagrangian_h
 
-#include <vtkm/filter/FilterDataSetWithField.h>
+#include <vtkm/filter/NewFilterField.h>
+#include <vtkm/filter/flow/vtkm_filter_flow_export.h>
 
 namespace vtkm
 {
 namespace filter
 {
+namespace flow
+{
 
-class Lagrangian : public vtkm::filter::FilterDataSetWithField<Lagrangian>
+class VTKM_FILTER_FLOW_EXPORT Lagrangian : public vtkm::filter::NewFilterField
 {
 public:
-  using SupportedTypes = vtkm::TypeListFieldVec3;
-
   VTKM_CONT
   Lagrangian();
 
   VTKM_CONT
-  void SetRank(vtkm::Id val) { this->rank = val; }
+  bool CanThread() const override { return false; }
 
   VTKM_CONT
   void SetInitFlag(bool val) { this->initFlag = val; }
@@ -65,39 +66,27 @@ public:
   VTKM_CONT
   void InitializeSeedPositions(const vtkm::cont::DataSet& input);
 
+private:
+  VTKM_CONT vtkm::cont::DataSet DoExecute(const vtkm::cont::DataSet& inData) override;
+
   VTKM_CONT
   void InitializeCoordinates(const vtkm::cont::DataSet& input,
                              std::vector<Float64>& xC,
                              std::vector<Float64>& yC,
                              std::vector<Float64>& zC);
 
-  template <typename T, typename StorageType, typename DerivedPolicy>
-  VTKM_CONT vtkm::cont::DataSet DoExecute(
-    const vtkm::cont::DataSet& input,
-    const vtkm::cont::ArrayHandle<vtkm::Vec<T, 3>, StorageType>& field,
-    const vtkm::filter::FieldMetadata& fieldMeta,
-    vtkm::filter::PolicyBase<DerivedPolicy> policy);
-
-
-  template <typename DerivedPolicy>
-  VTKM_CONT bool MapFieldOntoOutput(vtkm::cont::DataSet& result,
-                                    const vtkm::cont::Field& field,
-                                    vtkm::filter::PolicyBase<DerivedPolicy> policy);
-
-private:
-  vtkm::Id rank;
-  bool initFlag;
-  bool extractFlows;
-  bool resetParticles;
+  bool initFlag = true;
+  bool extractFlows = false;
+  bool resetParticles = true;
   vtkm::Float32 stepSize;
-  vtkm::Id x_res, y_res, z_res;
-  vtkm::Id cust_res;
-  vtkm::Id3 SeedRes;
-  vtkm::Id writeFrequency;
+  vtkm::Id x_res = 0, y_res = 0, z_res = 0;
+  vtkm::Id cust_res = 0;
+  vtkm::Id3 SeedRes = { 1, 1, 1 };
+  vtkm::Id writeFrequency = 0;
 };
+
 }
-} // namespace vtkm::filter
+}
+} //vtkm::filter::flow
 
-#include <vtkm/filter/Lagrangian.hxx>
-
-#endif // vtk_m_filter_Lagrangian_h
+#endif // #define vtk_m_filter_flow_Lagrangian_h

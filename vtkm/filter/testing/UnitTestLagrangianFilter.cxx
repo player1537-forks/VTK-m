@@ -12,7 +12,7 @@
 #include <vtkm/cont/CellLocatorBoundingIntervalHierarchy.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
 #include <vtkm/cont/testing/Testing.h>
-#include <vtkm/filter/Lagrangian.h>
+#include <vtkm/filter/flow/Lagrangian.h>
 #include <vtkm/worklet/testing/GenerateTestDataSets.h>
 
 namespace
@@ -28,7 +28,7 @@ std::vector<vtkm::cont::DataSet> MakeDataSets()
 
   for (auto& ds : dataSets)
   {
-    vtkm::cont::ArrayHandle<vtkm::Vec3f_64> velocityField;
+    vtkm::cont::ArrayHandle<vtkm::Vec3f> velocityField;
     velocityField.Allocate(numPoints);
 
     auto velocityPortal = velocityField.WritePortal();
@@ -37,7 +37,7 @@ std::vector<vtkm::cont::DataSet> MakeDataSets()
       for (vtkm::Id j = 0; j < dims[1]; j++)
         for (vtkm::Id k = 0; k < dims[2]; k++)
         {
-          velocityPortal.Set(count, vtkm::Vec3f_64(0.1, 0.1, 0.1));
+          velocityPortal.Set(count, vtkm::Vec3f(0.1, 0.1, 0.1));
           count++;
         }
     ds.AddPointField("velocity", velocityField);
@@ -50,7 +50,7 @@ void TestLagrangianFilterMultiStepInterval()
 {
   vtkm::Id maxCycles = 5;
   vtkm::Id write_interval = 5;
-  vtkm::filter::Lagrangian lagrangianFilter2;
+  vtkm::filter::flow::Lagrangian lagrangianFilter2;
   lagrangianFilter2.SetResetParticles(true);
   lagrangianFilter2.SetStepSize(0.1f);
   lagrangianFilter2.SetWriteFrequency(write_interval);
@@ -97,9 +97,9 @@ void TestLagrangian()
   // when it tries to free the memory. This has been seen for this test. This hack gets
   // around it, but eventually these static declarations should really, really, really, really
   // be removed.
-  BasisParticles.ReleaseResources();
-  BasisParticlesOriginal.ReleaseResources();
-  BasisParticlesValidity.ReleaseResources();
+  //  BasisParticles.ReleaseResources();
+  //  BasisParticlesOriginal.ReleaseResources();
+  //  BasisParticlesValidity.ReleaseResources();
 }
 
 int UnitTestLagrangianFilter(int argc, char* argv[])

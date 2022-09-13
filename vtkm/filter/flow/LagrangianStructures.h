@@ -11,8 +11,8 @@
 #ifndef vtk_m_filter_flow_LagrangianStructures_h
 #define vtk_m_filter_flow_LagrangianStructures_h
 
+#include <vtkm/filter/NewFilterField.h>
 #include <vtkm/filter/flow/FlowTypes.h>
-#include <vtkm/filter/flow/NewFilterParticleAdvectionSteadyState.h>
 #include <vtkm/filter/flow/vtkm_filter_flow_export.h>
 
 namespace vtkm
@@ -62,8 +62,8 @@ private:
   vtkm::Id3 AuxiliaryDims;
   vtkm::cont::ArrayHandle<vtkm::Vec3f> FlowMapOutput;
   std::string OutputFieldName = "FTLE";
-  vtkm::FloatDefault StepSize;
-  vtkm::Id NumberOfSteps;
+  vtkm::FloatDefault StepSize = 1.0f;
+  vtkm::Id NumberOfSteps = 0;
   bool UseAuxiliaryGrid = false;
   bool UseFlowMapOutput = false;
 };

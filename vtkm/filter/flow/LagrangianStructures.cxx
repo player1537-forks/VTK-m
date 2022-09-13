@@ -15,14 +15,12 @@
 #include <vtkm/cont/ErrorFilterExecution.h>
 #include <vtkm/filter/flow/LagrangianStructures.h>
 
-
 #include <vtkm/filter/flow/worklet/Field.h>
 #include <vtkm/filter/flow/worklet/GridEvaluators.h>
+#include <vtkm/filter/flow/worklet/LagrangianStructures.h>
 #include <vtkm/filter/flow/worklet/ParticleAdvection.h>
 #include <vtkm/filter/flow/worklet/RK4Integrator.h>
 #include <vtkm/filter/flow/worklet/Stepper.h>
-
-#include <vtkm/filter/flow/worklet/LagrangianStructures.h>
 
 namespace vtkm
 {

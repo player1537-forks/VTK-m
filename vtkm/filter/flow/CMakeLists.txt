@@ -12,6 +12,7 @@ set(flow_headers
   NewFilterParticleAdvection.h
   NewFilterParticleAdvectionSteadyState.h
   NewFilterParticleAdvectionUnsteadyState.h
+  Lagrangian.h
   LagrangianStructures.h
   ParticleAdvection.h
   Pathline.h
@@ -30,6 +31,7 @@ set(flow_sources
   )
 
 set(flow_device_sources
+  Lagrangian.cxx
   LagrangianStructures.cxx
   NewFilterParticleAdvectionSteadyState.cxx
   NewFilterParticleAdvectionUnsteadyState.cxx
