@@ -203,6 +203,8 @@ public:
 VTKM_CONT void CellLocatorUniformBins::Build()
 {
   std::cout << "CellLocatorUniformBins::Build()" << std::endl;
+  if (this->UniformDims[0] <= 0 || this->UniformDims[1] <= 0 || this->UniformDims[2] <= 0)
+    throw vtkm::cont::ErrorBadValue("Grid dimensions of CellLocatorUniformBins must be > 0");
 
   VTKM_LOG_SCOPE(vtkm::cont::LogLevel::Perf, "CellLocatorUniformBins::Build");
 
@@ -226,10 +228,13 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   vtkm::Vec3f spacing(
     size[0] / this->UniformDims[0], size[1] / this->UniformDims[1], size[2] / this->UniformDims[2]);
 
-  this->InvSpacing = 1.0f / spacing;
-  /*
-  this->InvSpacing[2] = 0.0; std::cout<<"FIX ME ****"<<std::endl;
-  */
+  for (vtkm::Id i = 0; i < 3; i++)
+  {
+    if (vtkm::Abs(spacing[i]) > 0)
+      this->InvSpacing[i] = 1.0f / spacing[i];
+    else
+      this->InvSpacing[i] = 0;
+  }
 
   //1: Count number of (cell,bin) pairs.
   std::cout << "countBins: " << this->Origin << " " << this->MaxPoint << " " << this->InvSpacing
