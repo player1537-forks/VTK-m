@@ -40,12 +40,11 @@ static inline vtkm::Id3 GetFlatIndex(const vtkm::Vec3f& pt,
   return logicalIdx;
 }
 
-
 class CountCellBins : public vtkm::worklet::WorkletVisitCellsWithPoints
 {
 public:
   using ControlSignature = void(CellSetIn cellset, FieldInPoint coords, FieldOutCell bincount);
-  using ExecutionSignature = void(InputIndex, _2, _3);
+  using ExecutionSignature = void(_2, _3);
   using InputDomain = _1;
 
   CountCellBins(const vtkm::Vec3f& origin,
@@ -60,11 +59,8 @@ public:
   }
 
   template <typename PointsVecType>
-  VTKM_EXEC void operator()(const vtkm::Id& /*cellIdx*/,
-                            const PointsVecType& points,
-                            vtkm::Id& numBins) const
+  VTKM_EXEC void operator()(const PointsVecType& points, vtkm::Id& numBins) const
   {
-    //using CoordsType = typename vtkm::VecTraits<PointsVecType>::ComponentType;
     auto numPoints = vtkm::VecTraits<PointsVecType>::GetNumberOfComponents(points);
 
     vtkm::Vec3f bbox[2] = { points[0], points[0] };
@@ -202,7 +198,6 @@ public:
 ///
 VTKM_CONT void CellLocatorUniformBins::Build()
 {
-  std::cout << "CellLocatorUniformBins::Build()" << std::endl;
   if (this->UniformDims[0] <= 0 || this->UniformDims[1] <= 0 || this->UniformDims[2] <= 0)
     throw vtkm::cont::ErrorBadValue("Grid dimensions of CellLocatorUniformBins must be > 0");
 
@@ -216,7 +211,6 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   auto cellset = this->GetCellSet();
   const auto& coords = this->GetCoordinates();
 
-  // 1: Compute the top level grid
   auto bounds = coords.GetBounds();
   this->Origin = vtkm::Vec3f(static_cast<vtkm::FloatDefault>(bounds.X.Min),
                              static_cast<vtkm::FloatDefault>(bounds.Y.Min),
@@ -237,69 +231,32 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   }
 
   //1: Count number of (cell,bin) pairs.
-  std::cout << "countBins: " << this->Origin << " " << this->MaxPoint << " " << this->InvSpacing
-            << " " << this->UniformDims << std::endl;
-
   vtkm::cont::ArrayHandle<vtkm::Id> binCounts;
   detail::CountCellBins countCellBins(
     this->Origin, this->InvSpacing, this->UniformDims, this->MaxCellIds);
   invoker(countCellBins, cellset, coords, binCounts);
 
-  /*
-  std::cout<<"*************************************"<<std::endl;
-  std::cout<<"Cell_i is in this many bins"<<std::endl;
-  std::cout<<"binCounts: ";
-  vtkm::cont::printSummary_ArrayHandle(binCounts, std::cout);
-  */
-
-  //2: number of unique cell/bin pairs.
+  //2: Compute number of unique cell/bin pairs and start indices.
   vtkm::cont::ArrayHandle<vtkm::Id> binStartIdx;
   auto num = vtkm::cont::Algorithm::ScanExclusive(binCounts, binStartIdx);
-  /*
-  std::cout<<"start index for each cell"<<std::endl;
-  std::cout<<"binStartIdx: ";
-  vtkm::cont::printSummary_ArrayHandle(binStartIdx, std::cout);
-  std::cout<<"Num= "<<num<<std::endl;
-  */
 
   //3: Allocate and set the cellids for each bin.
+  //   uses an atomic to ensure each bin is updated correctly.
   vtkm::cont::ArrayHandle<vtkm::Id> binsPerCell;
   binsPerCell.AllocateAndFill(num, 0);
   this->CellIds.Allocate(num);
   detail::RecordBinsPerCell recordBinsPerCell(
     this->Origin, this->InvSpacing, this->UniformDims, this->MaxCellIds);
   invoker(recordBinsPerCell, cellset, coords, binStartIdx, binsPerCell, this->CellIds);
-  /*
-  std::cout<<"List of bins for each cell"<<std::endl;
-  std::cout<<"binsPerCell"<<std::endl;
-  vtkm::cont::printSummary_ArrayHandle(binsPerCell, std::cout);
-  std::cout<<"List of cellIds for each entry above."<<std::endl;
-  std::cout<<"this->CellIds"<<std::endl;
-  vtkm::cont::printSummary_ArrayHandle(this->CellIds, std::cout);
-  */
 
   //4: Sort CellIds by the bins in each cell.
   vtkm::cont::Algorithm::SortByKey(binsPerCell, this->CellIds);
-  /*
-  std::cout<<"***** The elusive array of cells!"<<std::endl;
-  vtkm::cont::printSummary_ArrayHandle(this->CellIds, std::cout);
-  */
 
 
   //5: Calculate counts for each bin and the start index.
   this->CellCount.AllocateAndFill(totalNumBins, 0);
   invoker(detail::CountBins{}, binsPerCell, this->CellCount);
-  /*
-  std::cout<<"this->CellCount"<<std::endl;
-  std::cout<<" number of cells in each bin"<<std::endl;
-  vtkm::cont::printSummary_ArrayHandle(this->CellCount, std::cout);
-  */
-
   vtkm::cont::Algorithm::ScanExclusive(this->CellCount, this->CellStartIdx);
-  /*
-  std::cout<<"this->CellStartIdx"<<std::endl;
-  vtkm::cont::printSummary_ArrayHandle(this->CellStartIdx, std::cout);
-  */
 
   /*
   auto minCount = vtkm::cont::Algorithm::Reduce(this->CellCount, vtkm::Id(this->CellCount.ReadPortal().Get(0)), vtkm::Minimum());
@@ -349,30 +306,23 @@ CellLocatorUniformBins::ExecObjType CellLocatorUniformBins::PrepareForExecution(
 void CellLocatorUniformBins::PrintSummary(std::ostream& out) const
 {
   out << std::endl;
+  out << " UniformDims: " << this->UniformDims << std::endl;
+  out << " Origin: " << this->Origin << std::endl;
+  out << " MaxPoint: " << this->MaxPoint << std::endl;
+  out << " InvSpacing: " << this->InvSpacing << std::endl;
+  out << " MaxCellIds: " << this->MaxCellIds << std::endl;
 
-  /*
-  out << "DensityL1: " << this->DensityL1 << "\n";
-  out << "DensityL2: " << this->DensityL2 << "\n";
   out << "Input CellSet: \n";
   this->GetCellSet().PrintSummary(out);
   out << "Input Coordinates: \n";
   this->GetCoordinates().PrintSummary(out);
-  out << "LookupStructure:\n";
-  out << "  TopLevelGrid\n";
-  out << "    Dimensions: " << this->TopLevel.Dimensions << "\n";
-  out << "    Origin: " << this->TopLevel.Origin << "\n";
-  out << "    BinSize: " << this->TopLevel.BinSize << "\n";
-  out << "  LeafDimensions:\n";
-  vtkm::cont::printSummary_ArrayHandle(this->LeafDimensions, out);
-  out << "  LeafStartIndex:\n";
-  vtkm::cont::printSummary_ArrayHandle(this->LeafStartIndex, out);
-  out << "  CellStartIndex:\n";
-  vtkm::cont::printSummary_ArrayHandle(this->CellStartIndex, out);
+
+  out << "  CellStartIdx:\n";
+  vtkm::cont::printSummary_ArrayHandle(this->CellStartIdx, out);
   out << "  CellCount:\n";
   vtkm::cont::printSummary_ArrayHandle(this->CellCount, out);
   out << "  CellIds:\n";
   vtkm::cont::printSummary_ArrayHandle(this->CellIds, out);
-  */
 }
 }
 } // vtkm::cont
