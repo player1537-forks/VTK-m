@@ -15,18 +15,13 @@
 #include <vtkm/cont/DataSetBuilderRectilinear.h>
 #include <vtkm/cont/ErrorFilterExecution.h>
 
+#include <vtkm/filter/flow/Lagrangian.h>
 #include <vtkm/filter/flow/worklet/Field.h>
 #include <vtkm/filter/flow/worklet/GridEvaluators.h>
 #include <vtkm/filter/flow/worklet/ParticleAdvection.h>
 #include <vtkm/filter/flow/worklet/RK4Integrator.h>
 #include <vtkm/filter/flow/worklet/Stepper.h>
 
-#include <vtkm/filter/flow/Lagrangian.h>
-
-static vtkm::Id cycle = 0;
-static vtkm::cont::ArrayHandle<vtkm::Particle> BasisParticles;
-static vtkm::cont::ArrayHandle<vtkm::Particle> BasisParticlesOriginal;
-static vtkm::cont::ArrayHandle<vtkm::Id> BasisParticlesValidity;
 
 namespace vtkm
 {
@@ -94,22 +89,6 @@ public:
 }
 
 //-----------------------------------------------------------------------------
-VTKM_CONT Lagrangian::Lagrangian()
-  : vtkm::filter::NewFilterField()
-  , initFlag(true)
-  , extractFlows(false)
-  , resetParticles(true)
-  , stepSize(1.0f)
-  , x_res(0)
-  , y_res(0)
-  , z_res(0)
-  , cust_res(0)
-  , SeedRes(vtkm::Id3(1, 1, 1))
-  , writeFrequency(0)
-{
-}
-
-//-----------------------------------------------------------------------------
 void Lagrangian::UpdateSeedResolution(const vtkm::cont::DataSet input)
 {
   vtkm::cont::UnknownCellSet cell_set = input.GetCellSet();
@@ -120,9 +99,9 @@ void Lagrangian::UpdateSeedResolution(const vtkm::cont::DataSet input)
       cell_set.AsCellSet<vtkm::cont::CellSetStructured<1>>();
     vtkm::Id dims1 = cell_set1.GetPointDimensions();
     this->SeedRes[0] = dims1;
-    if (this->cust_res)
+    if (this->CustRes)
     {
-      this->SeedRes[0] = dims1 / this->x_res;
+      this->SeedRes[0] = dims1 / this->ResX;
     }
   }
   else if (cell_set.CanConvert<vtkm::cont::CellSetStructured<2>>())
@@ -132,10 +111,10 @@ void Lagrangian::UpdateSeedResolution(const vtkm::cont::DataSet input)
     vtkm::Id2 dims2 = cell_set2.GetPointDimensions();
     this->SeedRes[0] = dims2[0];
     this->SeedRes[1] = dims2[1];
-    if (this->cust_res)
+    if (this->CustRes)
     {
-      this->SeedRes[0] = dims2[0] / this->x_res;
-      this->SeedRes[1] = dims2[1] / this->y_res;
+      this->SeedRes[0] = dims2[0] / this->ResX;
+      this->SeedRes[1] = dims2[1] / this->ResY;
     }
   }
   else if (cell_set.CanConvert<vtkm::cont::CellSetStructured<3>>())
@@ -146,11 +125,11 @@ void Lagrangian::UpdateSeedResolution(const vtkm::cont::DataSet input)
     this->SeedRes[0] = dims3[0];
     this->SeedRes[1] = dims3[1];
     this->SeedRes[2] = dims3[2];
-    if (this->cust_res)
+    if (this->CustRes)
     {
-      this->SeedRes[0] = dims3[0] / this->x_res;
-      this->SeedRes[1] = dims3[1] / this->y_res;
-      this->SeedRes[2] = dims3[2] / this->z_res;
+      this->SeedRes[0] = dims3[0] / this->ResX;
+      this->SeedRes[1] = dims3[1] / this->ResY;
+      this->SeedRes[2] = dims3[2] / this->ResZ;
     }
   }
 }
@@ -237,14 +216,14 @@ void Lagrangian::InitializeCoordinates(const vtkm::cont::DataSet& input,
 //-----------------------------------------------------------------------------
 VTKM_CONT vtkm::cont::DataSet Lagrangian::DoExecute(const vtkm::cont::DataSet& input)
 {
-  if (cycle == 0)
+  if (this->Cycle == 0)
   {
     InitializeSeedPositions(input);
     BasisParticlesOriginal.Allocate(this->SeedRes[0] * this->SeedRes[1] * this->SeedRes[2]);
     vtkm::cont::ArrayCopy(BasisParticles, BasisParticlesOriginal);
   }
 
-  if (this->writeFrequency == 0)
+  if (this->WriteFrequency == 0)
   {
     throw vtkm::cont::ErrorFilterExecution(
       "Write frequency can not be 0. Use SetWriteFrequency().");
@@ -252,7 +231,7 @@ VTKM_CONT vtkm::cont::DataSet Lagrangian::DoExecute(const vtkm::cont::DataSet& i
   vtkm::cont::ArrayHandle<vtkm::Particle> basisParticleArray;
   vtkm::cont::ArrayCopy(BasisParticles, basisParticleArray);
 
-  cycle += 1;
+  this->Cycle += 1;
   const vtkm::cont::UnknownCellSet& cells = input.GetCellSet();
   const vtkm::cont::CoordinateSystem& coords =
     input.GetCoordinateSystem(this->GetActiveCoordinateSystemIndex());
@@ -272,7 +251,7 @@ VTKM_CONT vtkm::cont::DataSet Lagrangian::DoExecute(const vtkm::cont::DataSet& i
                        field.GetAssociation());
 
   GridEvalType gridEval(coords, cells, velocities);
-  Stepper rk4(gridEval, static_cast<vtkm::Float32>(this->stepSize));
+  Stepper rk4(gridEval, static_cast<vtkm::Float32>(this->StepSize));
 
   res = particleadvection.Run(rk4, basisParticleArray, 1); // Taking a single step
   auto particles = res.Particles;
@@ -282,7 +261,7 @@ VTKM_CONT vtkm::cont::DataSet Lagrangian::DoExecute(const vtkm::cont::DataSet& i
 
   vtkm::cont::Invoker invoke;
 
-  if (cycle % this->writeFrequency == 0)
+  if (this->Cycle % this->WriteFrequency == 0)
   {
     /* Steps to create a structured dataset */
     UpdateSeedResolution(input);
@@ -296,7 +275,7 @@ VTKM_CONT vtkm::cont::DataSet Lagrangian::DoExecute(const vtkm::cont::DataSet& i
     outputData.AddPointField("valid", BasisParticlesValidity);
     outputData.AddPointField("displacement", BasisParticlesDisplacement);
 
-    if (this->resetParticles)
+    if (this->ResetParticles)
     {
       InitializeSeedPositions(input);
       BasisParticlesOriginal.Allocate(this->SeedRes[0] * this->SeedRes[1] * this->SeedRes[2]);
