@@ -39,6 +39,7 @@ set(deprecated_headers
   ImageDifference.h
   ImageMedian.h
   Instantiations.h
+  Lagrangian.h
   Mask.h
   MaskPoints.h
   MeshQuality.h
