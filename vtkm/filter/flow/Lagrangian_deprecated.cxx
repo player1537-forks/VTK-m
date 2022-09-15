@@ -8,19 +8,11 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#include <vtkm/Types.h>
 #include <vtkm/cont/ArrayCopy.h>
-#include <vtkm/cont/ArrayHandle.h>
-#include <vtkm/cont/ArrayHandleIndex.h>
-#include <vtkm/cont/ArrayPortalToIterators.h>
-#include <vtkm/cont/DataSet.h>
-#include <vtkm/cont/DataSetBuilderExplicit.h>
 #include <vtkm/cont/DataSetBuilderRectilinear.h>
-#include <vtkm/cont/DeviceAdapter.h>
 #include <vtkm/cont/ErrorFilterExecution.h>
 
-#include <vtkm/worklet/WorkletMapField.h>
-
+#include <vtkm/filter/flow/Lagrangian.h>
 #include <vtkm/filter/flow/worklet/Field.h>
 #include <vtkm/filter/flow/worklet/GridEvaluators.h>
 #include <vtkm/filter/flow/worklet/ParticleAdvection.h>
@@ -28,10 +20,6 @@
 #include <vtkm/filter/flow/worklet/Stepper.h>
 
 #include <vtkm/filter/flow/Lagrangian_deprecated.h>
-
-#include <cstring>
-#include <sstream>
-#include <string.h>
 
 static vtkm::Id cycle = 0;
 static vtkm::cont::ArrayHandle<vtkm::Particle> BasisParticles;
