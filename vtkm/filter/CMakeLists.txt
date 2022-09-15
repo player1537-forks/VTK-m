@@ -40,6 +40,7 @@ set(deprecated_headers
   ImageMedian.h
   Instantiations.h
   Lagrangian.h
+  LagrangianStructures.h
   Mask.h
   MaskPoints.h
   MeshQuality.h

@@ -7,26 +7,28 @@
 //  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
-#ifndef vtk_m_filter_Lagrangian_h
-#define vtk_m_filter_Lagrangian_h
+#ifndef vtk_m_filter_LagrangianStructures_h
+#define vtk_m_filter_LagrangianStructures_h
 
 #include <vtkm/Deprecated.h>
-#include <vtkm/filter/flow/Lagrangian.h>
+#include <vtkm/filter/flow/LagrangianStructures.h>
 
 namespace vtkm
 {
 namespace filter
 {
 
-VTKM_DEPRECATED(1.8, "Use vtkm/filter/flow/Lagrangian.h instead of vtkm/filter/Lagrangian.h")
-inline void Lagrangian_deprecated() {}
+VTKM_DEPRECATED(
+  1.8,
+  "Use vtkm/filter/flow/LagrangianStructures.h instead of vtkm/filter/LagrangianStructures.h")
+inline void LagrangianStructures_deprecated() {}
 
-inline void Lagrangian_deprecated_warning()
+inline void LagrangianStructures_deprecated_warning()
 {
-  Lagrangian_deprecated();
+  LagrangianStructures_deprecated();
 }
 
 }
 }
 
-#endif //vtk_m_filter_Lagrangian_h
+#endif //vtk_m_filter_LagrangnianStructures_h
