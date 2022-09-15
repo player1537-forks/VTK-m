@@ -297,7 +297,6 @@ void Lagrangian_deprecated::InitializeCoordinates(const vtkm::cont::DataSet& inp
 //-----------------------------------------------------------------------------
 VTKM_CONT vtkm::cont::DataSet Lagrangian_deprecated::DoExecute(const vtkm::cont::DataSet& input)
 {
-#if 0
   if (cycle == 0)
   {
     InitializeSeedPositions(input);
@@ -319,16 +318,19 @@ VTKM_CONT vtkm::cont::DataSet Lagrangian_deprecated::DoExecute(const vtkm::cont:
     input.GetCoordinateSystem(this->GetActiveCoordinateSystemIndex());
   vtkm::Bounds bounds = input.GetCoordinateSystem().GetBounds();
 
-  using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec<T, 3>, StorageType>;
-  using FieldType = vtkm::worklet::particleadvection::VelocityField<FieldHandle>;
-  using GridEvalType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
-  using RK4Type = vtkm::worklet::particleadvection::RK4Integrator<GridEvalType>;
-  using Stepper = vtkm::worklet::particleadvection::Stepper<RK4Type, GridEvalType>;
+  using FieldHandle = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
+  using FieldType = vtkm::worklet::flow::VelocityField<FieldHandle>;
+  using GridEvalType = vtkm::worklet::flow::GridEvaluator<FieldType>;
+  using RK4Type = vtkm::worklet::flow::RK4Integrator<GridEvalType>;
+  using Stepper = vtkm::worklet::flow::Stepper<RK4Type, GridEvalType>;
 
-  vtkm::worklet::ParticleAdvection particleadvection;
-  vtkm::worklet::ParticleAdvectionResult<vtkm::Particle> res;
+  vtkm::worklet::flow::ParticleAdvection particleadvection;
+  vtkm::worklet::flow::ParticleAdvectionResult<vtkm::Particle> res;
 
-  FieldType velocities(field, fieldMeta.GetAssociation());
+  const auto field = input.GetField(this->GetActiveFieldName());
+  FieldType velocities(field.GetData().AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>(),
+                       field.GetAssociation());
+
   GridEvalType gridEval(coords, cells, velocities);
   Stepper rk4(gridEval, static_cast<vtkm::Float32>(this->stepSize));
 
@@ -371,7 +373,6 @@ VTKM_CONT vtkm::cont::DataSet Lagrangian_deprecated::DoExecute(const vtkm::cont:
   }
 
   return outputData;
-#endif
 }
 
 }
