@@ -99,9 +99,10 @@ public:
     return this->BasisParticlesValidity;
   }
 
-private:
+protected: // make this protected so the deprecated version can override.
   VTKM_CONT vtkm::cont::DataSet DoExecute(const vtkm::cont::DataSet& inData) override;
 
+private:
   VTKM_CONT
   void InitializeCoordinates(const vtkm::cont::DataSet& input,
                              std::vector<Float64>& xC,
