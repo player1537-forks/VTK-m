@@ -79,7 +79,7 @@ int main(int argc, char** argv)
     vtkm::cont::InitializeOptions::DefaultAnyDevice | vtkm::cont::InitializeOptions::Strict;
   vtkm::cont::Initialize(argc, argv, opts);
 
-  vtkm::filter::Lagrangian lagrangianFilter;
+  vtkm::filter::flow::Lagrangian lagrangianFilter;
   lagrangianFilter.SetResetParticles(true);
   vtkm::Float32 stepSize = 0.01f;
   lagrangianFilter.SetStepSize(stepSize);

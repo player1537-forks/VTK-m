@@ -37,7 +37,8 @@ std::vector<vtkm::cont::DataSet> MakeDataSets()
       for (vtkm::Id j = 0; j < dims[1]; j++)
         for (vtkm::Id k = 0; k < dims[2]; k++)
         {
-          velocityPortal.Set(count, vtkm::Vec3f(0.1, 0.1, 0.1));
+          vtkm::FloatDefault val = static_cast<vtkm::FloatDefault>(0.1);
+          velocityPortal.Set(count, vtkm::Vec3f(val, val, val));
           count++;
         }
     ds.AddPointField("velocity", velocityField);
