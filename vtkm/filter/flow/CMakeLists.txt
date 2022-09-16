@@ -20,7 +20,6 @@ set(flow_headers
   PathParticle.h
   Streamline.h
   StreamSurface.h
-  Lagrangian_deprecated.h
   )
 
 set(flow_sources
@@ -38,7 +37,6 @@ set(flow_device_sources
   NewFilterParticleAdvectionSteadyState.cxx
   NewFilterParticleAdvectionUnsteadyState.cxx
   StreamSurface.cxx
-  Lagrangian_deprecated.cxx  
   )
 
 vtkm_library(

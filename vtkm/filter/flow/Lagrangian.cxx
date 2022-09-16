@@ -8,9 +8,6 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtk_m_filter_Lagrangian_hxx
-#define vtk_m_filter_Lagrangian_hxx
-
 #include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/DataSetBuilderRectilinear.h>
 #include <vtkm/cont/ErrorFilterExecution.h>
@@ -300,4 +297,38 @@ VTKM_CONT vtkm::cont::DataSet Lagrangian::DoExecute(const vtkm::cont::DataSet& i
 }
 } //vtkm::filter::flow
 
-#endif
+
+//Deprecated filter: vtkm::filter::Lagrangian
+namespace vtkm
+{
+namespace filter
+{
+
+static vtkm::Id deprecatedLagrange_Cycle = 0;
+static vtkm::cont::ArrayHandle<vtkm::Particle> deprecatedLagrange_BasisParticles;
+static vtkm::cont::ArrayHandle<vtkm::Particle> deprecatedLagrange_BasisParticlesOriginal;
+static vtkm::cont::ArrayHandle<vtkm::Id> deprecatedLagrange_BasisParticlesValidity;
+
+
+VTKM_CONT vtkm::cont::DataSet Lagrangian::DoExecute(const vtkm::cont::DataSet& input)
+{
+  //Initialize the filter with the static variables
+  this->SetCycle(deprecatedLagrange_Cycle);
+  this->SetBasisParticles(deprecatedLagrange_BasisParticles);
+  this->SetBasisParticlesOriginal(deprecatedLagrange_BasisParticlesOriginal);
+  this->SetBasisParticleValidity(deprecatedLagrange_BasisParticlesValidity);
+
+  //call the base class
+  auto output = vtkm::filter::flow::Lagrangian::DoExecute(input);
+
+  //Set the static variables with the current values.
+  deprecatedLagrange_Cycle = this->GetCycle();
+  deprecatedLagrange_BasisParticles = this->GetBasisParticles();
+  deprecatedLagrange_BasisParticlesOriginal = this->GetBasisParticlesOriginal();
+  deprecatedLagrange_BasisParticlesValidity = this->GetBasisParticleValidity();
+
+  return output;
+}
+
+}
+} // namespace vtkm::filter

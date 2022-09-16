@@ -129,4 +129,22 @@ private:
 }
 } //vtkm::filter::flow
 
+
+//Deprecated filter
+namespace vtkm
+{
+namespace filter
+{
+
+class VTKM_FILTER_FLOW_EXPORT Lagrangian : public vtkm::filter::flow::Lagrangian
+{
+private:
+  VTKM_CONT vtkm::cont::DataSet DoExecute(const vtkm::cont::DataSet& inData) override;
+};
+
+}
+} //vtkm::filter
+
+
+
 #endif // #define vtk_m_filter_flow_Lagrangian_h
