@@ -19,7 +19,6 @@
 #include <vtkm/filter/flow/worklet/RK4Integrator.h>
 #include <vtkm/filter/flow/worklet/Stepper.h>
 
-
 namespace vtkm
 {
 namespace filter

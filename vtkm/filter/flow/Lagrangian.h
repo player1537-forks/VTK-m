@@ -130,7 +130,7 @@ private:
 } //vtkm::filter::flow
 
 
-//Deprecated filter
+//Deprecated Lagrangian filter
 namespace vtkm
 {
 namespace filter
