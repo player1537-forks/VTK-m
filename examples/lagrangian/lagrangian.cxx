@@ -17,7 +17,7 @@
 #include <vtkm/cont/DataSetBuilderRectilinear.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
 #include <vtkm/cont/Initialize.h>
-#include <vtkm/filter/Lagrangian.h>
+#include <vtkm/filter/flow/Lagrangian.h>
 
 using namespace std;
 
