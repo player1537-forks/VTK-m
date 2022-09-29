@@ -49,10 +49,8 @@ public:
 
   CountCellBins(const vtkm::Vec3f& origin,
                 const vtkm::Vec3f& invSpacing,
-                const vtkm::Id3& dims,
                 const vtkm::Id3& maxCellIds)
-    : Dims(dims)
-    , InvSpacing(invSpacing)
+    : InvSpacing(invSpacing)
     , MaxCellIds(maxCellIds)
     , Origin(origin)
   {
@@ -104,7 +102,6 @@ private:
     return { vtkm::Vec3f(minp), vtkm::Vec3f(maxp) };
   }
 
-  vtkm::Id3 Dims;
   vtkm::Vec3f InvSpacing;
   vtkm::Id3 MaxCellIds;
   vtkm::Vec3f Origin;
@@ -227,13 +224,12 @@ VTKM_CONT void CellLocatorUniformBins::Build()
     if (vtkm::Abs(spacing[i]) > 0)
       this->InvSpacing[i] = 1.0f / spacing[i];
     else
-      this->InvSpacing[i] = 0;
+      this->InvSpacing[i] = 0.0f;
   }
 
   //1: Count number of (cell,bin) pairs.
   vtkm::cont::ArrayHandle<vtkm::Id> binCounts;
-  detail::CountCellBins countCellBins(
-    this->Origin, this->InvSpacing, this->UniformDims, this->MaxCellIds);
+  detail::CountCellBins countCellBins(this->Origin, this->InvSpacing, this->MaxCellIds);
   invoker(countCellBins, cellset, coords, binCounts);
 
   //2: Compute number of unique cell/bin pairs and start indices.
