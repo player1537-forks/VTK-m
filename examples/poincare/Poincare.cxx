@@ -151,12 +151,14 @@ public:
   adiosS(adios2::ADIOS *adiosPtr,
          const std::string &fn,
          const std::string &ioNm,
-         const std::map<std::string, std::string> &args) : ioName(ioNm)
+         const std::map<std::string, std::string> &args)
+    : ioName(ioNm)
   {
     std::string pathNm = ".";
 
     auto x = args.find("--dir")->second;
-    if (x.size() > 0) pathNm = x;
+    if (x.size() > 0)
+      pathNm = x;
     this->fileName = pathNm + "/" + fn;
     std::cout<<"Open: "<<this->fileName<<std::endl;
     this->io = adios2::IO(adiosPtr->DeclareIO(this->ioName));
@@ -203,6 +205,26 @@ public:
     if (ifile)
       return true;
     return false;
+  }
+
+  template <typename T>
+  int GetVarInt(const std::string& varName)
+  {
+    auto var = this->io.InquireVariable<T>(varName);
+
+    T val;
+    this->engine.Get(var, &val, adios2::Mode::Sync);
+    return static_cast<int>(val);
+  }
+
+  int GetVarInt(const std::string& varName)
+  {
+    if (this->io.InquireVariable<int>(varName))
+      return this->GetVarInt<int>(varName);
+    else if (this->io.InquireVariable<long>(varName))
+      return this->GetVarInt<long>(varName);
+
+    throw std::runtime_error("Unable read int var: " + varName);
   }
 
   std::string ioName, fileName;
@@ -1337,7 +1359,7 @@ ReadDataSet_ORIG(std::map<std::string, std::vector<std::string>>& args, XGCParam
   dataStuff->engine.BeginStep();
   bfieldStuff->engine.BeginStep();
 
-  dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &xgcParams.numPlanes, adios2::Mode::Sync);
+  xgcParams.numPlanes = dataStuff->GetVarInt("nphi");
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_arr, dAs_arr;
   ReadTurbData(bfieldStuff, args, As_arr, dAs_arr);
@@ -1373,19 +1395,27 @@ ReadDataSet(std::map<std::string, std::vector<std::string>>& args, XGCParameters
   }
   else
   {
-    std::map<std::string, std::string> adiosArgs;
-    adiosArgs["--dir"] = args["--dir"][0];
-
-    std::string xgc3DFile = "xgc.3d.bp";
-    if (args.find("--3DFile") != args.end())
-      xgc3DFile = args["--3DFile"][0];
-
     ds = ReadStaticData(args, xgcParams, "xgc.poincare_init.bp");
-    adiosStuff["data"] = new adiosS(adios, xgc3DFile, "3d", adiosArgs);
+
+    if (args.find("--AsFilePath") != args.end())
+    {
+      auto xgc3DFilePath = args["--AsFilePath"][0];
+      adiosStuff["data"] = new adiosS(adios, xgc3DFilePath, "3d", adios2::Mode::Read);
+    }
+    else
+    {
+      std::string xgc3DFile = "xgc.3d.bp";
+      if (args.find("--3DFile") != args.end())
+        xgc3DFile = args["--3DFile"][0];
+
+      std::map<std::string, std::string> adiosArgs;
+      adiosArgs["--dir"] = args["--dir"][0];
+      adiosStuff["data"] = new adiosS(adios, xgc3DFile, "3d", adiosArgs);
+    }
 
     auto dataStuff = adiosStuff["data"];
     dataStuff->engine.BeginStep();
-    dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &xgcParams.numPlanes, adios2::Mode::Sync);
+    xgcParams.numPlanes = dataStuff->GetVarInt("nphi");
 
     vtkm::cont::ArrayHandle<vtkm::FloatDefault> As_arr, dAs_arr;
     ReadTurbData(dataStuff, args, As_arr, dAs_arr);
@@ -1998,11 +2028,7 @@ StreamingPoincare(std::map<std::string, std::vector<std::string>>& args)
 
     //Initialize the num planes variable.
     if (step == 0)
-    {
-      auto v = dataStuff->io.InquireVariable<int>("nphi");
-      if (!v) std::cout<<"Don't have nphi in "<<fName<<std::endl;
-      dataStuff->engine.Get(dataStuff->io.InquireVariable<int>("nphi"), &xgcParams.numPlanes, adios2::Mode::Sync);
-    }
+      xgcParams.numPlanes = dataStuff->GetVarInt("nphi");
 
     int timeStep = step;
     auto tsVar = dataStuff->io.InquireVariable<int>("tindex");
