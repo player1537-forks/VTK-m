@@ -219,12 +219,12 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   vtkm::Vec3f spacing(
     size[0] / this->UniformDims[0], size[1] / this->UniformDims[1], size[2] / this->UniformDims[2]);
 
-  for (vtkm::Id i = 0; i < 3; i++)
+  for (vtkm::IdComponent i = 0; i < 3; i++)
   {
     if (vtkm::Abs(spacing[i]) > 0)
       this->InvSpacing[i] = 1.0f / spacing[i];
     else
-      this->InvSpacing[i] = 0.0f;
+      this->InvSpacing[i] = 0;
   }
 
   //1: Count number of (cell,bin) pairs.
