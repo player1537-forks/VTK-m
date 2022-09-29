@@ -54,6 +54,7 @@
 #ifndef vtk_m_worklet_contourtree_augmented_types_h
 #define vtk_m_worklet_contourtree_augmented_types_h
 
+#include <vtkm/Assert.h>
 #include <vtkm/Types.h>
 #include <vtkm/cont/Algorithm.h>
 #include <vtkm/cont/ArrayHandle.h>
@@ -134,6 +135,30 @@ inline bool IsThis(vtkm::Id flaggedIndex)
 { // IsThis
   return ((flaggedIndex & CV_OTHER_FLAG) == 0);
 } // IsThis
+
+// Helper function: Ensure no flags are set
+VTKM_EXEC_CONT
+inline bool NoFlagsSet(vtkm::Id flaggedIndex)
+{ // NoFlagsSet
+  return (flaggedIndex & ~INDEX_MASK) == 0;
+} // NoFlagsSet
+
+
+// Debug helper function: Assert that an index array has no element with any flags set
+template <typename S>
+VTKM_CONT inline void AssertArrayHandleNoFlagsSet(const vtkm::cont::ArrayHandle<vtkm::Id, S>& ah)
+{
+#ifndef VTKM_NO_ASSERT
+  auto rp = ah.ReadPortal();
+  for (vtkm::Id i = 0; i < ah.GetNumberOfValues(); ++i)
+  {
+    VTKM_ASSERT(NoFlagsSet(rp.Get(i)));
+  }
+#else
+  (void)ah;
+#endif
+}
+
 
 /// Helper function to set a single array valye with CopySubRange to avoid pulling the array to the control environment
 VTKM_CONT
@@ -303,7 +328,7 @@ public:
 ///
 struct GetPointDimensions
 {
-  //@{
+  ///@{
   /// Get the number of rows, cols, and slices of a vtkm::cont::CellSetStructured
   /// @param[in] cells  The input vtkm::cont::CellSetStructured
   /// @param[out] pointDimensions mesh size (#cols, #rows #slices in old notation) with last dimension having a value of 1 for 2D data
@@ -318,7 +343,7 @@ struct GetPointDimensions
   {
     pointDimensions = cells.GetPointDimensions();
   }
-  //@}
+  ///@}
 
   ///  Raise ErrorBadValue if the input cell set is not a vtkm::cont::CellSetStructured<2> or <3>
   template <typename T>
@@ -358,7 +383,7 @@ struct GetLocalAndGlobalPointDimensions
     globalPointDimensions = cells.GetGlobalPointDimensions();
     globalPointIndexStart = cells.GetGlobalPointIndexStart();
   }
-  //@}
+  ///@}
 
 
   ///  Raise ErrorBadValue if the input cell set is not a vtkm::cont::CellSetStructured<2> or <3>
