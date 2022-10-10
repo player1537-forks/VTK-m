@@ -84,7 +84,7 @@ protected:
   // Send/Recv messages.
   VTKM_CONT void SendMsg(int dst, const std::vector<int>& msg);
   VTKM_CONT void SendAllMsg(const std::vector<int>& msg);
-  VTKM_CONT bool RecvMsg(std::vector<MsgCommType>& msgs) { return RecvAny(&msgs, NULL, false); }
+  VTKM_CONT bool RecvMsg(std::vector<MsgCommType>& msgs) { return this->RecvAny(&msgs, NULL, false); }
 
   // Send/Recv datasets.
   VTKM_CONT bool RecvAny(std::vector<MsgCommType>* msgs,
@@ -193,6 +193,7 @@ void ParticleMessenger<ParticleType>::Exchange(
 {
   numTerminateMessages = 0;
   inDataBlockIDsMap.clear();
+  inData.clear();
 
   if (this->GetNumRanks() == 1)
     return this->SerialExchange(
@@ -219,13 +220,17 @@ void ParticleMessenger<ParticleType>::Exchange(
   //Check if we have anything coming in.
   std::vector<ParticleRecvCommType> particleData;
   std::vector<MsgCommType> msgData;
-  if (RecvAny(&msgData, &particleData, blockAndWait))
+  if (this->RecvAny(&msgData, &particleData, blockAndWait))
   {
     for (const auto& it : particleData)
       for (const auto& v : it.second)
       {
         const auto& p = v.first;
         const auto& bids = v.second;
+        //IDs must be unique.
+        if (inDataBlockIDsMap.find(p.ID) != inDataBlockIDsMap.end())
+          throw vtkm::cont::ErrorFilterExecution("Seeds with duplicate IDs detected.");
+
         inData.emplace_back(p);
         inDataBlockIDsMap[p.ID] = bids;
       }
@@ -233,9 +238,17 @@ void ParticleMessenger<ParticleType>::Exchange(
     for (const auto& m : msgData)
     {
       if (m.second[0] == MSG_TERMINATE)
+      {
+        if (m.second[1] < 0)
+          throw vtkm::cont::ErrorFilterExecution("Invalid termination message");
         numTerminateMessages += static_cast<vtkm::Id>(m.second[1]);
+      }
     }
   }
+
+  //Sanity check. These must be the same.
+  if (inData.size() != inDataBlockIDsMap.size())
+    throw vtkm::cont::ErrorFilterExecution("Inconsistent particle communication data");
 #endif
 }
 
