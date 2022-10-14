@@ -223,6 +223,7 @@ void ParticleMessenger<ParticleType>::Exchange(
   if (this->RecvAny(&msgData, &particleData, blockAndWait))
   {
     for (const auto& it : particleData)
+    {
       for (const auto& v : it.second)
       {
         const auto& p = v.first;
@@ -234,6 +235,8 @@ void ParticleMessenger<ParticleType>::Exchange(
         inData.emplace_back(p);
         inDataBlockIDsMap[p.ID] = bids;
       }
+    }
+    VTKM_ASSERT(inData.size() == inDataBlockIDsMap.size());
 
     for (const auto& m : msgData)
     {

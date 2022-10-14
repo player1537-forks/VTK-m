@@ -16,6 +16,10 @@
 #include <vtkm/filter/flow/internal/DataSetIntegrator.h>
 #include <vtkm/filter/flow/internal/ParticleMessenger.h>
 
+#ifdef VTKM_ENABLE_MPI
+#include <vtkm/thirdparty/diy/mpi-cast.h>
+#endif
+
 namespace vtkm
 {
 namespace filter
@@ -84,6 +88,8 @@ public:
       }
     }
 
+    this->ValidateSeeds(particles);
+
     this->SetSeedArray(particles, blockIDs);
   }
 
@@ -119,7 +125,7 @@ public:
     }
   }
 
-
+protected:
   virtual void ClearParticles()
   {
     this->Active.clear();
@@ -127,23 +133,20 @@ public:
     this->ParticleBlockIDsMap.clear();
   }
 
-  void ComputeTotalNumParticles(const vtkm::Id& numLocal)
+  virtual bool GetBlockAndWait(const vtkm::Id& numLocalTerm)
   {
-    long long total = static_cast<long long>(numLocal);
-#ifdef VTKM_ENABLE_MPI
-    MPI_Comm mpiComm = vtkmdiy::mpi::mpi_cast(this->Comm.handle());
-    MPI_Allreduce(MPI_IN_PLACE, &total, 1, MPI_LONG_LONG, MPI_SUM, mpiComm);
-#endif
-    this->TotalNumParticles = static_cast<vtkm::Id>(total);
-  }
+    //There are only two cases where blocking would deadlock.
+    //1. There are active particles.
+    //2. numLocalTerm + this->TotalNumberOfTerminatedParticles == this->TotalNumberOfParticles
+    //So, if neither are true, we can safely block and wait for communication to come in.
 
-  DataSetIntegrator<DSIType>& GetDataSet(vtkm::Id id)
-  {
-    for (auto& it : this->Blocks)
-      if (it.GetID() == id)
-        return it;
+    if (this->Active.empty() && this->Inactive.empty() &&
+        (numLocalTerm + this->TotalNumTerminatedParticles < this->TotalNumParticles))
+    {
+      return true;
+    }
 
-    throw vtkm::cont::ErrorFilterExecution("Bad block");
+    return false;
   }
 
   virtual void SetSeedArray(const std::vector<ParticleType>& particles,
@@ -218,15 +221,23 @@ public:
     this->Update(this->Inactive, particles, idsMap);
   }
 
-  void Update(std::vector<ParticleType>& arr,
-              const std::vector<ParticleType>& particles,
-              const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& idsMap)
+  void ComputeTotalNumParticles(const vtkm::Id& numLocal)
   {
-    VTKM_ASSERT(particles.size() == idsMap.size());
+    long long total = static_cast<long long>(numLocal);
+#ifdef VTKM_ENABLE_MPI
+    MPI_Comm mpiComm = vtkmdiy::mpi::mpi_cast(this->Comm.handle());
+    MPI_Allreduce(MPI_IN_PLACE, &total, 1, MPI_LONG_LONG, MPI_SUM, mpiComm);
+#endif
+    this->TotalNumParticles = static_cast<vtkm::Id>(total);
+  }
 
-    arr.insert(arr.end(), particles.begin(), particles.end());
-    for (const auto& it : idsMap)
-      this->ParticleBlockIDsMap[it.first] = it.second;
+  DataSetIntegrator<DSIType>& GetDataSet(vtkm::Id id)
+  {
+    for (auto& it : this->Blocks)
+      if (it.GetID() == id)
+        return it;
+
+    throw vtkm::cont::ErrorFilterExecution("Bad block");
   }
 
   vtkm::Id UpdateResult(const DSIHelperInfo<ParticleType>& stuff)
@@ -245,22 +256,66 @@ public:
     return numTerm;
   }
 
-  virtual bool GetBlockAndWait(const vtkm::Id& numLocalTerm)
+private:
+  void ValidateSeeds(const std::vector<ParticleType>& particles)
   {
-    //There are only two cases where blocking would deadlock.
-    //1. There are active particles.
-    //2. numLocalTerm + this->TotalNumberOfTerminatedParticles == this->TotalNumberOfParticles
-    //So, if neither are true, we can safely block and wait for communication to come in.
+    long numLocal = static_cast<long>(particles.size());
 
-    if (this->Active.empty() && this->Inactive.empty() &&
-        (numLocalTerm + this->TotalNumTerminatedParticles < this->TotalNumParticles))
+    std::vector<long> pids;
+    pids.reserve(numLocal);
+    for (const auto& p : particles)
+      pids.emplace_back(p.ID);
+
+    //First, do a local check of my particles.
+    std::set<long> pidSet(pids.begin(), pids.end());
+    if (pidSet.size() != pids.size())
+      throw vtkm::cont::ErrorFilterExecution("Duplicate IDs detected");
+
+#ifdef VTKM_ENABLE_MPI
+    //Need to do a global check for parallel case.
+    auto MPIComm = vtkmdiy::mpi::mpi_cast(this->Comm.handle());
+    //Make sure we do not have duplicate IDs.
+    std::vector<long> recvData;
+    if (this->Rank == 0)
+      recvData.resize(this->NumRanks);
+
+    MPI_Gather(&numLocal, 1, MPI_LONG_INT, recvData.data(), 1, MPI_LONG_INT, 0, MPIComm);
+    if (this->Rank == 0)
     {
-      return true;
+      long totalNum = std::accumulate(recvData.begin(), recvData.end(), 0);
+      recvData.resize(totalNum);
+    }
+    std::vector<int> counts, offsets;
+    if (this->Rank == 0)
+    {
+      counts.resize(this->NumRanks);
+      offsets.resize(this->NumRanks);
     }
 
-    return false;
+    MPI_Gatherv(pids.data(), numLocal, MPI_LONG_INT, recvData.data(), counts.data(), offsets.data(), MPI_LONG_INT, 0, MPIComm);
+
+    if (this->Rank == 0)
+    {
+      //Putting the ids in a set will detect if we have duplicate IDs.
+      std::set<long> pidSet2(pids.begin(), pids.end());
+      if (pidSet2.size() != pids.size())
+        throw vtkm::cont::ErrorFilterExecution("Duplicate IDs detected");
+    }
+#endif
   }
 
+  void Update(std::vector<ParticleType>& arr,
+              const std::vector<ParticleType>& particles,
+              const std::unordered_map<vtkm::Id, std::vector<vtkm::Id>>& idsMap)
+  {
+    VTKM_ASSERT(particles.size() == idsMap.size());
+
+    arr.insert(arr.end(), particles.begin(), particles.end());
+    for (const auto& it : idsMap)
+      this->ParticleBlockIDsMap[it.first] = it.second;
+  }
+
+protected:
   //Member data
   std::vector<ParticleType> Active;
   std::vector<DSIType> Blocks;
