@@ -1395,7 +1395,11 @@ ReadDataSet(std::map<std::string, std::vector<std::string>>& args, XGCParameters
   }
   else
   {
-    ds = ReadStaticData(args, xgcParams, "xgc.poincare_init.bp");
+    std::string coeffFile = "xgc.poincare_init.bp";
+    if (args.find("--CoeffFile") != args.end())
+      coeffFile = args["--CoeffFile"][0];
+
+    ds = ReadStaticData(args, xgcParams, coeffFile);
 
     if (args.find("--AsFilePath") != args.end())
     {
