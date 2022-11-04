@@ -100,9 +100,8 @@ set(unit_tests_device
   UnitTestCellLocatorGeneral.cxx
   UnitTestCellLocatorPartitioned.cxx
   UnitTestCellLocatorRectilinearGrid.cxx
-  UnitTestCellLocatorTwoLevel.cxx
-  UnitTestCellLocatorUniformBins.cxx
   UnitTestCellLocatorUniformGrid.cxx
+  UnitTestCellLocatorUnstructured.cxx
   UnitTestCellSet.cxx
   UnitTestCellSetExplicit.cxx
   UnitTestCellSetPermutation.cxx

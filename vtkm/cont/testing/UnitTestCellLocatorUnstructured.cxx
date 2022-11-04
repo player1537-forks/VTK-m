@@ -9,6 +9,7 @@
 //============================================================================
 
 #include <vtkm/cont/ArrayCopy.h>
+#include <vtkm/cont/CellLocatorTwoLevel.h>
 #include <vtkm/cont/CellLocatorUniformBins.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
 #include <vtkm/cont/Invoker.h>
@@ -204,9 +205,10 @@ public:
   }
 };
 
-void TestLastCell(vtkm::cont::CellLocatorUniformBins& locator,
+template <typename LocatorType>
+void TestLastCell(LocatorType& locator,
                   vtkm::Id numPoints,
-                  vtkm::cont::ArrayHandle<vtkm::cont::CellLocatorUniformBins::LastCell>& lastCell,
+                  vtkm::cont::ArrayHandle<typename LocatorType::LastCell>& lastCell,
                   const vtkm::cont::ArrayHandle<PointType>& points,
                   const vtkm::cont::ArrayHandle<vtkm::Id>& expCellIds,
                   const vtkm::cont::ArrayHandle<PointType>& expPCoords)
@@ -231,15 +233,15 @@ void TestLastCell(vtkm::cont::CellLocatorUniformBins& locator,
   }
 }
 
-template <vtkm::IdComponent DIMENSIONS>
-void TestCellLocator(const vtkm::Vec<vtkm::Id, DIMENSIONS>& dim, vtkm::Id numberOfPoints)
+template <typename LocatorType, vtkm::IdComponent DIMENSIONS>
+void TestCellLocator(LocatorType& locator,
+                     const vtkm::Vec<vtkm::Id, DIMENSIONS>& dim,
+                     vtkm::Id numberOfPoints)
 {
   auto ds = MakeTestDataSet(dim);
 
   std::cout << "Testing " << DIMENSIONS << "D dataset with " << ds.GetNumberOfCells() << " cells\n";
 
-  vtkm::cont::CellLocatorUniformBins locator;
-  locator.SetDims({ 32, 32, 32 });
   locator.SetCellSet(ds.GetCellSet());
   locator.SetCoordinates(ds.GetCoordinateSystem());
   locator.Update();
@@ -270,15 +272,15 @@ void TestCellLocator(const vtkm::Vec<vtkm::Id, DIMENSIONS>& dim, vtkm::Id number
   //Test locator using lastCell
 
   //Test it with initialized.
-  vtkm::cont::ArrayHandle<vtkm::cont::CellLocatorUniformBins::LastCell> lastCell;
-  lastCell.AllocateAndFill(numberOfPoints, vtkm::cont::CellLocatorUniformBins::LastCell{});
+  vtkm::cont::ArrayHandle<typename LocatorType::LastCell> lastCell;
+  lastCell.AllocateAndFill(numberOfPoints, typename LocatorType::LastCell{});
   TestLastCell(locator, numberOfPoints, lastCell, points, expCellIds, pcoords);
 
   //Call it again using the lastCell just computed to validate.
   TestLastCell(locator, numberOfPoints, lastCell, points, expCellIds, pcoords);
 
   //Test it with uninitialized array.
-  vtkm::cont::ArrayHandle<vtkm::cont::CellLocatorUniformBins::LastCell> lastCell2;
+  vtkm::cont::ArrayHandle<typename LocatorType::LastCell> lastCell2;
   lastCell2.Allocate(numberOfPoints);
   TestLastCell(locator, numberOfPoints, lastCell2, points, expCellIds, pcoords);
 
@@ -286,19 +288,32 @@ void TestCellLocator(const vtkm::Vec<vtkm::Id, DIMENSIONS>& dim, vtkm::Id number
   TestLastCell(locator, numberOfPoints, lastCell2, points, expCellIds, pcoords);
 }
 
-void TestingCellLocatorUniformBins()
+void TestingCellLocatorUnstructured()
 {
   vtkm::UInt32 seed = static_cast<vtkm::UInt32>(std::time(nullptr));
   std::cout << "Seed: " << seed << std::endl;
   RandomGenerator.seed(seed);
 
-  TestCellLocator(vtkm::Id3(8), 512);  // 3D dataset
-  TestCellLocator(vtkm::Id2(18), 512); // 2D dataset
+  //Test vtkm::cont::CellLocatorTwoLevel
+  vtkm::cont::CellLocatorTwoLevel locator2L;
+  locator2L.SetDensityL1(64.0f);
+  locator2L.SetDensityL2(1.0f);
+
+  TestCellLocator(locator2L, vtkm::Id3(8), 512);  // 3D dataset
+  TestCellLocator(locator2L, vtkm::Id2(18), 512); // 2D dataset
+
+  //Test vtkm::cont::CellLocatorUniformBins
+  vtkm::cont::CellLocatorUniformBins locatorUB;
+  locatorUB.SetDims({ 32, 32, 32 });
+
+  TestCellLocator(locatorUB, vtkm::Id3(8), 512);  // 3D dataset
+  TestCellLocator(locatorUB, vtkm::Id2(18), 512); // 2D dataset
 }
+
 
 } // anonymous
 
-int UnitTestCellLocatorUniformBins(int argc, char* argv[])
+int UnitTestCellLocatorUnstructured(int argc, char* argv[])
 {
-  return vtkm::cont::testing::Testing::Run(TestingCellLocatorUniformBins, argc, argv);
+  return vtkm::cont::testing::Testing::Run(TestingCellLocatorUnstructured, argc, argv);
 }
