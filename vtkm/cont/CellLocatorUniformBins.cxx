@@ -75,7 +75,7 @@ public:
     auto idx000 = GetFlatIndex(bbox[0], this->Origin, this->InvSpacing, this->MaxCellIds);
     auto idx111 = GetFlatIndex(bbox[1], this->Origin, this->InvSpacing, this->MaxCellIds);
 
-    //avoid the loops and do some math..
+    //Count the number of bins
     numBins = 0;
     for (vtkm::Id i = idx000[0]; i <= idx111[0]; i++)
       for (vtkm::Id j = idx000[1]; j <= idx111[1]; j++)
@@ -113,8 +113,8 @@ public:
   using ControlSignature = void(CellSetIn cellset,
                                 FieldInPoint coords,
                                 FieldInCell start,
-                                WholeArrayInOut result,
-                                WholeArrayInOut result2);
+                                WholeArrayInOut binsPerCell,
+                                WholeArrayInOut cellIds);
   using ExecutionSignature = void(InputIndex, _2, _3, _4, _5);
   using InputDomain = _1;
 
@@ -134,8 +134,8 @@ public:
   VTKM_EXEC void operator()(const vtkm::Id& cellIdx,
                             const PointsVecType& points,
                             const vtkm::Id& start,
-                            ResultArrayType& result,
-                            ResultArrayType& result2) const
+                            ResultArrayType& binsPerCell,
+                            ResultArrayType& cellIds) const
   {
     auto numPoints = vtkm::VecTraits<PointsVecType>::GetNumberOfComponents(points);
 
@@ -153,15 +153,15 @@ public:
     auto idx000 = GetFlatIndex(bbox[0], this->Origin, this->InvSpacing, this->MaxCellIds);
     auto idx111 = GetFlatIndex(bbox[1], this->Origin, this->InvSpacing, this->MaxCellIds);
 
-    //avoid the loops and do some math..
+    //Set the indices and counts for each bin
     vtkm::Id cnt = 0;
     for (vtkm::Id i = idx000[0]; i <= idx111[0]; i++)
       for (vtkm::Id j = idx000[1]; j <= idx111[1]; j++)
         for (vtkm::Id k = idx000[2]; k <= idx111[2]; k++)
         {
           vtkm::Id flatIdx = ComputeFlatIndex(vtkm::Id3(i, j, k), this->Dims);
-          result.Set(start + cnt, flatIdx);
-          result2.Set(start + cnt, cellIdx);
+          binsPerCell.Set(start + cnt, flatIdx);
+          cellIds.Set(start + cnt, cellIdx);
           cnt++;
         }
   }
@@ -253,12 +253,6 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   this->CellCount.AllocateAndFill(totalNumBins, 0);
   invoker(detail::CountBins{}, binsPerCell, this->CellCount);
   vtkm::cont::Algorithm::ScanExclusive(this->CellCount, this->CellStartIdx);
-
-  /*
-  auto minCount = vtkm::cont::Algorithm::Reduce(this->CellCount, vtkm::Id(this->CellCount.ReadPortal().Get(0)), vtkm::Minimum());
-  auto maxCount = vtkm::cont::Algorithm::Reduce(this->CellCount, vtkm::Id(0), vtkm::Maximum());
-  std::cout<<"CellLocatorUniformBins:: Cell counts: "<<minCount<<" "<<maxCount<<std::endl;
-  */
 }
 
 //----------------------------------------------------------------------------
@@ -302,6 +296,7 @@ CellLocatorUniformBins::ExecObjType CellLocatorUniformBins::PrepareForExecution(
 void CellLocatorUniformBins::PrintSummary(std::ostream& out) const
 {
   out << std::endl;
+  out << "CellLocatorUniformBins" << std::endl;
   out << " UniformDims: " << this->UniformDims << std::endl;
   out << " Origin: " << this->Origin << std::endl;
   out << " MaxPoint: " << this->MaxPoint << std::endl;
