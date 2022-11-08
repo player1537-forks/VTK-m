@@ -94,14 +94,13 @@ private:
     using CoordsType = typename vtkm::VecTraits<PointsVecType>::ComponentType;
     auto numPoints = vtkm::VecTraits<PointsVecType>::GetNumberOfComponents(points);
 
-    CoordsType minp = points[0], maxp = points[0];
-    for (vtkm::IdComponent i = 1; i < numPoints; ++i)
+    vtkm::Bounds bounds;
+    for (vtkm::IdComponent i = 0; i < numPoints; ++i)
     {
-      minp = vtkm::Min(minp, points[i]);
-      maxp = vtkm::Max(maxp, points[i]);
+      bounds.Include(points[i]);
     }
 
-    return { vtkm::Vec3f(minp), vtkm::Vec3f(maxp) };
+    return bounds;
   }
 
   vtkm::Vec3f InvSpacing;
