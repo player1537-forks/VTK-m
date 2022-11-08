@@ -151,22 +151,32 @@ public:
 
     //Set the indices and counts for each bin
     vtkm::Id cnt = 0;
-    for (vtkm::Id i = idx000[0]; i <= idx111[0]; i++)
+    vtkm::Id sliceStart = ComputeFlatIndex(idx000, this->Dims);
+    for (vtkm::Id k = idx000[2]; k <= idx111[2]; k++)
+    {
+      vtkm::Id shaftStart = sliceStart;
       for (vtkm::Id j = idx000[1]; j <= idx111[1]; j++)
-        for (vtkm::Id k = idx000[2]; k <= idx111[2]; k++)
+      {
+        vtkm::Id flatIdx = shaftStart;
+        for (vtkm::Id i = idx000[0]; i <= idx111[0]; i++)
         {
-          vtkm::Id flatIdx = ComputeFlatIndex(vtkm::Id3(i, j, k), this->Dims);
-          binsPerCell.Set(start + cnt, flatIdx);
-          cellIds.Set(start + cnt, cellIdx);
-          cnt++;
+          // set portals and increment cnt...
+          ++flatIdx;
         }
+        shaftStart += this->Dims[0];
+      }
+      sliceStart += this->Dims[0] * this->Dims[1];
+    }
+    binsPerCell.Set(start + cnt, flatIdx);
+    cellIds.Set(start + cnt, cellIdx);
+    cnt++;
   }
+}
 
-private:
-  vtkm::Id3 Dims;
-  vtkm::Vec3f InvSpacing;
-  vtkm::Id3 MaxCellIds;
-  vtkm::Vec3f Origin;
+private : vtkm::Id3 Dims;
+vtkm::Vec3f InvSpacing;
+vtkm::Id3 MaxCellIds;
+vtkm::Vec3f Origin;
 };
 
 class CountBins : public vtkm::worklet::WorkletMapField
