@@ -76,8 +76,13 @@ public:
     auto idx111 = GetFlatIndex(bbox[1], this->Origin, this->InvSpacing, this->MaxCellIds);
 
     //Count the number of bins
-    numBins =
-      (idx111[0] - idx000[0] + 1) * (idx111[2] - idx000[2] + 1) * (idx111[2] - idx000[2] + 1);
+    numBins = 0;
+    for (vtkm::Id i = idx000[0]; i <= idx111[0]; i++)
+      for (vtkm::Id j = idx000[1]; j <= idx111[1]; j++)
+        for (vtkm::Id k = idx000[2]; k <= idx111[2]; k++)
+        {
+          numBins++;
+        }
   }
 
 private:
