@@ -18,7 +18,7 @@ namespace vtkm
 namespace cont
 {
 
-namespace detail
+namespace
 {
 
 VTKM_EXEC
@@ -61,47 +61,24 @@ public:
   {
     auto numPoints = vtkm::VecTraits<PointsVecType>::GetNumberOfComponents(points);
 
-    vtkm::Vec3f bbox[2] = { points[0], points[0] };
-    for (vtkm::IdComponent i = 1; i < numPoints; ++i)
+    vtkm::Bounds bounds;
+    for (vtkm::IdComponent i = 0; i < numPoints; ++i)
     {
-      for (vtkm::IdComponent j = 0; j < 3; j++)
-      {
-        bbox[0][j] = vtkm::Min(bbox[0][j], static_cast<vtkm::FloatDefault>(points[i][j]));
-        bbox[1][j] = vtkm::Max(bbox[1][j], static_cast<vtkm::FloatDefault>(points[i][j]));
-      }
+      bounds.Include(points[i]);
     }
 
     //Get 8 corners of bbox.
-    auto idx000 = GetFlatIndex(bbox[0], this->Origin, this->InvSpacing, this->MaxCellIds);
-    auto idx111 = GetFlatIndex(bbox[1], this->Origin, this->InvSpacing, this->MaxCellIds);
+    auto idx000 =
+      GetFlatIndex(bounds.MinCorner(), this->Origin, this->InvSpacing, this->MaxCellIds);
+    auto idx111 =
+      GetFlatIndex(bounds.MaxCorner(), this->Origin, this->InvSpacing, this->MaxCellIds);
 
-    //Count the number of bins
-    numBins = 0;
-    for (vtkm::Id i = idx000[0]; i <= idx111[0]; i++)
-      for (vtkm::Id j = idx000[1]; j <= idx111[1]; j++)
-        for (vtkm::Id k = idx000[2]; k <= idx111[2]; k++)
-        {
-          numBins++;
-        }
+    //Count the number of bins for this cell
+    numBins =
+      (idx111[0] - idx000[0] + 1) * (idx111[1] - idx000[1] + 1) * (idx111[2] - idx000[2] + 1);
   }
 
 private:
-  template <typename PointsVecType>
-  VTKM_EXEC vtkm::Bounds ComputeCellBounds(const PointsVecType& points)
-  {
-    using CoordsType = typename vtkm::VecTraits<PointsVecType>::ComponentType;
-    auto numPoints = vtkm::VecTraits<PointsVecType>::GetNumberOfComponents(points);
-
-    CoordsType minp = points[0], maxp = points[0];
-    for (vtkm::IdComponent i = 1; i < numPoints; ++i)
-    {
-      minp = vtkm::Min(minp, points[i]);
-      maxp = vtkm::Max(maxp, points[i]);
-    }
-
-    return { vtkm::Vec3f(minp), vtkm::Vec3f(maxp) };
-  }
-
   vtkm::Vec3f InvSpacing;
   vtkm::Id3 MaxCellIds;
   vtkm::Vec3f Origin;
@@ -209,12 +186,9 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   const auto& coords = this->GetCoordinates();
 
   auto bounds = coords.GetBounds();
-  this->Origin = vtkm::Vec3f(static_cast<vtkm::FloatDefault>(bounds.X.Min),
-                             static_cast<vtkm::FloatDefault>(bounds.Y.Min),
-                             static_cast<vtkm::FloatDefault>(bounds.Z.Min));
-  this->MaxPoint = vtkm::Vec3f(static_cast<vtkm::FloatDefault>(bounds.X.Max),
-                               static_cast<vtkm::FloatDefault>(bounds.Y.Max),
-                               static_cast<vtkm::FloatDefault>(bounds.Z.Max));
+  this->Origin = vtkm::Vec3f(bounds.MinCorner());
+  this->MaxPoint = vtkm::Vec3f(bounds.MaxCorner());
+
   auto size = this->MaxPoint - this->Origin;
   vtkm::Vec3f spacing(
     size[0] / this->UniformDims[0], size[1] / this->UniformDims[1], size[2] / this->UniformDims[2]);
@@ -229,7 +203,7 @@ VTKM_CONT void CellLocatorUniformBins::Build()
 
   //1: Count number of (cell,bin) pairs.
   vtkm::cont::ArrayHandle<vtkm::Id> binCounts;
-  detail::CountCellBins countCellBins(this->Origin, this->InvSpacing, this->MaxCellIds);
+  CountCellBins countCellBins(this->Origin, this->InvSpacing, this->MaxCellIds);
   invoker(countCellBins, cellset, coords, binCounts);
 
   //2: Compute number of unique cell/bin pairs and start indices.
@@ -241,7 +215,7 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   vtkm::cont::ArrayHandle<vtkm::Id> binsPerCell;
   binsPerCell.AllocateAndFill(num, 0);
   this->CellIds.Allocate(num);
-  detail::RecordBinsPerCell recordBinsPerCell(
+  RecordBinsPerCell recordBinsPerCell(
     this->Origin, this->InvSpacing, this->UniformDims, this->MaxCellIds);
   invoker(recordBinsPerCell, cellset, coords, binStartIdx, binsPerCell, this->CellIds);
 
@@ -251,7 +225,7 @@ VTKM_CONT void CellLocatorUniformBins::Build()
 
   //5: Calculate counts for each bin and the start index.
   this->CellCount.AllocateAndFill(totalNumBins, 0);
-  invoker(detail::CountBins{}, binsPerCell, this->CellCount);
+  invoker(CountBins{}, binsPerCell, this->CellCount);
   vtkm::cont::Algorithm::ScanExclusive(this->CellCount, this->CellStartIdx);
 }
 
@@ -265,20 +239,20 @@ struct CellLocatorUniformBins::MakeExecObject
                             const CellLocatorUniformBins& self,
                             ExecObjType& execObject) const
   {
-    using CellStructuredType = CellSetContToExec<CellSetType>;
+    using CellStructureType = CellSetContToExec<CellSetType>;
 
-    execObject = vtkm::exec::CellLocatorUniformBins<CellStructuredType>(self.UniformDims,
-                                                                        self.Origin,
-                                                                        self.MaxPoint,
-                                                                        self.InvSpacing,
-                                                                        self.MaxCellIds,
-                                                                        self.CellCount,
-                                                                        self.CellStartIdx,
-                                                                        self.CellIds,
-                                                                        cellSet,
-                                                                        self.GetCoordinates(),
-                                                                        device,
-                                                                        token);
+    execObject = vtkm::exec::CellLocatorUniformBins<CellStructureType>(self.UniformDims,
+                                                                       self.Origin,
+                                                                       self.MaxPoint,
+                                                                       self.InvSpacing,
+                                                                       self.MaxCellIds,
+                                                                       self.CellCount,
+                                                                       self.CellStartIdx,
+                                                                       self.CellIds,
+                                                                       cellSet,
+                                                                       self.GetCoordinates(),
+                                                                       device,
+                                                                       token);
   }
 };
 

@@ -24,6 +24,17 @@ namespace vtkm
 namespace cont
 {
 
+/// \brief A locator that uses a uniform grid
+///
+/// `CellLocatorUniformBins` creates a cell search structure using a single uniform
+/// grid. The size of the uniform grid is specified using the `SetDims` method.
+/// In general, the `CellLocatorTwoLevel` has the better performance. However,
+/// there are some cases where this is not the case. One example of this is
+/// a uniformly dense triangle grid. In some cases the `CellLocatorUniformBins`
+/// produces a more efficient search structure, especially for GPUs where memory
+/// access patterns are critical to performance.
+
+
 class VTKM_CONT_EXPORT CellLocatorUniformBins
   : public vtkm::cont::internal::CellLocatorBase<CellLocatorUniformBins>
 {
