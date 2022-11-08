@@ -12,12 +12,9 @@
 
 #include <vtkm/cont/ArrayHandle.h>
 #include <vtkm/cont/CellSetList.h>
-
 #include <vtkm/cont/internal/CellLocatorBase.h>
-
 #include <vtkm/exec/CellLocatorMultiplexer.h>
 #include <vtkm/exec/CellLocatorUniformBins.h>
-
 
 namespace vtkm
 {
