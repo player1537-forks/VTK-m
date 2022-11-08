@@ -61,19 +61,21 @@ public:
   {
     auto numPoints = vtkm::VecTraits<PointsVecType>::GetNumberOfComponents(points);
 
-    vtkm::Vec3f bbox[2] = { points[0], points[0] };
-    for (vtkm::IdComponent i = 1; i < numPoints; ++i)
+    vtkm::Bounds bounds;
+    for (vtkm::IdComponent i = 0; i < numPoints; ++i)
     {
-      for (vtkm::IdComponent j = 0; j < 3; j++)
-      {
-        bbox[0][j] = vtkm::Min(bbox[0][j], static_cast<vtkm::FloatDefault>(points[i][j]));
-        bbox[1][j] = vtkm::Max(bbox[1][j], static_cast<vtkm::FloatDefault>(points[i][j]));
-      }
+      bounds.Include(points[i]);
     }
 
     //Get 8 corners of bbox.
-    auto idx000 = GetFlatIndex(bbox[0], this->Origin, this->InvSpacing, this->MaxCellIds);
-    auto idx111 = GetFlatIndex(bbox[1], this->Origin, this->InvSpacing, this->MaxCellIds);
+    auto idx000 = GetFlatIndex({ bounds.Min.X, bounds.Min.Y, bounds.Min.Z },
+                               this->Origin,
+                               this->InvSpacing,
+                               this->MaxCellIds);
+    auto idx111 = GetFlatIndex({ bounds.Max.X, bounds.Max.Y, bounds.Max.Z },
+                               this->Origin,
+                               this->InvSpacing,
+                               this->MaxCellIds);
 
     //Count the number of bins
     numBins = 0;
