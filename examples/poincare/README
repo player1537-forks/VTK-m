@@ -326,3 +326,73 @@ PoincareTime= 145.920894894
 Cell counts: 0 46
 Locator build= 61.7286
 PoincareTime= 211.871836648
+
+
+
+
+
+Hager issue:
+--psiVals .3  is not giving the right answer..
+
+
+Hager example.
+./examples/poincare/Poincare --openmp --dir /media/dpn/disk2TB/proj/vtkm/XGCLocator/data/hager --3DFile a_para_01010_d3d-170077.4500.bp --CoeffFile xgc.bfield.bp --output OUT  --numPunc 1 --stepSize 0.01 --psiVals 0.90 --thetaRange 1 --dumpSeeds
+
+with sku's data:
+./examples/poincare/Poincare --openmp --dir /media/dpn/disk2TB/proj/vtkm/XGCLocator/data/XGC_GB/su458_ITER_data --output OUT  --numPunc 1 --stepSize 0.01 --psiVals 0.90 --thetaRange 1 --dumpSeeds --dumpGrid
+
+
+
+
+
+Hager's example:
+
+
+./examples/poincare/Poincare --openmp --dir /media/dpn/disk2TB/proj/vtkm/XGCLocator/data/hager --3DFile a_para_04000_d3d-170077.4500.bp --CoeffFile xgc.bfield.bp --output OUT  --numPunc 100 --stepSize 0.01 --seed 1.983852890472070 0.4530218304452069 5.909587236523596 --traces 1
+
+
+debug pt from summit for hager's data:
+           8                      401 em_derivs_sp
+            8                      401 DRP: PTL1_RZP:
+    1.983628858390965        0.4533012129023550         6.183185307179587
+            8                      401 B    1.691004807623796
+            8                      401 Bsa    10.99324152344152
+   -343.1504520652288         470.1905460631720
+            8                      401 Bvec   0.2718814698503030
+  -0.3351190353591867        -1.635014665958308
+            8                      401 As    829.3602072950976
+            8                      401 nb_curl_nb  -0.4640324845973328
+            8                      401 curl_nb   1.3255086784661686E-002
+  -0.4137532148840259        0.5669316443293883
+            8                      401 curl_B  -4.3964410430160444E-002
+   5.4190198477310270E-002   0.7931343794113532
+            8                      401 em_derivs_sp
+
+./examples/poincare/Poincare --openmp --dir /media/dpn/disk2TB/proj/vtkm/XGCLocator/data/hager --3DFile a_para_04000_d3d-170077.4500.bp --CoeffFile xgc.bfield.bp --output OUT  --numPunc 100 --stepSize 0.01 --seed 1.983628858390965 0.4533012129023550 6.183185307179587
+
+
+
+
+XGC vs. VTKm
+
+XGC
+401 em_derivs_sp
+401 DRP: PTL1_RZP: 1.983628858390965        0.4533012129023550         6.183185307179587
+B    1.691004807623796
+401 Bsa    10.99324152344152 -343.1504520652288         470.1905460631720
+401 Bvec   0.2718814698503030 -0.3351190353591867        -1.635014665958308
+401 As    829.3602072950976
+401 nb_curl_nb  -0.4640324845973328
+401 curl_nb   1.3255086784661686E-002 -0.4137532148840259        0.5669316443293883
+401 curl_B  -4.3964410430160444E-002  5.4190198477310270E-002   0.7931343794113532
+
+
+VTKm:
+PT_RZP= [1.98362885839096,0.453301212902355,6.18318530717959]
+ B0_rzp= [-0.271881469850308,  0.335119035359174,  1.63501466595831]
+401 Bvec   0.2718814698503030 -0.3351190353591867 -1.635014665958308
+ curl_nb_rzp= [-0.0166414464020078,0.481415422339912,-0.359766830122931]
+ 401 curl_nb   1.3255086784661686E-002 -0.4137532148840259        0.5669316443293883
+  curl_B_rzp= [-0.0439644104301616,1.70269884871399,-0.793134379404692]
+401 curl_B  -4.3964410430160444E-002  5.4190198477310270E-002   0.7931343794113532
+  As= -3.09001010087221e-06

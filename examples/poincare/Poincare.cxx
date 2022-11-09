@@ -45,6 +45,7 @@
 #include "FindMaxR.h"
 #include "EvalField.h"
 #include "RunPoincare2.h"
+#include "XGCHelpers.h"
 
 adios2::ADIOS *adios = NULL;
 class adiosS;
@@ -844,6 +845,8 @@ SaveOutput(std::map<std::string, std::vector<std::string>>& args,
 
     std::ofstream outTraces;
     outTraces.open(tracesNm, std::ofstream::app);
+    outTraces<<std::setprecision(15);
+
     //write traces
     for (int i = 0; i < (int)traces.size(); i++)
     {
@@ -852,9 +855,16 @@ SaveOutput(std::map<std::string, std::vector<std::string>>& args,
         auto R = pt[0];
         auto Z = pt[2];
         auto PHI_N = pt[1];
-        while (PHI_N < 0)
-          PHI_N += vtkm::TwoPi();
-
+        if (PHI_N > vtkm::TwoPi())
+        {
+          while (PHI_N > vtkm::TwoPi())
+            PHI_N -= vtkm::TwoPi();
+        }
+        else
+        {
+          while (PHI_N < 0)
+            PHI_N += vtkm::TwoPi();
+        }
         outTraces<<i<<", "<<R<<", "<<Z<<", "<<PHI_N<<std::endl;
       }
     }
@@ -1460,6 +1470,7 @@ mySchedParams(char const* name,
 }
 #endif
 
+/*
 template <typename Coeff_1DType>
 VTKM_EXEC
 vtkm::FloatDefault I_interpol(const vtkm::FloatDefault& psi,
@@ -1494,97 +1505,7 @@ vtkm::FloatDefault I_interpol(const vtkm::FloatDefault& psi,
 
   return iVal; // * this->sml_bp_sign; = -1 !!
 }
-
-template <typename Coeff_2DType>
-VTKM_EXEC
-void EvalBicub2(const vtkm::FloatDefault& x,
-                const vtkm::FloatDefault& y,
-                const vtkm::FloatDefault& xc,
-                const vtkm::FloatDefault& yc,
-                const vtkm::Id& offset,
-                const Coeff_2DType& Coeff_2D,
-                vtkm::FloatDefault &f00, vtkm::FloatDefault &f10, vtkm::FloatDefault &f01,
-                vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02)
-//Br= -dpsi_dz / R == f01 / R : fx, dfy
-//Bz = dpsi_dr /R  == f10 / R : dfx, yv
-{
-  vtkm::FloatDefault dx = x - xc;
-  vtkm::FloatDefault dy = y - yc;
-
-  //fortran code.
-
-  f00 = f01 = f10 = f11 = f20 = f02 = 0.0f;
-  vtkm::FloatDefault xv[4] = {1, dx, dx*dx, dx*dx*dx};
-  vtkm::FloatDefault yv[4] = {1, dy, dy*dy, dy*dy*dy};
-  vtkm::FloatDefault fx[4] = {0,0,0,0};
-  vtkm::FloatDefault dfx[4] = {0,0,0,0};
-  vtkm::FloatDefault dfy[4] = {0,0,0,0};
-  vtkm::FloatDefault dfx2[4] = {0,0,0,0};
-  vtkm::FloatDefault dfy2[4] = {0,0,0,0};
-
-/*
-  for (int j = 0; j < 4; j++)
-  {
-    std::cout<<"acoeff_"<<j<<": ";
-    for (int i = 0; i < 4; i++)
-      std::cout<<Coeff_2D.Get(offset + j*4 + i)<<" ";
-    std::cout<<std::endl;
-  }
 */
-
-  /*
-  std::cout<<"\n\nCoeff_2D offset="<<offset<<std::endl;
-  int N = Coeff_2D.GetNumberOfValues();
-  for (int i = 0; i < N; i++)
-    std::cout<<std::setprecision(15)<<i<<": "<<Coeff_2D.Get(i)<<std::endl;
-  */
-
-  for (int j=0; j<4; j++)
-  {
-    for (int i=0; i<4; i++)
-      fx[j] = fx[j] + xv[i]*Coeff_2D.Get(offset + i*4 + j); //acoeff[i][j];
-    for (int i=1; i<4; i++)
-      dfx[j] = dfx[j] + vtkm::FloatDefault(i)*xv[i-1]*Coeff_2D.Get(offset + i*4 + j); //acoeff[i][j];
-    for (int i=2; i<4; i++)
-      dfx2[j] = dfx2[j] + vtkm::FloatDefault(i*(i-1))*xv[i-2]*Coeff_2D.Get(offset + i*4 + j); //acoeff[i][j];
-  }
-  //std::cout<<std::setprecision(15)<<"fx= "<<fx[0]<<" "<<fx[1]<<" "<<fx[2]<<" "<<fx[3]<<std::endl;
-
-  for (int j = 0; j < 4; j++)
-  {
-    f00 = f00 + fx[j]*yv[j];
-    f10 = f10 + dfx[j]*yv[j];
-    f20 = f20 + dfx2[j]*yv[j];
-  }
-
-  for (int j = 1; j < 4; j++)
-  {
-    dfy[j] = vtkm::FloatDefault(j)*yv[j-1];
-    f01 = f01 + fx[j]*dfy[j];
-    f11 = f11 + dfx[j]*dfy[j];
-  }
-
-  for (int j = 2; j < 4; j++)
-  {
-    dfy2[j] = vtkm::FloatDefault(j*(j-1))*yv[j-2];
-    f02 = f02 + fx[j]*dfy2[j];
-  }
-}
-
-int GetIndex(const vtkm::FloatDefault& x,
-             const int& nx,
-             const vtkm::FloatDefault& xmin,
-             const vtkm::FloatDefault& dx_inv)
-{
-  //int idx = std::max(1, std::min(nx  , 1 + int ((x-xmin)*dx_inv)) );
-  //return idx-1;
-
-  //std::cout<<"GetIndex: "<<x<<" "<<nx<<" "<<xmin<<" "<<dx_inv<<std::endl;
-  int idx = std::max(0, std::min(nx-1,
-                                 int((x-xmin)*dx_inv)) );
-  return idx;
-}
-
 
 template <typename CoeffType>
 vtkm::FloatDefault
@@ -1619,8 +1540,8 @@ InterpolatePsi(const vtkm::Vec2f& ptRZ,
     zc_cub.push_back((eq_zgrid[i] + eq_zgrid[i+1])/2.0);
   */
 
-  int r_i = GetIndex(ptRZ[0], nrz[0], rzmin[0], 1.0/drz[0]);
-  int z_i = GetIndex(ptRZ[1], nrz[1], rzmin[1], 1.0/drz[1]);
+  int r_i = XGCHelper::GetIndex(ptRZ[0], nrz[0], rzmin[0], 1.0/drz[0]);
+  int z_i = XGCHelper::GetIndex(ptRZ[1], nrz[1], rzmin[1], 1.0/drz[1]);
   vtkm::FloatDefault Rc = rzmin[0] + (vtkm::FloatDefault)(r_i)*drz[0];
   vtkm::FloatDefault Zc = rzmin[1] + (vtkm::FloatDefault)(z_i)*drz[1];
   //auto rc2 = rc_cub[r_i];
@@ -1643,7 +1564,7 @@ InterpolatePsi(const vtkm::Vec2f& ptRZ,
   */
 
   vtkm::FloatDefault dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
-  EvalBicub2(ptRZ[0], ptRZ[1], Rc, Zc, offset, coeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+  XGCHelper::EvalBicub2(ptRZ[0], ptRZ[1], Rc, Zc, offset, coeff, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
 
   auto R = ptRZ[0];
   B0[0] = -dpsi_dz / R;
@@ -1824,6 +1745,8 @@ GenerateThetaPsiSeeds(std::map<std::string, std::vector<std::string>>& args,
       //std::cout<<"CNT= "<<cnt<<std::setprecision(15)<<" dPsi= "<<dPsi<<std::endl;
 
       //std::cout<<i<<" "<<j<<" ID: "<<ID<<" PT= "<<(psi/xgcParams.eq_x_psi)<<" "<<theta<<std::endl;
+      //std::cout<<"  RZ= "<<R<<" "<<Z<<" cnt= "<<cnt<<" "<<"psiN= "<<(psi/xgcParams.eq_x_psi)<<" diffPsi= "<<diffPsi<<std::endl;
+
       vtkm::Vec3f pt_rpz(R, 0, Z);
       vtkm::Particle p({pt_rpz, ID++});
       seeds.push_back(p);
@@ -2115,6 +2038,7 @@ main(int argc, char** argv)
 
   if (args.find("--debug") != args.end())
   {
+    /*
     XGCParameters xgcParams;
     auto ds = ReadDataSet(args, xgcParams);
     auto vals = args["--debug"];
@@ -2133,7 +2057,8 @@ main(int argc, char** argv)
       R = std::atof(vals[0].c_str());
       Z = std::atof(vals[1].c_str());
     }
-
+    */
+    /*
     vtkm::Vec3f pt(R,Z,0);
 
     std::cout<<std::setprecision(15)<<"Debug pt= "<<pt<<std::endl;
@@ -2175,6 +2100,7 @@ main(int argc, char** argv)
     std::cout<<"B0High    = "<<B0<<std::endl;
 
     return 0;
+    */
   }
 
   if (args.find("--streaming") != args.end())

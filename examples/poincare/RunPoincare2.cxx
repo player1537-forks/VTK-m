@@ -290,6 +290,9 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
     useBScale = true;
     bScale = std::atof(args["--BScale"][0].c_str());
   }
+  bool flipBPhi = false;
+  if (args.find("--flipBPhi") != args.end())
+    flipBPhi = true;
 
   auto cellSet = ds.GetCellSet().AsCellSet<vtkm::cont::CellSetSingleType<>>();
 
@@ -363,6 +366,7 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
   worklet.BScale = bScale;
   worklet.UseBOnly = useBOnly;
   worklet.UsePrevCell = usePrevCell;
+  worklet.FlipBPhi = flipBPhi;
 
   auto seedsArray = vtkm::cont::make_ArrayHandle(seeds, vtkm::CopyFlag::On);
 

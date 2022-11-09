@@ -10,6 +10,7 @@
 #include <vtkm/worklet/WorkletMapField.h>
 
 #include "XGCParameters.h"
+#include "XGCHelpers.h"
 #include <iomanip>
 
 using Ray3f = vtkm::Ray<vtkm::FloatDefault, 3, true>;
@@ -142,6 +143,7 @@ public:
 //    this->StepSize_2 = this->StepSize / 2.0;
 //    this->StepSize_6 = this->StepSize / 6.0;
     std::cout<<"************************ NumPlanes= "<<this->NumPlanes<<std::endl;
+    std::cout<<"************************ Period= "<<this->Period<<" "<<xgcParams.sml_wedge_n<<std::endl;
 
     this->nr = xgcParams.eq_mr-1;
     this->nz = xgcParams.eq_mz-1;
@@ -229,7 +231,7 @@ public:
     */
 
     vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
-    this->EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+    XGCHelper::EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
     if (psi < 0)
       psi = 0;
 
@@ -244,6 +246,8 @@ public:
     vtkm::FloatDefault Br = -dpsi_dz * over_r;
     vtkm::FloatDefault Bz = dpsi_dr * over_r;
     vtkm::FloatDefault Bp = fld_I * over_r;
+    if (this->FlipBPhi)
+      Bp *= -1.0;
 
     return vtkm::Vec3f(Br, Bz, Bp);
   }
@@ -291,8 +295,8 @@ public:
     vtkm::FloatDefault R = ptRPZ[0], Z = ptRPZ[2];
     vtkm::Vec3f ptRZ(R,Z,0);
 
-    int r_i = this->GetIndex(R, this->nr, this->rmin, this->dr_inv);
-    int z_i = this->GetIndex(Z, this->nz, this->zmin, this->dz_inv);
+    int r_i = XGCHelper::GetIndex(R, this->nr, this->rmin, this->dr_inv);
+    int z_i = XGCHelper::GetIndex(Z, this->nz, this->zmin, this->dz_inv);
 
     // rc(i), zc(j)
     vtkm::FloatDefault Rc = rmin + (vtkm::FloatDefault)(r_i)*this->dr;
@@ -327,7 +331,7 @@ public:
     */
 
     vtkm::FloatDefault psi, dpsi_dr, dpsi_dz, d2psi_d2r, d2psi_drdz, d2psi_d2z;
-    this->EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
+    XGCHelper::EvalBicub2(R, Z, Rc, Zc, offset, Coeff_2D, psi,dpsi_dr,dpsi_dz,d2psi_drdz,d2psi_d2r,d2psi_d2z);
     if (psi < 0)
       psi = 0;
 
@@ -336,6 +340,7 @@ public:
     pInfo.gradPsi_rzp[0] = dpsi_dr;
     pInfo.gradPsi_rzp[1] = dpsi_dz;
     pInfo.gradPsi_rzp[2] = 0;
+
     pInfo.dpsi_dr = dpsi_dr;
     pInfo.dpsi_dz = dpsi_dz;
     pInfo.d2psi_drdz = d2psi_drdz;
@@ -366,6 +371,8 @@ public:
     vtkm::FloatDefault Br = -dpsi_dz * over_r;
     vtkm::FloatDefault Bz = dpsi_dr * over_r;
     vtkm::FloatDefault Bp = fld_I * over_r;
+    if (this->FlipBPhi)
+      Bp *= -1.0;
 
     pInfo.B0_rzp = vtkm::Vec3f(Br, Bz, Bp);
 
@@ -914,6 +921,8 @@ public:
                   vtkm::FloatDefault &f00, vtkm::FloatDefault &f10, vtkm::FloatDefault &f01,
                   vtkm::FloatDefault &f11, vtkm::FloatDefault &f20, vtkm::FloatDefault &f02) const
   {
+    XGCHelper::EvalBicub2(x,y,xc,yc,offset, Coeff_2D, f00, f10, f01, f11, f20, f02);
+#if 0
     vtkm::FloatDefault dx = x - xc;
     vtkm::FloatDefault dy = y - yc;
 
@@ -967,6 +976,7 @@ public:
       dfy2[j] = vtkm::FloatDefault(j*(j-1))*yv[j-2];
       f02 = f02 + fx[j]*dfy2[j];
     }
+#endif
   }
 
   VTKM_EXEC
@@ -1133,6 +1143,15 @@ public:
       return true;
     }
 
+    /*
+    std::cout<<std::setprecision(15);
+    vtkm::Vec3f tmp(ptRPZ[0], ptRPZ[2], ptRPZ[1]);
+    std::cout<<"PT_RZP= "<<tmp<<std::endl;
+    std::cout<<"  B0_rzp= "<<pInfo.B0_rzp<<std::endl;
+    std::cout<<"  curl_nb_rzp= "<<pInfo.curl_nb_rzp<<std::endl;
+    std::cout<<"  curl_B_rzp= "<<pInfo.curlB_rzp<<std::endl;
+    */
+
     vtkm::Id planeIdx0, planeIdx1, numRevs;
     vtkm::FloatDefault phiN, Phi0, Phi1, T;
     this->GetPlaneIdx(Phi, phiN, planeIdx0, planeIdx1, Phi0, Phi1, numRevs, T);
@@ -1224,6 +1243,7 @@ public:
     auto As_ff1 = this->Eval(AsPhiFF, offsets[1], x_ff_param, x_ff_vids);
 
     vtkm::FloatDefault As = wphi[0]*As_ff0 + wphi[1]*As_ff1;
+    //std::cout<<"  As= "<<As<<std::endl;
     auto AsCurl_bhat_rzp = As * pInfo.curl_nb_rzp;
 
     auto bhat_rzp = vtkm::Normal(pInfo.B0_rzp);
@@ -1311,6 +1331,7 @@ public:
   bool SaveTraces = false;
   bool UseLinearB = false;
   bool UsePrevCell = true;
+  bool FlipBPhi = false;
 
   int nr, nz;
   vtkm::FloatDefault rmin, zmin, rmax, zmax;
