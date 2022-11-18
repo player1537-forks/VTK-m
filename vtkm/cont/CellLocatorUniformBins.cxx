@@ -22,16 +22,16 @@ namespace
 {
 
 VTKM_EXEC
-static inline vtkm::Id ComputeFlatIndex(const vtkm::Id3& idx, const vtkm::Id3& dims)
+inline vtkm::Id ComputeFlatIndex(const vtkm::Id3& idx, const vtkm::Id3& dims)
 {
   return idx[0] + (dims[0] * (idx[1] + (dims[1] * idx[2])));
 }
 
 VTKM_EXEC
-static inline vtkm::Id3 GetFlatIndex(const vtkm::Vec3f& pt,
-                                     const vtkm::Vec3f& origin,
-                                     const vtkm::Vec3f& invSpacing,
-                                     const vtkm::Id3& maxCellIds)
+inline vtkm::Id3 GetFlatIndex(const vtkm::Vec3f& pt,
+                              const vtkm::Vec3f& origin,
+                              const vtkm::Vec3f& invSpacing,
+                              const vtkm::Id3& maxCellIds)
 {
   auto temp = pt - origin;
   temp = temp * invSpacing;
@@ -129,46 +129,27 @@ public:
     MinMaxIndicesForCellPoints(
       points, this->Origin, this->InvSpacing, this->MaxCellIds, idx000, idx111);
 
-#if 1
-    //std::cout<<"*****************************"<<std::endl;
-    //std::cout<<"CellIdx= "<<cellIdx<<std::endl;
-    //Set the indices and counts for each bin
     vtkm::Id cnt = 0;
-    for (vtkm::Id i = idx000[0]; i <= idx111[0]; i++)
-      for (vtkm::Id j = idx000[1]; j <= idx111[1]; j++)
-        for (vtkm::Id k = idx000[2]; k <= idx111[2]; k++)
-        {
-          vtkm::Id flatIdx = ComputeFlatIndex(vtkm::Id3(i, j, k), this->Dims);
-          binsPerCell.Set(start + cnt, flatIdx);
-          cellIds.Set(start + cnt, cellIdx);
-          //std::cout<<"Inc cellCounts: start= "<<start<<" sz= "<<cellCounts.GetNumberOfValues()<<std::endl;
-          //std::cout<<" or Inc cellCounts: cnt= "<<cnt<<" sz= "<<cellCounts.GetNumberOfValues()<<std::endl;
-          //cellCounts.Add(start+cnt, 1);
-          //std::cout<<"   cellCounts["<<flatIdx<<"] ++"<<std::endl;
-          cellCounts.Add(flatIdx, 1);
-          cnt++;
-        }
-#endif
-#if 0
     vtkm::Id sliceStart = ComputeFlatIndex(idx000, this->Dims);
     for (vtkm::Id k = idx000[2]; k <= idx111[2]; k++)
     {
-       vtkm::Id shaftStart = sliceStart;
+      vtkm::Id shaftStart = sliceStart;
       for (vtkm::Id j = idx000[1]; j <= idx111[1]; j++)
       {
         vtkm::Id flatIdx = shaftStart;
         for (vtkm::Id i = idx000[0]; i <= idx111[0]; i++)
         {
           // set portals and increment cnt...
-          binsPerCell.Set(start + flatIdx, flatIdx);
+          binsPerCell.Set(start + cnt, flatIdx);
           cellIds.Set(start + cnt, cellIdx);
+          cellCounts.Add(flatIdx, 1);
           ++flatIdx;
+          ++cnt;
         }
         shaftStart += this->Dims[0];
       }
       sliceStart += this->Dims[0] * this->Dims[1];
     }
-#endif
   }
 
 private:
@@ -177,23 +158,6 @@ private:
   vtkm::Id3 MaxCellIds;
   vtkm::Vec3f Origin;
 };
-
-/*
-class CountBins : public vtkm::worklet::WorkletMapField
-{
-public:
-  using ControlSignature = void(FieldIn input, AtomicArrayInOut out);
-  using ExecutionSignature = void(_1, _2);
-  using InputDomain = _1;
-
-  template <typename AtomicArrayType>
-  VTKM_EXEC void operator()(vtkm::Id value, const AtomicArrayType& bins) const
-  {
-    std::cout<<"---- Inc cellCounts: "<<value<<" sz= "<<bins.GetNumberOfValues()<<std::endl;
-    bins.Add(value, 1);
-  }
-};
-*/
 
 } //namespace detail
 
@@ -317,22 +281,20 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   invoker(
     recordBinsPerCell, cellset, coords, binStartIdx, binsPerCell, this->CellIds, this->CellCount);
 
-  //std::cout<<"binsPerCell: ";
-  //vtkm::cont::printSummary_ArrayHandle(binsPerCell, std::cout, true);
-  //std::cout<<"this->CellIds: ";
-  //vtkm::cont::printSummary_ArrayHandle(this->CellIds, std::cout, true);
-  //std::cout<<"0:****** this->CellCount: ";
-  //vtkm::cont::printSummary_ArrayHandle(this->CellCount, std::cout, true);
+  /*
+  std::cout<<"binsPerCell: ";
+  vtkm::cont::printSummary_ArrayHandle(binsPerCell, std::cout, true);
+  std::cout<<"this->CellIds: ";
+  vtkm::cont::printSummary_ArrayHandle(this->CellIds, std::cout, true);
+  std::cout<<"0:****** this->CellCount: ";
+  vtkm::cont::printSummary_ArrayHandle(this->CellCount, std::cout, true);
+  */
 
 
   //Step 4:
   // binsPerCell is the overlapping bins for each cell.
   // We want to sort CellIds by the bin ID.  SortByKey does this.
   vtkm::cont::Algorithm::SortByKey(binsPerCell, this->CellIds);
-
-  //5: Calculate counts for each bin and the start index.
-  //this->CellCount.AllocateAndFill(totalNumBins, 0);
-  //invoker(CountBins{}, binsPerCell, this->CellCount); //(input, output);
 
   //Step 5:
   // Finally, compute CellStartIdx by doing an exclusive scan on CellCount
