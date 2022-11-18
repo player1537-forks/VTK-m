@@ -274,14 +274,13 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   //     add the cell id to the CellIds starting at binStartIdx
   //     increment CellCount for the bin (uses an atomic for thread safety).
 
-  vtkm::cont::ArrayHandle<vtkm::Id> binsPerCell;
+  vtkm::cont::ArrayHandle<vtkm::Id> binsPerCell, cids, cellCount;
   binsPerCell.AllocateAndFill(num, 0);
-  this->CellIds.Allocate(num);
-  this->CellCount.AllocateAndFill(totalNumBins, 0);
+  cids.Allocate(num);
+  cellCount.AllocateAndFill(totalNumBins, 0);
   RecordBinsPerCell recordBinsPerCell(
     this->Origin, this->InvSpacing, this->UniformDims, this->MaxCellIds);
-  invoker(
-    recordBinsPerCell, cellset, coords, binStartIdx, binsPerCell, this->CellIds, this->CellCount);
+  invoker(recordBinsPerCell, cellset, coords, binStartIdx, binsPerCell, cids, cellCount);
 
   /*
   std::cout<<"binsPerCell: ";
@@ -296,11 +295,11 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   //Step 4:
   // binsPerCell is the overlapping bins for each cell.
   // We want to sort CellIds by the bin ID.  SortByKey does this.
-  vtkm::cont::Algorithm::SortByKey(binsPerCell, this->CellIds);
+  vtkm::cont::Algorithm::SortByKey(binsPerCell, cids);
 
   //Step 5:
   // Finally, compute CellStartIdx by doing an exclusive scan on CellCount
-  vtkm::cont::Algorithm::ScanExclusive(this->CellCount, this->CellStartIdx);
+  //vtkm::cont::Algorithm::ScanExclusive(cellCount, this->CellStartIdx);
 
   //std::cout<<"1: ******this->CellCount: ";
   //vtkm::cont::printSummary_ArrayHandle(this->CellCount, std::cout, true);
@@ -317,8 +316,8 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   vtkm::cont::printSummary_ArrayHandle(this->CellStartIdx, std::cout, true);
   */
 
-  this->CellIds2 = vtkm::cont::make_ArrayHandleGroupVecVariable(
-    this->CellIds, vtkm::cont::ConvertNumComponentsToOffsets(this->CellCount));
+  this->CellIds = vtkm::cont::make_ArrayHandleGroupVecVariable(
+    cids, vtkm::cont::ConvertNumComponentsToOffsets(cellCount));
 
   /*
   std::cout<<"CellIds_: "<<this->CellIds2.GetNumberOfValues()<<std::endl;
@@ -353,7 +352,7 @@ struct CellLocatorUniformBins::MakeExecObject
                                                                        self.MaxPoint,
                                                                        self.InvSpacing,
                                                                        self.MaxCellIds,
-                                                                       self.CellIds2,
+                                                                       self.CellIds,
                                                                        cellSet,
                                                                        self.GetCoordinates(),
                                                                        device,
@@ -387,12 +386,14 @@ void CellLocatorUniformBins::PrintSummary(std::ostream& out) const
   out << "Input Coordinates: \n";
   this->GetCoordinates().PrintSummary(out);
 
+  /*
   out << "  CellStartIdx:\n";
   vtkm::cont::printSummary_ArrayHandle(this->CellStartIdx, out);
   out << "  CellCount:\n";
   vtkm::cont::printSummary_ArrayHandle(this->CellCount, out);
   out << "  CellIds:\n";
   vtkm::cont::printSummary_ArrayHandle(this->CellIds, out);
+  */
 }
 }
 } // vtkm::cont

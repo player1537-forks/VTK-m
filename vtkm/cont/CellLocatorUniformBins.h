@@ -79,11 +79,7 @@ private:
   using CellIdArrayType = vtkm::cont::ArrayHandle<vtkm::Id>;
   using CellIdOffsetArrayType = vtkm::cont::ArrayHandle<vtkm::Id>;
 
-  vtkm::cont::ArrayHandleGroupVecVariable<CellIdArrayType, CellIdOffsetArrayType> CellIds2;
-
-  vtkm::cont::ArrayHandle<vtkm::Id> CellCount;
-  vtkm::cont::ArrayHandle<vtkm::Id> CellIds;
-  vtkm::cont::ArrayHandle<vtkm::Id> CellStartIdx;
+  vtkm::cont::ArrayHandleGroupVecVariable<CellIdArrayType, CellIdOffsetArrayType> CellIds;
 
   struct MakeExecObject;
 };
