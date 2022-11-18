@@ -305,8 +305,9 @@ void TestingCellLocatorUnstructured()
   //Test vtkm::cont::CellLocatorUniformBins
   vtkm::cont::CellLocatorUniformBins locatorUB;
   locatorUB.SetDims({ 32, 32, 32 });
+  TestCellLocator(locatorUB, vtkm::Id3(8), 512); // 3D dataset
 
-  TestCellLocator(locatorUB, vtkm::Id3(8), 512);  // 3D dataset
+  locatorUB.SetDims({ 32, 32, 1 });
   TestCellLocator(locatorUB, vtkm::Id2(18), 512); // 2D dataset
 }
 
