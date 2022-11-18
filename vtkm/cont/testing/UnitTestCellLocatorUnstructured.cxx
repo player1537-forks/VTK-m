@@ -311,7 +311,7 @@ void TestingCellLocatorUnstructured()
   TestCellLocator(locatorUB, vtkm::Id2(18), 512); // 2D dataset
 
   locatorUB.SetDims({ 2, 2, 1 });
-  TestCellLocator(locatorUB, vtkm::Id2(2), 4); // 2D dataset
+  TestCellLocator(locatorUB, vtkm::Id2(3), 4); // 2D dataset
 }
 
 

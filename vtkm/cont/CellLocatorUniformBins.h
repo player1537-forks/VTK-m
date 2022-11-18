@@ -13,6 +13,7 @@
 #include <vtkm/cont/ArrayHandle.h>
 #include <vtkm/cont/CellSetList.h>
 
+#include <vtkm/cont/ArrayHandleGroupVecVariable.h>
 #include <vtkm/cont/internal/CellLocatorBase.h>
 
 #include <vtkm/exec/CellLocatorMultiplexer.h>
@@ -74,6 +75,11 @@ private:
   vtkm::Vec3f Origin;
   vtkm::Id3 UniformDims;
   vtkm::Id3 MaxCellIds;
+
+  using CellIdArrayType = vtkm::cont::ArrayHandle<vtkm::Id>;
+  using CellIdOffsetArrayType = vtkm::cont::ArrayHandle<vtkm::Id>;
+
+  vtkm::cont::ArrayHandleGroupVecVariable<CellIdArrayType, CellIdOffsetArrayType> CellIds2;
 
   vtkm::cont::ArrayHandle<vtkm::Id> CellCount;
   vtkm::cont::ArrayHandle<vtkm::Id> CellIds;

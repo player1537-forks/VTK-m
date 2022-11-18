@@ -35,27 +35,30 @@ class VTKM_ALWAYS_EXPORT CellLocatorUniformBins
   using CoordsPortalType =
     typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
 
+  using CellIdArrayType = vtkm::cont::ArrayHandle<vtkm::Id>;
+  using CellIdOffsetArrayType = vtkm::cont::ArrayHandle<vtkm::Id>;
+  using CellIdReadPortal =
+    typename vtkm::cont::ArrayHandleGroupVecVariable<CellIdArrayType,
+                                                     CellIdOffsetArrayType>::ReadPortalType;
+
 public:
   template <typename CellSetType>
-  VTKM_CONT CellLocatorUniformBins(const vtkm::Id3& cellDims,
-                                   const vtkm::Vec3f& origin,
-                                   const vtkm::Vec3f& maxPoint,
-                                   const vtkm::Vec3f& invSpacing,
-                                   const vtkm::Id3& maxCellIds,
-                                   const vtkm::cont::ArrayHandle<vtkm::Id>& cellCount,
-                                   const vtkm::cont::ArrayHandle<vtkm::Id>& cellStartIndex,
-                                   const vtkm::cont::ArrayHandle<vtkm::Id>& cellIds,
-                                   const CellSetType& cellSet,
-                                   const vtkm::cont::CoordinateSystem& coords,
-                                   vtkm::cont::DeviceAdapterId device,
-                                   vtkm::cont::Token& token)
+  VTKM_CONT CellLocatorUniformBins(
+    const vtkm::Id3& cellDims,
+    const vtkm::Vec3f& origin,
+    const vtkm::Vec3f& maxPoint,
+    const vtkm::Vec3f& invSpacing,
+    const vtkm::Id3& maxCellIds,
+    const vtkm::cont::ArrayHandleGroupVecVariable<CellIdArrayType, CellIdOffsetArrayType>& cellIds,
+    const CellSetType& cellSet,
+    const vtkm::cont::CoordinateSystem& coords,
+    vtkm::cont::DeviceAdapterId device,
+    vtkm::cont::Token& token)
     : CellDims(cellDims)
     , Origin(origin)
     , MaxPoint(maxPoint)
     , InvSpacing(invSpacing)
     , MaxCellIds(maxCellIds)
-    , CellStartIndex(cellStartIndex.PrepareForInput(device, token))
-    , CellCount(cellCount.PrepareForInput(device, token))
     , CellIds(cellIds.PrepareForInput(device, token))
     , CellSet(cellSet.PrepareForInput(device,
                                       vtkm::TopologyElementTagCell{},
@@ -97,7 +100,7 @@ public:
     }
 
     //See if it's in the last bin.
-    if ((lastCell.BinIdx >= 0) && (lastCell.BinIdx < this->CellCount.GetNumberOfValues()) &&
+    if ((lastCell.BinIdx >= 0) && (lastCell.BinIdx < this->CellIds.GetNumberOfValues()) &&
         this->PointInBin(point, lastCell.BinIdx, cellId, pc) == vtkm::ErrorCode::Success)
     {
       parametric = pc;
@@ -209,12 +212,11 @@ private:
                              vtkm::Id& cellId,
                              vtkm::Vec3f& parametric) const
   {
-    vtkm::Id i0 = this->CellStartIndex.Get(binIdx);
-    vtkm::Id i1 = i0 + this->CellCount.Get(binIdx);
+    auto binIds = this->CellIds.Get(binIdx);
 
-    for (vtkm::Id i = i0; i < i1; i++)
+    for (vtkm::IdComponent i = 0; i < binIds.GetNumberOfComponents(); i++)
     {
-      vtkm::Id cid = this->CellIds.Get(i);
+      vtkm::Id cid = binIds[i];
       vtkm::Vec3f pc;
       if (this->PointInCell(point, cid, pc) == vtkm::ErrorCode::Success)
       {
@@ -252,9 +254,7 @@ private:
   vtkm::Vec3f InvSpacing;
   vtkm::Id3 MaxCellIds;
 
-  ReadPortal<vtkm::Id> CellStartIndex;
-  ReadPortal<vtkm::Id> CellCount;
-  ReadPortal<vtkm::Id> CellIds;
+  CellIdReadPortal CellIds;
 
   CellStructureType CellSet;
   CoordsPortalType Coords;

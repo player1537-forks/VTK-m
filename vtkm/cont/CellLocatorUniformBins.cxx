@@ -8,7 +8,9 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 #include <vtkm/cont/Algorithm.h>
+#include <vtkm/cont/ArrayHandleGroupVecVariable.h>
 #include <vtkm/cont/CellLocatorUniformBins.h>
+#include <vtkm/cont/ConvertNumComponentsToOffsets.h>
 #include <vtkm/cont/Invoker.h>
 #include <vtkm/worklet/WorkletMapField.h>
 #include <vtkm/worklet/WorkletMapTopology.h>
@@ -304,6 +306,34 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   //vtkm::cont::printSummary_ArrayHandle(this->CellCount, std::cout, true);
   //std::cout<<"this->CellStartIdx: ";
   //vtkm::cont::printSummary_ArrayHandle(this->CellStartIdx, std::cout, true);
+
+
+  /*
+  std::cout<<"this->CellIds: ";
+  vtkm::cont::printSummary_ArrayHandle(this->CellIds, std::cout, true);
+  std::cout<<"0:****** this->CellCount: ";
+  vtkm::cont::printSummary_ArrayHandle(this->CellCount, std::cout, true);
+  std::cout<<"this->CellStartIdx: ";
+  vtkm::cont::printSummary_ArrayHandle(this->CellStartIdx, std::cout, true);
+  */
+
+  this->CellIds2 = vtkm::cont::make_ArrayHandleGroupVecVariable(
+    this->CellIds, vtkm::cont::ConvertNumComponentsToOffsets(this->CellCount));
+
+  /*
+  std::cout<<"CellIds_: "<<this->CellIds2.GetNumberOfValues()<<std::endl;
+  vtkm::Id cnt = 0;
+  for (vtkm::Id i = 0; i < this->CellIds2.GetNumberOfValues(); i++)
+  {
+    auto x = this->CellIds2.ReadPortal().Get(i);
+    std::cout<<"  "<<i<<" : "<<x.GetNumberOfComponents()<<std::endl;
+    for (vtkm::IdComponent j = 0; j < x.GetNumberOfComponents(); j++)
+    {
+      std::cout<<"     v["<<j<<"]= "<<x[j]<<" cnt= "<<cnt<<std::endl;
+      cnt++;
+    }
+  }
+  */
 }
 
 //----------------------------------------------------------------------------
@@ -323,9 +353,7 @@ struct CellLocatorUniformBins::MakeExecObject
                                                                        self.MaxPoint,
                                                                        self.InvSpacing,
                                                                        self.MaxCellIds,
-                                                                       self.CellCount,
-                                                                       self.CellStartIdx,
-                                                                       self.CellIds,
+                                                                       self.CellIds2,
                                                                        cellSet,
                                                                        self.GetCoordinates(),
                                                                        device,
