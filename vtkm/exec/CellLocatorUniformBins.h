@@ -35,7 +35,6 @@ class VTKM_ALWAYS_EXPORT CellLocatorUniformBins
   using CoordsPortalType =
     typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
 
-<<<<<<< HEAD
   using CellIdArrayType = vtkm::cont::ArrayHandle<vtkm::Id>;
   using CellIdOffsetArrayType = vtkm::cont::ArrayHandle<vtkm::Id>;
   using CellIdReadPortal =
@@ -55,33 +54,11 @@ public:
     const vtkm::cont::CoordinateSystem& coords,
     vtkm::cont::DeviceAdapterId device,
     vtkm::cont::Token& token)
-=======
-
-public:
-  template <typename CellSetType>
-  VTKM_CONT CellLocatorUniformBins(const vtkm::Id3& cellDims,
-                                   const vtkm::Vec3f& origin,
-                                   const vtkm::Vec3f& maxPoint,
-                                   const vtkm::Vec3f& invSpacing,
-                                   const vtkm::Id3& maxCellIds,
-                                   const vtkm::cont::ArrayHandle<vtkm::Id>& cellCount,
-                                   const vtkm::cont::ArrayHandle<vtkm::Id>& cellStartIndex,
-                                   const vtkm::cont::ArrayHandle<vtkm::Id>& cellIds,
-                                   const CellSetType& cellSet,
-                                   const vtkm::cont::CoordinateSystem& coords,
-                                   vtkm::cont::DeviceAdapterId device,
-                                   vtkm::cont::Token& token)
->>>>>>> df93dd221... Uniform bins cell locator for unstructured grids.
     : CellDims(cellDims)
     , Origin(origin)
     , MaxPoint(maxPoint)
     , InvSpacing(invSpacing)
     , MaxCellIds(maxCellIds)
-<<<<<<< HEAD
-=======
-    , CellStartIndex(cellStartIndex.PrepareForInput(device, token))
-    , CellCount(cellCount.PrepareForInput(device, token))
->>>>>>> df93dd221... Uniform bins cell locator for unstructured grids.
     , CellIds(cellIds.PrepareForInput(device, token))
     , CellSet(cellSet.PrepareForInput(device,
                                       vtkm::TopologyElementTagCell{},
@@ -123,11 +100,7 @@ public:
     }
 
     //See if it's in the last bin.
-<<<<<<< HEAD
     if ((lastCell.BinIdx >= 0) && (lastCell.BinIdx < this->CellIds.GetNumberOfValues()) &&
-=======
-    if ((lastCell.BinIdx >= 0) && (lastCell.BinIdx < this->CellCount.GetNumberOfValues()) &&
->>>>>>> df93dd221... Uniform bins cell locator for unstructured grids.
         this->PointInBin(point, lastCell.BinIdx, cellId, pc) == vtkm::ErrorCode::Success)
     {
       parametric = pc;
@@ -239,20 +212,11 @@ private:
                              vtkm::Id& cellId,
                              vtkm::Vec3f& parametric) const
   {
-<<<<<<< HEAD
     auto binIds = this->CellIds.Get(binIdx);
 
     for (vtkm::IdComponent i = 0; i < binIds.GetNumberOfComponents(); i++)
     {
       vtkm::Id cid = binIds[i];
-=======
-    vtkm::Id i0 = this->CellStartIndex.Get(binIdx);
-    vtkm::Id i1 = i0 + this->CellCount.Get(binIdx);
-
-    for (vtkm::Id i = i0; i < i1; i++)
-    {
-      vtkm::Id cid = this->CellIds.Get(i);
->>>>>>> df93dd221... Uniform bins cell locator for unstructured grids.
       vtkm::Vec3f pc;
       if (this->PointInCell(point, cid, pc) == vtkm::ErrorCode::Success)
       {
@@ -290,13 +254,7 @@ private:
   vtkm::Vec3f InvSpacing;
   vtkm::Id3 MaxCellIds;
 
-<<<<<<< HEAD
   CellIdReadPortal CellIds;
-=======
-  ReadPortal<vtkm::Id> CellStartIndex;
-  ReadPortal<vtkm::Id> CellCount;
-  ReadPortal<vtkm::Id> CellIds;
->>>>>>> df93dd221... Uniform bins cell locator for unstructured grids.
 
   CellStructureType CellSet;
   CoordsPortalType Coords;
