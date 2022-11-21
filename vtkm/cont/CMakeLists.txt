@@ -139,6 +139,7 @@ set(sources
   CellLocatorGeneral.cxx
   CellLocatorPartitioned.cxx
   CellLocatorRectilinearGrid.cxx
+  CellLocatorUniformBins.cxx
   CellLocatorUniformGrid.cxx
   CellSet.cxx
   CellSetStructured.cxx
@@ -180,6 +181,7 @@ set(device_sources
   ArrayRangeCompute.cxx
   CellLocatorBoundingIntervalHierarchy.cxx
   CellLocatorTwoLevel.cxx
+  CellLocatorUniformBins.cxx
   CellSetExplicit.cxx
   CellSetExtrude.cxx
   ColorTable.cxx
