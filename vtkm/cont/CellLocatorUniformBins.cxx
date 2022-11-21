@@ -205,30 +205,27 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   // c0: b0, b1, b2
   // c1: b1
   // c2: b2
-  // The acceleration structure consists of the following 3 arrays:
-  // *CellCount: the number of cells in each bin.
-  // In the example, b0 has 1 cell, b1 has 2 cells, etc
-  // CellCount = {1, 2, 2, 0}
   //
-  // *CellIds: the list of cell Ids for each bin
+  // The acceleration structure is an array of cell ids that are grouped
+  // by the overlapping bin. This information can be represented using
+  // vtkm::cont::ArrayHandleGroupVecVariable
   // In the example above:
   // CellIds = {c0,  c0,c1,  c0,c2,  }
   //            b0    b1       b2   b3
-  //
-  // *CellStartIdx: The start index for each bin. In the example:
-  // CellStartIdx = {0, 1, 3, 5}
   //
   // The algorithm runs as follows:
   //  Given a point p, find the bin (b) that contains p.
   //  Do a point-in-cell test for each cell in bin b.
   //
-  //  Example:  point p is in b=1
-  //  CellStartIdx[b] is 1
-  //  CellCount[b] is 2
-  //  Do a point-in-cell test on the 2 cells that start at index 1
+  // Example:  point p is in b=1
+  // vtkm::cont::ArrayHandleGroupVecVariable provides the offset and number
+  // cells in bin b=1. The offset is 1 and the count is 2.
+  //  Do a point-in-cell test on the 2 cells that start at offset 1
   //    CellIds[ 1 + 0], which is c0
   //    CellIds[ 1 + 1], which is c1
 
+
+  //Computing this involves several steps which are described below.
   //Step 1:
   // For each cell in cellSet, count the number of bins that overlap with the cell bbox.
   // For the example above
@@ -239,39 +236,34 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   vtkm::cont::ArrayHandle<vtkm::Id> binCountsPerCell;
   CountCellBins countCellBins(this->Origin, this->InvSpacing, this->MaxCellIds);
   invoker(countCellBins, cellset, coords, binCountsPerCell);
-  //std::cout<<"binCountsPerCell: ";
-  //vtkm::cont::printSummary_ArrayHandle(binCountsPerCell, std::cout, true);
 
   //2: Compute number of unique cell/bin pairs and start indices.
 
   //Step 2:
-  // Given the number of bins for each cell, we can compute the start index for each cell.
-  // For the example above, binStartIdx is:
+  // Given the number of bins for each cell, we can compute the offset for each cell.
+  // For the example above, binOffset is:
   // {0, 3, 4}
   // and the total number, num is 5
   // c0 begins at idx=0
   // c1 begins at idx=3
   // c2 begins at idx=4
-  vtkm::cont::ArrayHandle<vtkm::Id> binStartIdx;
-  auto num = vtkm::cont::Algorithm::ScanExclusive(binCountsPerCell, binStartIdx);
-
-  //std::cout<<"binStartIdx: ";
-  //vtkm::cont::printSummary_ArrayHandle(binStartIdx, std::cout, true);
+  vtkm::cont::ArrayHandle<vtkm::Id> binOffset;
+  auto num = vtkm::cont::Algorithm::ScanExclusive(binCountsPerCell, binOffset);
 
   //Step 3:
   // Now that we know the start index and numbers, we can fill an array of bin ids.
   // binsPerCell is the list of binIds for each cell. In the example above,
   // binsPerCell = {b0,b1,b2,   b2,       b2}
   //               \ cell0 /    cell1    cell2
-  // We can also compute the acceleration structure arrays CellIds and CellCount
-  // CellIds = {c0,c0,c0, c1, c2}
-  // CellCount = {3, 1, 1, 0}
+  // We can also compute the cellIds and number of cells per bin, cellCount
+  // cids      = {c0,c0,c0, c1, c2}
+  // cellCount = {3, 1, 1, 0}
   // These are set using RecordBinsPerCell worklet, which does the following
   // for each cell
   //   compute cell bbox and list of overlaping bins
   //   for each overlaping bin
-  //     add the bin id to binsPerCell starting at binStartIdx
-  //     add the cell id to the CellIds starting at binStartIdx
+  //     add the bin id to binsPerCell starting at binOffset
+  //     add the cell id to the CellIds starting at binOffset
   //     increment CellCount for the bin (uses an atomic for thread safety).
 
   vtkm::cont::ArrayHandle<vtkm::Id> binsPerCell, cids, cellCount;
@@ -280,59 +272,18 @@ VTKM_CONT void CellLocatorUniformBins::Build()
   cellCount.AllocateAndFill(totalNumBins, 0);
   RecordBinsPerCell recordBinsPerCell(
     this->Origin, this->InvSpacing, this->UniformDims, this->MaxCellIds);
-  invoker(recordBinsPerCell, cellset, coords, binStartIdx, binsPerCell, cids, cellCount);
-
-  /*
-  std::cout<<"binsPerCell: ";
-  vtkm::cont::printSummary_ArrayHandle(binsPerCell, std::cout, true);
-  std::cout<<"this->CellIds: ";
-  vtkm::cont::printSummary_ArrayHandle(this->CellIds, std::cout, true);
-  std::cout<<"0:****** this->CellCount: ";
-  vtkm::cont::printSummary_ArrayHandle(this->CellCount, std::cout, true);
-  */
-
+  invoker(recordBinsPerCell, cellset, coords, binOffset, binsPerCell, cids, cellCount);
 
   //Step 4:
   // binsPerCell is the overlapping bins for each cell.
   // We want to sort CellIds by the bin ID.  SortByKey does this.
   vtkm::cont::Algorithm::SortByKey(binsPerCell, cids);
 
-  //Step 5:
-  // Finally, compute CellStartIdx by doing an exclusive scan on CellCount
-  //vtkm::cont::Algorithm::ScanExclusive(cellCount, this->CellStartIdx);
-
-  //std::cout<<"1: ******this->CellCount: ";
-  //vtkm::cont::printSummary_ArrayHandle(this->CellCount, std::cout, true);
-  //std::cout<<"this->CellStartIdx: ";
-  //vtkm::cont::printSummary_ArrayHandle(this->CellStartIdx, std::cout, true);
-
-
-  /*
-  std::cout<<"this->CellIds: ";
-  vtkm::cont::printSummary_ArrayHandle(this->CellIds, std::cout, true);
-  std::cout<<"0:****** this->CellCount: ";
-  vtkm::cont::printSummary_ArrayHandle(this->CellCount, std::cout, true);
-  std::cout<<"this->CellStartIdx: ";
-  vtkm::cont::printSummary_ArrayHandle(this->CellStartIdx, std::cout, true);
-  */
-
+  // Convert the cell counts to offsets using the helper function
+  // vtkm::cont::ConvertNumComponentsToOffsets, and create the
+  // CellIds that are used as the acceleration structure.
   this->CellIds = vtkm::cont::make_ArrayHandleGroupVecVariable(
     cids, vtkm::cont::ConvertNumComponentsToOffsets(cellCount));
-
-  /*
-  std::cout<<"CellIds_: "<<this->CellIds2.GetNumberOfValues()<<std::endl;
-  vtkm::Id cnt = 0;
-  for (vtkm::Id i = 0; i < this->CellIds2.GetNumberOfValues(); i++)
-  {
-    auto x = this->CellIds2.ReadPortal().Get(i);
-    std::cout<<"  "<<i<<" : "<<x.GetNumberOfComponents()<<std::endl;
-    for (vtkm::IdComponent j = 0; j < x.GetNumberOfComponents(); j++)
-    {
-      std::cout<<"     v["<<j<<"]= "<<x[j]<<" cnt= "<<cnt<<std::endl;
-      cnt++;
-    }
-  }
-  */
 }
 
 //----------------------------------------------------------------------------
