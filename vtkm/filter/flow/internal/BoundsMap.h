@@ -66,6 +66,12 @@ public:
     this->Init(pds.GetPartitions());
   }
 
+  vtkm::Id GetBlockIdFromLocalIndex(vtkm::Id idx) const
+  {
+    VTKM_ASSERT(idx >= 0 && idx < this->LocalNumBlocks);
+    return this->LocalIDs[static_cast<std::size_t>(idx)];
+  }
+
   vtkm::Id GetLocalBlockId(vtkm::Id idx) const
   {
     VTKM_ASSERT(idx >= 0 && idx < this->LocalNumBlocks);
@@ -108,6 +114,12 @@ public:
 
   vtkm::Id GetTotalNumBlocks() const { return this->TotalNumBlocks; }
   vtkm::Id GetLocalNumBlocks() const { return this->LocalNumBlocks; }
+
+  vtkm::Bounds GetBlockBounds(vtkm::Id bid) const
+  {
+    VTKM_ASSERT(bid >= 0 && bid < static_cast<vtkm::Id>(this->BlockBounds.size()));
+    return this->BlockBounds[static_cast<std::size_t>(bid)];
+  }
 
 private:
   void Init(const std::vector<vtkm::cont::DataSet>& dataSets)
