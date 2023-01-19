@@ -26,3 +26,16 @@ set(unit_tests
 )
 
 vtkm_unit_tests(SOURCES ${unit_tests})
+
+#add distributed tests i.e.test to run with MPI
+#if MPI is enabled.
+if (VTKm_ENABLE_MPI)
+  set(mpi_unit_tests
+    UnitTestImageCompositing.cxx
+  )
+  vtkm_unit_tests(
+    MPI
+    DEVICE_SOURCES ${mpi_unit_tests}
+    USE_VTKM_JOB_POOL
+  )
+endif()

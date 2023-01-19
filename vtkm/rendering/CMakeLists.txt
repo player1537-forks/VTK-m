@@ -55,6 +55,10 @@ set(headers
   View3D.h
   Wireframer.h
   WorldAnnotator.h
+
+  compositing/Compositor.h
+  compositing/Image.h
+  compositing/PNGEncoder.h
   )
 
 set(sources
@@ -86,6 +90,13 @@ set(sources
   raytracing/Logger.cxx
   raytracing/MeshConnectivityContainers.cxx
   raytracing/TriangleExtractor.cxx
+
+  compositing/Compositor.cxx
+  compositing/Image.cxx
+  compositing/PNGEncoder.cxx
+  compositing/RadixKCompositor.cxx
+  compositing/PayloadCompositor.cxx
+  compositing/PayloadImage.cxx
   )
 
 # This list of sources has code that uses devices and so might need to be
@@ -145,6 +156,10 @@ vtkm_library(
 #-----------------------------------------------------------------------------
 if(UNIX AND NOT APPLE)
   target_link_libraries(vtkm_rendering PRIVATE rt)
+endif()
+
+if (VTKm_ENABLE_MPI)
+  target_link_libraries(vtkm_rendering PUBLIC MPI::MPI_CXX)
 endif()
 
 #-----------------------------------------------------------------------------

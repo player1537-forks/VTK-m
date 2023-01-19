@@ -8,6 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
+#include <vtkm/io/VTKDataSetWriter.h>
+
 #include <vtkm/cont/Initialize.h>
 #include <vtkm/source/Tangle.h>
 
@@ -39,6 +41,9 @@ int main(int argc, char* argv[])
   vtkm::cont::DataSet tangleData = tangle.Execute();
   std::string fieldName = "tangle";
 
+  vtkm::io::VTKDataSetWriter writer("tangle.vtk");
+  writer.WriteDataSet(tangleData);
+
   // Set up a camera for rendering the input data
   vtkm::rendering::Camera camera;
   camera.SetLookAt(vtkm::Vec3f_32(0.5, 0.5, 0.5));
@@ -57,7 +62,7 @@ int main(int argc, char* argv[])
   vtkm::rendering::Scene scene;
   scene.AddActor(actor);
   // 2048x2048 pixels in the canvas:
-  CanvasRayTracer canvas(2048, 2048);
+  CanvasRayTracer canvas(512, 512);
   // Create a view and use it to render the input data using OS Mesa
 
   vtkm::rendering::View3D view(scene, MapperVolume(), canvas, camera, bg);
