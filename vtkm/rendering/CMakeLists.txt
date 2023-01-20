@@ -92,6 +92,7 @@ set(sources
   raytracing/TriangleExtractor.cxx
 
   compositing/Compositor.cxx
+  compositing/DirectSendCompositor.cxx
   compositing/Image.cxx
   compositing/PNGEncoder.cxx
   compositing/RadixKCompositor.cxx

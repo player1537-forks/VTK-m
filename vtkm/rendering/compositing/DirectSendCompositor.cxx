@@ -1,5 +1,21 @@
-#include <vtkh/compositing/DirectSendCompositor.hpp>
-#include <vtkh/compositing/ImageCompositor.hpp>
+//============================================================================
+//  Copyright (c) Kitware, Inc.
+//  All rights reserved.
+//  See LICENSE.txt for details.
+//
+//  This software is distributed WITHOUT ANY WARRANTY; without even
+//  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+//  PURPOSE.  See the above copyright notice for more information.
+//============================================================================
+
+#include <vtkm/rendering/compositing/DirectSendCompositor.h>
+#include <vtkm/rendering/compositing/ImageCompositor.h>
+
+#include <vtkm/rendering/compositing/vtkm_diy_collect.h>
+#include <vtkm/rendering/compositing/vtkm_diy_image_block.h>
+#include <vtkm/rendering/compositing/vtkm_diy_utils.h>
+
+/*
 #include <vtkh/compositing/MPICollect.hpp>
 #include <vtkh/compositing/vtkh_diy_collect.hpp>
 #include <vtkh/compositing/vtkh_diy_utils.hpp>
@@ -9,20 +25,27 @@
 #include <diy/partners/swap.hpp>
 #include <diy/reduce-operations.hpp>
 #include <diy/reduce.hpp>
+*/
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering
+{
+namespace compositing
 {
 
+namespace internal
+{
 struct Redistribute
 {
-  typedef vtkhdiy::RegularDecomposer<vtkhdiy::DiscreteBounds> Decomposer;
-  const vtkhdiy::RegularDecomposer<vtkhdiy::DiscreteBounds>& m_decomposer;
+  typedef vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> Decomposer;
+  const vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds>& m_decomposer;
   Redistribute(const Decomposer& decomposer)
     : m_decomposer(decomposer)
   {
   }
 
-  void operator()(void* v_block, const vtkhdiy::ReduceProxy& proxy) const
+  void operator()(void* v_block, const vtkmdiy::ReduceProxy& proxy) const
   {
     MultiImageBlock* block = static_cast<MultiImageBlock*>(v_block);
     //
@@ -34,15 +57,15 @@ struct Redistribute
     const int local_images = block->m_images.size();
     if (proxy.in_link().size() == 0)
     {
-      std::map<vtkhdiy::BlockID, std::vector<Image>> outgoing;
+      std::map<vtkmdiy::BlockID, std::vector<Image>> outgoing;
 
       for (int i = 0; i < world_size; ++i)
       {
-        vtkhdiy::DiscreteBounds sub_image_bounds;
+        vtkmdiy::DiscreteBounds sub_image_bounds(3);
         m_decomposer.fill_bounds(sub_image_bounds, i);
-        vtkm::Bounds vtkm_sub_bounds = DIYBoundsToVTKM(sub_image_bounds);
+        vtkm::Bounds vtkm_sub_bounds = vtkh::DIYBoundsToVTKM(sub_image_bounds);
 
-        vtkhdiy::BlockID dest = proxy.out_link().target(i);
+        vtkmdiy::BlockID dest = proxy.out_link().target(i);
         outgoing[dest].resize(local_images);
 
         for (int img = 0; img < local_images; ++img)
@@ -51,7 +74,7 @@ struct Redistribute
         }
       } //for
 
-      typename std::map<vtkhdiy::BlockID, std::vector<Image>>::iterator it;
+      typename std::map<vtkmdiy::BlockID, std::vector<Image>>::iterator it;
       for (it = outgoing.begin(); it != outgoing.end(); ++it)
       {
         proxy.enqueue(it->first, it->second);
@@ -108,14 +131,16 @@ struct Redistribute
   } // operator
 };
 
+} //namespace internal
+
 DirectSendCompositor::DirectSendCompositor() {}
 
 DirectSendCompositor::~DirectSendCompositor() {}
 
-void DirectSendCompositor::CompositeVolume(vtkhdiy::mpi::communicator& diy_comm,
+void DirectSendCompositor::CompositeVolume(vtkmdiy::mpi::communicator& diy_comm,
                                            std::vector<Image>& images)
 {
-  vtkhdiy::DiscreteBounds global_bounds = VTKMBoundsToDIY(images.at(0).m_orig_bounds);
+  vtkmdiy::DiscreteBounds global_bounds = vtkh::VTKMBoundsToDIY(images.at(0).m_orig_bounds);
 
   const int num_threads = 1;
   const int num_blocks = diy_comm.size();
@@ -126,38 +151,39 @@ void DirectSendCompositor::CompositeVolume(vtkhdiy::mpi::communicator& diy_comm,
   // so we isolate them within separate blocks
   //
   {
-    vtkhdiy::Master master(diy_comm, num_threads, -1, 0, [](void* b) {
+    vtkmdiy::Master master(diy_comm, num_threads, -1, 0, [](void* b) {
       ImageBlock<Image>* block = reinterpret_cast<ImageBlock<Image>*>(b);
       delete block;
     });
 
     // create an assigner with one block per rank
-    vtkhdiy::ContiguousAssigner assigner(num_blocks, num_blocks);
+    vtkmdiy::ContiguousAssigner assigner(num_blocks, num_blocks);
 
     AddMultiImageBlock create(master, images, sub_image);
 
     const int dims = 2;
-    vtkhdiy::RegularDecomposer<vtkhdiy::DiscreteBounds> decomposer(dims, global_bounds, num_blocks);
+    vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> decomposer(dims, global_bounds, num_blocks);
     decomposer.decompose(diy_comm.rank(), assigner, create);
 
-    vtkhdiy::all_to_all(master, assigner, Redistribute(decomposer), magic_k);
+    vtkmdiy::all_to_all(master, assigner, internal::Redistribute(decomposer), magic_k);
   }
 
   {
-    vtkhdiy::Master master(diy_comm, num_threads, -1, 0, [](void* b) {
+    vtkmdiy::Master master(diy_comm, num_threads, -1, 0, [](void* b) {
       ImageBlock<Image>* block = reinterpret_cast<ImageBlock<Image>*>(b);
       delete block;
     });
-    vtkhdiy::ContiguousAssigner assigner(num_blocks, num_blocks);
+    vtkmdiy::ContiguousAssigner assigner(num_blocks, num_blocks);
 
     const int dims = 2;
-    vtkhdiy::RegularDecomposer<vtkhdiy::DiscreteBounds> decomposer(dims, global_bounds, num_blocks);
+    vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> decomposer(dims, global_bounds, num_blocks);
     AddImageBlock<Image> all_create(master, sub_image);
     decomposer.decompose(diy_comm.rank(), assigner, all_create);
-    MPI_Barrier(diy_comm);
+    diy_comm.barrier();
+    //MPI_Barrier(diy_comm);
 
     //MPICollect(sub_image,diy_comm);
-    vtkhdiy::all_to_all(master, assigner, CollectImages<Image>(decomposer), magic_k);
+    vtkmdiy::all_to_all(master, assigner, CollectImages<Image>(decomposer), magic_k);
   }
 
   images.at(0).Swap(sub_image);
@@ -171,3 +197,5 @@ std::string DirectSendCompositor::GetTimingString()
 }
 
 }
+}
+} //namespace vtkm::rendering::compositing

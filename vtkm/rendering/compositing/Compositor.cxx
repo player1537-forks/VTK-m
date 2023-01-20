@@ -17,9 +17,9 @@
 
 #ifdef VTKM_ENABLE_MPI
 #include <mpi.h>
-#include <vtkm/thirdparty/diy/mpi-cast.h>
-//#include <vtkh/compositing/DirectSendCompositor.hpp>
+#include <vtkm/rendering/compositing/DirectSendCompositor.h>
 #include <vtkm/rendering/compositing/RadixKCompositor.h>
+#include <vtkm/thirdparty/diy/mpi-cast.h>
 #endif
 
 namespace vtkm
@@ -189,14 +189,10 @@ void Compositor::CompositeVisOrder()
 {
 
 #ifdef VTKM_ENABLE_MPI
-  /*
-  vtkhdiy::mpi::communicator diy_comm;
-  diy_comm = vtkhdiy::mpi::communicator(MPI_Comm_f2c(GetMPICommHandle()));
-
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   assert(m_images.size() != 0);
-  DirectSendCompositor compositor;
-  compositor.CompositeVolume(diy_comm, this->m_images);
-  */
+  vtkm::rendering::compositing::DirectSendCompositor compositor;
+  compositor.CompositeVolume(comm, this->m_images);
 #else
   vtkm::rendering::compositing::ImageCompositor compositor;
   compositor.OrderedComposite(m_images);
