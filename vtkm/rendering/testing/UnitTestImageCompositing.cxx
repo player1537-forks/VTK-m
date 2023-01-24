@@ -13,6 +13,7 @@
 #include <vtkm/rendering/compositing/Image.h>
 #include <vtkm/rendering/compositing/ImageCompositor.h>
 #include <vtkm/rendering/testing/t_vtkm_test_utils.h>
+#include <vtkm/source/Tangle.h>
 
 #include <vtkm/rendering/Actor.h>
 #include <vtkm/rendering/CanvasRayTracer.h>
@@ -120,43 +121,21 @@ void TestRenderComposite()
   int numBlocks = comm.size() * 1;
   int rank = comm.rank();
 
+
+  //Create a sequence of datasets along the X direction.
   std::string fieldName = "tangle";
-  std::string fname = "";
-  if (comm.rank() == 0)
-    fname = "/home/dpn/tangle0.vtk";
-  else
-    fname = "/home/dpn/tangle1.vtk";
-
-  vtkm::io::VTKDataSetReader reader(fname);
-  auto ds = reader.ReadDataSet();
-  ds.PrintSummary(std::cout);
-
-
-  /*
   vtkm::source::Tangle tangle;
+  vtkm::Vec3f pt(1 * rank, 0, 0);
   tangle.SetPointDimensions({ 50, 50, 50 });
+  tangle.SetOrigin(pt);
   vtkm::cont::DataSet ds = tangle.Execute();
-  */
-
-  //auto ds = CreateTestData(rank, numBlocks, 32);
-  //auto fieldName = "point_data_Float32";
-
-  /*
-  vtkm::rendering::testing::RenderTestOptions options;
-  options.Mapper = vtkm::rendering::testing::MapperType::RayTracer;
-  options.AllowAnyDevice = false;
-  options.ColorTable = vtkm::cont::ColorTable::Preset::Inferno;
-  vtkm::rendering::testing::RenderTest(ds, "point_data_Float32", "rendering/raytracer/regular3D.png", options);
-  */
 
   vtkm::rendering::Camera camera;
-  camera.SetLookAt(vtkm::Vec3f_32(0.5, 0.5, 0.5));
   camera.SetLookAt(vtkm::Vec3f_32(1.0, 0.5, 0.5));
   camera.SetViewUp(vtkm::make_Vec(0.f, 1.f, 0.f));
   camera.SetClippingRange(1.f, 10.f);
   camera.SetFieldOfView(60.f);
-  camera.SetPosition(vtkm::Vec3f_32(1.5, 1.5, 1.5));
-  camera.SetPosition(vtkm::Vec3f_32(3, 3, 3));
+  camera.SetPosition(vtkm::Vec3f_32(-2, 1.75, 1.75));
   vtkm::cont::ColorTable colorTable("inferno");
 
   // Background color:
@@ -171,18 +150,16 @@ void TestRenderComposite()
   vtkm::rendering::View3D view(scene, MapperVolume(), canvas, camera, bg);
   view.Paint();
 
-  if (comm.rank() == 0)
-    view.SaveAs("volume0.png");
-  else
-    view.SaveAs("volume1.png");
-
   auto colors = &GetVTKMPointer(canvas.GetColorBuffer())[0][0];
   auto depths = GetVTKMPointer(canvas.GetDepthBuffer());
 
   vtkm::rendering::compositing::Compositor compositor;
   compositor.AddImage(colors, depths, width, height);
   auto res = compositor.Composite();
-  res.Save("RESULT.png", { "" });
+  if (comm.rank() == 0)
+  {
+    res.Save("RESULT.png", { "" });
+  }
 }
 
 void RenderTests()

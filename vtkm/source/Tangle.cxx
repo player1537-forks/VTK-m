@@ -78,13 +78,12 @@ vtkm::cont::DataSet Tangle::DoExecute() const
   vtkm::cont::ArrayHandle<vtkm::Float32> pointFieldArray;
   this->Invoke(tangle::TangleField{ cellDims, mins, maxs }, cellSet, pointFieldArray);
 
-  const vtkm::Vec3f origin(0.0f, 0.0f, 0.0f);
   const vtkm::Vec3f spacing(1.0f / static_cast<vtkm::FloatDefault>(cellDims[0]),
                             1.0f / static_cast<vtkm::FloatDefault>(cellDims[1]),
                             1.0f / static_cast<vtkm::FloatDefault>(cellDims[2]));
 
   vtkm::cont::ArrayHandleUniformPointCoordinates coordinates(
-    this->PointDimensions, origin, spacing);
+    this->PointDimensions, this->Origin, spacing);
   dataSet.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coordinates", coordinates));
   dataSet.AddField(vtkm::cont::make_FieldPoint("tangle", pointFieldArray));
 
