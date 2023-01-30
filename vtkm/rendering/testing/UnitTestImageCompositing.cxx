@@ -43,6 +43,7 @@ vtkm::cont::DataSet ReadDS(int rank)
   vtkm::io::VTKDataSetReader reader(vtkFile);
 }
 
+#if 0
 vtkm::rendering::compositing::Image ConstImage(const std::size_t& width,
                                                const std::size_t& height,
                                                const vtkm::Vec4f& rgba,
@@ -65,6 +66,7 @@ vtkm::rendering::compositing::Image ConstImage(const std::size_t& width,
 
   return img;
 }
+#endif
 
 void TestImageComposite()
 {
