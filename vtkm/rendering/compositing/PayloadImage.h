@@ -28,62 +28,62 @@ struct VTKM_RENDERING_EXPORT PayloadImage
 {
   // The image bounds are indicated by a grid starting at
   // 1-width and 1-height. Actual width would be calculated
-  // m_bounds.X.Max - m_bounds.X.Min + 1
+  // Bounds.X.Max - Bounds.X.Min + 1
   // 1024 - 1 + 1 = 1024
-  vtkm::Bounds m_orig_bounds;
-  vtkm::Bounds m_bounds;
-  std::vector<unsigned char> m_payloads;
-  std::vector<float> m_depths;
-  int m_orig_rank;
-  int m_payload_bytes; // Size of the payload in bytes
-  float m_default_value;
+  vtkm::Bounds OrigBounds;
+  vtkm::Bounds Bounds;
+  std::vector<unsigned char> Payloads;
+  std::vector<float> Depths;
+  int OrigRank;
+  int PayloadBytes; // Size of the payload in bytes
+  float DefaultValue;
 
   PayloadImage() {}
 
   PayloadImage(const vtkm::Bounds& bounds, const int payload_bytes)
-    : m_orig_bounds(bounds)
-    , m_bounds(bounds)
-    , m_orig_rank(-1)
-    , m_payload_bytes(payload_bytes)
+    : OrigBounds(bounds)
+    , Bounds(bounds)
+    , OrigRank(-1)
+    , PayloadBytes(payload_bytes)
   {
-    m_default_value = vtkm::Nan32();
+    DefaultValue = vtkm::Nan32();
     const int dx = bounds.X.Max - bounds.X.Min + 1;
     const int dy = bounds.Y.Max - bounds.Y.Min + 1;
-    m_payloads.resize(dx * dy * m_payload_bytes);
-    m_depths.resize(dx * dy);
+    this->Payloads.resize(dx * dy * this->PayloadBytes);
+    this->Depths.resize(dx * dy);
   }
 
   void InitOriginal(const PayloadImage& other)
   {
-    m_orig_bounds = other.m_orig_bounds;
-    m_bounds = other.m_orig_bounds;
-    m_payload_bytes = other.m_payload_bytes;
-    m_default_value = other.m_default_value;
+    this->OrigBounds = other.OrigBounds;
+    this->Bounds = other.OrigBounds;
+    this->PayloadBytes = other.PayloadBytes;
+    this->DefaultValue = other.DefaultValue;
 
-    const int dx = m_bounds.X.Max - m_bounds.X.Min + 1;
-    const int dy = m_bounds.Y.Max - m_bounds.Y.Min + 1;
-    m_payloads.resize(dx * dy * m_payload_bytes);
-    m_depths.resize(dx * dy);
+    const int dx = this->Bounds.X.Max - this->Bounds.X.Min + 1;
+    const int dy = this->Bounds.Y.Max - this->Bounds.Y.Min + 1;
+    this->Payloads.resize(dx * dy * this->PayloadBytes);
+    this->Depths.resize(dx * dy);
 
-    m_orig_rank = -1;
+    this->OrigRank = -1;
   }
 
-  int GetNumberOfPixels() const { return static_cast<int>(m_depths.size()); }
+  int GetNumberOfPixels() const { return static_cast<int>(this->Depths.size()); }
 
   void Init(const unsigned char* payload_buffer, const float* depth_buffer, int width, int height)
   {
-    m_bounds.X.Min = 1;
-    m_bounds.Y.Min = 1;
-    m_bounds.X.Max = width;
-    m_bounds.Y.Max = height;
-    m_orig_bounds = m_bounds;
+    this->Bounds.X.Min = 1;
+    this->Bounds.Y.Min = 1;
+    this->Bounds.X.Max = width;
+    this->Bounds.Y.Max = height;
+    this->OrigBounds = this->Bounds;
     const int size = width * height;
-    m_payloads.resize(size * m_payload_bytes);
-    m_depths.resize(size);
+    this->Payloads.resize(size * this->PayloadBytes);
+    this->Depths.resize(size);
 
-    std::copy(payload_buffer, payload_buffer + size * m_payload_bytes, &m_payloads[0]);
+    std::copy(payload_buffer, payload_buffer + size * this->PayloadBytes, &this->Payloads[0]);
 
-    std::copy(depth_buffer, depth_buffer + size, &m_depths[0]);
+    std::copy(depth_buffer, depth_buffer + size, &this->Depths[0]);
   }
 
   //
@@ -91,30 +91,30 @@ struct VTKM_RENDERING_EXPORT PayloadImage
   //
   void SubsetFrom(const PayloadImage& image, const vtkm::Bounds& sub_region)
   {
-    m_orig_bounds = image.m_orig_bounds;
-    m_bounds = sub_region;
-    m_orig_rank = image.m_orig_rank;
-    m_payload_bytes = image.m_payload_bytes;
+    this->OrigBounds = image.OrigBounds;
+    this->Bounds = sub_region;
+    this->OrigRank = image.OrigRank;
+    this->PayloadBytes = image.PayloadBytes;
 
-    assert(sub_region.X.Min >= image.m_bounds.X.Min);
-    assert(sub_region.Y.Min >= image.m_bounds.Y.Min);
-    assert(sub_region.X.Max <= image.m_bounds.X.Max);
-    assert(sub_region.Y.Max <= image.m_bounds.Y.Max);
+    assert(sub_region.X.Min >= image.Bounds.X.Min);
+    assert(sub_region.Y.Min >= image.Bounds.Y.Min);
+    assert(sub_region.X.Max <= image.Bounds.X.Max);
+    assert(sub_region.Y.Max <= image.Bounds.Y.Max);
 
-    const int s_dx = m_bounds.X.Max - m_bounds.X.Min + 1;
-    const int s_dy = m_bounds.Y.Max - m_bounds.Y.Min + 1;
+    const int s_dx = this->Bounds.X.Max - this->Bounds.X.Min + 1;
+    const int s_dy = this->Bounds.Y.Max - this->Bounds.Y.Min + 1;
 
-    const int dx = image.m_bounds.X.Max - image.m_bounds.X.Min + 1;
-    //const int dy  = image.m_bounds.Y.Max - image.m_bounds.Y.Min + 1;
+    const int dx = image.Bounds.X.Max - image.Bounds.X.Min + 1;
+    //const int dy  = image.Bounds.Y.Max - image.Bounds.Y.Min + 1;
 
-    const int start_x = m_bounds.X.Min - image.m_bounds.X.Min;
-    const int start_y = m_bounds.Y.Min - image.m_bounds.Y.Min;
+    const int start_x = this->Bounds.X.Min - image.Bounds.X.Min;
+    const int start_y = this->Bounds.Y.Min - image.Bounds.Y.Min;
     const int end_y = start_y + s_dy;
 
-    size_t buffer_size = s_dx * s_dy * m_payload_bytes;
+    size_t buffer_size = s_dx * s_dy * this->PayloadBytes;
 
-    m_payloads.resize(buffer_size);
-    m_depths.resize(s_dx * s_dy);
+    this->Payloads.resize(buffer_size);
+    this->Depths.resize(s_dx * s_dy);
 
 
 #ifdef VTKH_OPENMP_ENABLED
@@ -125,10 +125,10 @@ struct VTKM_RENDERING_EXPORT PayloadImage
       const int copy_to = (y - start_y) * s_dx;
       const int copy_from = y * dx + start_x;
 
-      std::copy(&image.m_payloads[copy_from * m_payload_bytes],
-                &image.m_payloads[copy_from * m_payload_bytes] + s_dx * m_payload_bytes,
-                &m_payloads[copy_to * m_payload_bytes]);
-      std::copy(&image.m_depths[copy_from], &image.m_depths[copy_from] + s_dx, &m_depths[copy_to]);
+      std::copy(&image.Payloads[copy_from * this->PayloadBytes],
+                &image.Payloads[copy_from * this->PayloadBytes] + s_dx * this->PayloadBytes,
+                &this->Payloads[copy_to * this->PayloadBytes]);
+      std::copy(&image.Depths[copy_from], &image.Depths[copy_from] + s_dx, &this->Depths[copy_to]);
     }
   }
 
@@ -137,19 +137,19 @@ struct VTKM_RENDERING_EXPORT PayloadImage
   //
   void SubsetTo(PayloadImage& image) const
   {
-    assert(m_bounds.X.Min >= image.m_bounds.X.Min);
-    assert(m_bounds.Y.Min >= image.m_bounds.Y.Min);
-    assert(m_bounds.X.Max <= image.m_bounds.X.Max);
-    assert(m_bounds.Y.Max <= image.m_bounds.Y.Max);
+    assert(this->Bounds.X.Min >= image.Bounds.X.Min);
+    assert(this->Bounds.Y.Min >= image.Bounds.Y.Min);
+    assert(this->Bounds.X.Max <= image.Bounds.X.Max);
+    assert(this->Bounds.Y.Max <= image.Bounds.Y.Max);
 
-    const int s_dx = m_bounds.X.Max - m_bounds.X.Min + 1;
-    const int s_dy = m_bounds.Y.Max - m_bounds.Y.Min + 1;
+    const int s_dx = this->Bounds.X.Max - this->Bounds.X.Min + 1;
+    const int s_dy = this->Bounds.Y.Max - this->Bounds.Y.Min + 1;
 
-    const int dx = image.m_bounds.X.Max - image.m_bounds.X.Min + 1;
-    //const int dy  = image.m_bounds.Y.Max - image.m_bounds.Y.Min + 1;
+    const int dx = image.Bounds.X.Max - image.Bounds.X.Min + 1;
+    //const int dy  = image.Bounds.Y.Max - image.Bounds.Y.Min + 1;
 
-    const int start_x = m_bounds.X.Min - image.m_bounds.X.Min;
-    const int start_y = m_bounds.Y.Min - image.m_bounds.Y.Min;
+    const int start_x = this->Bounds.X.Min - image.Bounds.X.Min;
+    const int start_y = this->Bounds.Y.Min - image.Bounds.Y.Min;
 
 #ifdef VTKH_OPENMP_ENABLED
 #pragma omp parallel for
@@ -159,44 +159,44 @@ struct VTKM_RENDERING_EXPORT PayloadImage
       const int copy_to = (y + start_y) * dx + start_x;
       const int copy_from = y * s_dx;
 
-      std::copy(&m_payloads[copy_from * m_payload_bytes],
-                &m_payloads[copy_from * m_payload_bytes] + s_dx * m_payload_bytes,
-                &image.m_payloads[copy_to * m_payload_bytes]);
+      std::copy(&this->Payloads[copy_from * this->PayloadBytes],
+                &this->Payloads[copy_from * this->PayloadBytes] + s_dx * this->PayloadBytes,
+                &image.Payloads[copy_to * this->PayloadBytes]);
 
-      std::copy(&m_depths[copy_from], &m_depths[copy_from] + s_dx, &image.m_depths[copy_to]);
+      std::copy(&this->Depths[copy_from], &this->Depths[copy_from] + s_dx, &image.Depths[copy_to]);
     }
   }
 
   void Swap(PayloadImage& other)
   {
-    vtkm::Bounds orig = m_orig_bounds;
-    vtkm::Bounds bounds = m_bounds;
+    vtkm::Bounds orig = this->OrigBounds;
+    vtkm::Bounds bounds = this->Bounds;
 
-    m_orig_bounds = other.m_orig_bounds;
-    m_bounds = other.m_bounds;
+    this->OrigBounds = other.OrigBounds;
+    this->Bounds = other.Bounds;
 
-    other.m_orig_bounds = orig;
-    other.m_bounds = bounds;
+    other.OrigBounds = orig;
+    other.Bounds = bounds;
 
-    m_payloads.swap(other.m_payloads);
-    m_depths.swap(other.m_depths);
+    this->Payloads.swap(other.Payloads);
+    this->Depths.swap(other.Depths);
   }
 
   void Clear()
   {
     vtkm::Bounds empty;
-    m_orig_bounds = empty;
-    m_bounds = empty;
-    m_payloads.clear();
-    m_depths.clear();
+    this->OrigBounds = empty;
+    this->Bounds = empty;
+    this->Payloads.clear();
+    this->Depths.clear();
   }
 
   std::string ToString() const
   {
     std::stringstream ss;
-    ss << "Total size pixels " << (int)m_depths.size();
-    ss << " tile dims: {" << m_bounds.X.Min << "," << m_bounds.Y.Min << "} - ";
-    ss << "{" << m_bounds.X.Max << "," << m_bounds.Y.Max << "}\n";
+    ss << "Total size pixels " << (int)this->Depths.size();
+    ss << " tile dims: {" << this->Bounds.X.Min << "," << this->Bounds.Y.Min << "} - ";
+    ss << "{" << this->Bounds.X.Max << "," << this->Bounds.Y.Max << "}\n";
     ;
     return ss.str();
   }

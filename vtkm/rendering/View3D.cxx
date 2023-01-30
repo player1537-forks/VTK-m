@@ -71,10 +71,10 @@ void View3D::Paint()
       const int offset = i * 4;
       vtkm::Vec4f_32 rgba;
       for (int j = 0; j < 4; j++)
-        rgba[j] = static_cast<vtkm::FloatDefault>(result.m_pixels[offset + j] / 255.f);
+        rgba[j] = static_cast<vtkm::FloatDefault>(result.Pixels[offset + j] / 255.f);
 
       colors.WritePortal().Set(i, rgba);
-      depths.WritePortal().Set(i, result.m_depths[i]);
+      depths.WritePortal().Set(i, result.Depths[i]);
     }
   }
 #endif

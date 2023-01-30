@@ -97,8 +97,8 @@ protected:
   virtual void CompositeVisOrder();
 
   std::stringstream m_log_stream;
-  CompositeMode m_composite_mode;
-  std::vector<Image> m_images;
+  CompositeMode CompositingMode;
+  std::vector<vtkm::rendering::compositing::Image> Images;
 };
 
 }

@@ -30,7 +30,7 @@ namespace compositing
 {
 
 Compositor::Compositor()
-  : m_composite_mode(Z_BUFFER_SURFACE)
+  : CompositingMode(Z_BUFFER_SURFACE)
 {
 }
 
@@ -39,13 +39,13 @@ Compositor::~Compositor() {}
 void Compositor::SetCompositeMode(CompositeMode composite_mode)
 {
   // assure we don't have mixed image types
-  assert(m_images.size() == 0);
-  m_composite_mode = composite_mode;
+  assert(this->Images.size() == 0);
+  this->CompositingMode = composite_mode;
 }
 
 void Compositor::ClearImages()
 {
-  m_images.clear();
+  this->Images.clear();
 }
 
 void Compositor::AddImage(vtkm::rendering::Canvas& canvas)
@@ -55,29 +55,29 @@ void Compositor::AddImage(vtkm::rendering::Canvas& canvas)
   vtkm::Id width = canvas.GetWidth();
   vtkm::Id height = canvas.GetHeight();
 
-  assert(m_composite_mode != VIS_ORDER_BLEND);
+  assert(this->CompositingMode != VIS_ORDER_BLEND);
   assert(depths != NULL);
   Image image;
-  if (m_images.size() == 0)
+  if (this->Images.size() == 0)
   {
-    m_images.push_back(image);
-    m_images[0].Init(colors, depths, width, height);
-    //m_images[0].Save("first.png");
+    this->Images.push_back(image);
+    this->Images[0].Init(colors, depths, width, height);
+    //this->Images[0].Save("first.png");
   }
-  else if (m_composite_mode == Z_BUFFER_SURFACE)
+  else if (this->CompositingMode == Z_BUFFER_SURFACE)
   {
     //
     // Do local composite and keep a single image
     //
     image.Init(colors, depths, width, height);
     vtkm::rendering::compositing::ImageCompositor compositor;
-    compositor.ZBufferComposite(m_images[0], image);
+    compositor.ZBufferComposite(this->Images[0], image);
   }
   else
   {
-    const size_t image_index = m_images.size();
-    m_images.push_back(image);
-    m_images[image_index].Init(colors, depths, width, height);
+    const size_t image_index = this->Images.size();
+    this->Images.push_back(image);
+    this->Images[image_index].Init(colors, depths, width, height);
   }
 }
 
@@ -98,29 +98,29 @@ void Compositor::AddImage(const unsigned char* color_buffer,
                           const int width,
                           const int height)
 {
-  assert(m_composite_mode != VIS_ORDER_BLEND);
+  assert(this->CompositingMode != VIS_ORDER_BLEND);
   assert(depth_buffer != NULL);
   Image image;
-  if (m_images.size() == 0)
+  if (this->Images.size() == 0)
   {
-    m_images.push_back(image);
-    m_images[0].Init(color_buffer, depth_buffer, width, height);
-    //m_images[0].Save("first.png");
+    this->Images.push_back(image);
+    this->Images[0].Init(color_buffer, depth_buffer, width, height);
+    //this->Images[0].Save("first.png");
   }
-  else if (m_composite_mode == Z_BUFFER_SURFACE)
+  else if (this->CompositingMode == Z_BUFFER_SURFACE)
   {
     //
     // Do local composite and keep a single image
     //
     image.Init(color_buffer, depth_buffer, width, height);
     vtkm::rendering::compositing::ImageCompositor compositor;
-    compositor.ZBufferComposite(m_images[0], image);
+    compositor.ZBufferComposite(this->Images[0], image);
   }
   else
   {
-    const size_t image_index = m_images.size();
-    m_images.push_back(image);
-    m_images[image_index].Init(color_buffer, depth_buffer, width, height);
+    const size_t image_index = this->Images.size();
+    this->Images.push_back(image);
+    this->Images[image_index].Init(color_buffer, depth_buffer, width, height);
   }
 }
 
@@ -129,15 +129,15 @@ void Compositor::AddImage(const float* color_buffer,
                           const int width,
                           const int height)
 {
-  assert(m_composite_mode != VIS_ORDER_BLEND);
+  assert(this->CompositingMode != VIS_ORDER_BLEND);
   assert(depth_buffer != NULL);
   Image image;
-  if (m_images.size() == 0)
+  if (this->Images.size() == 0)
   {
-    m_images.push_back(image);
-    m_images[0].Init(color_buffer, depth_buffer, width, height);
+    this->Images.push_back(image);
+    this->Images[0].Init(color_buffer, depth_buffer, width, height);
   }
-  else if (m_composite_mode == Z_BUFFER_SURFACE)
+  else if (this->CompositingMode == Z_BUFFER_SURFACE)
   {
     //
     // Do local composite and keep a single image
@@ -145,13 +145,13 @@ void Compositor::AddImage(const float* color_buffer,
     image.Init(color_buffer, depth_buffer, width, height);
 
     vtkm::rendering::compositing::ImageCompositor compositor;
-    compositor.ZBufferComposite(m_images[0], image);
+    compositor.ZBufferComposite(this->Images[0], image);
   }
   else
   {
-    const size_t image_index = m_images.size();
-    m_images.push_back(image);
-    m_images[image_index].Init(color_buffer, depth_buffer, width, height);
+    const size_t image_index = this->Images.size();
+    this->Images.push_back(image);
+    this->Images[image_index].Init(color_buffer, depth_buffer, width, height);
   }
 }
 
@@ -161,11 +161,11 @@ void Compositor::AddImage(const unsigned char* color_buffer,
                           const int height,
                           const int vis_order)
 {
-  assert(m_composite_mode == VIS_ORDER_BLEND);
+  assert(this->CompositingMode == VIS_ORDER_BLEND);
   Image image;
-  const size_t image_index = m_images.size();
-  m_images.push_back(image);
-  m_images[image_index].Init(color_buffer, depth_buffer, width, height, vis_order);
+  const size_t image_index = this->Images.size();
+  this->Images.push_back(image);
+  this->Images[image_index].Init(color_buffer, depth_buffer, width, height, vis_order);
 }
 
 
@@ -175,33 +175,33 @@ void Compositor::AddImage(const float* color_buffer,
                           const int height,
                           const int vis_order)
 {
-  assert(m_composite_mode == VIS_ORDER_BLEND);
+  assert(this->CompositingMode == VIS_ORDER_BLEND);
   Image image;
-  const size_t image_index = m_images.size();
-  m_images.push_back(image);
+  const size_t image_index = this->Images.size();
+  this->Images.push_back(image);
 
-  m_images[image_index].Init(color_buffer, depth_buffer, width, height, vis_order);
+  this->Images[image_index].Init(color_buffer, depth_buffer, width, height, vis_order);
 }
 */
 
 Image Compositor::Composite()
 {
-  assert(m_images.size() != 0);
+  assert(this->Images.size() != 0);
 
-  if (m_composite_mode == Z_BUFFER_SURFACE)
+  if (this->CompositingMode == Z_BUFFER_SURFACE)
   {
     CompositeZBufferSurface();
   }
-  else if (m_composite_mode == Z_BUFFER_BLEND)
+  else if (this->CompositingMode == Z_BUFFER_BLEND)
   {
     CompositeZBufferBlend();
   }
-  else if (m_composite_mode == VIS_ORDER_BLEND)
+  else if (this->CompositingMode == VIS_ORDER_BLEND)
   {
     CompositeVisOrder();
   }
   // Make this a param to avoid the copy?
-  return m_images[0];
+  return this->Images[0];
 }
 
 void Compositor::Cleanup() {}
@@ -220,9 +220,9 @@ void Compositor::CompositeZBufferSurface()
 #ifdef VTKM_ENABLE_MPI
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
 
-  assert(m_images.size() == 1);
+  assert(this->Images.size() == 1);
   RadixKCompositor compositor;
-  compositor.CompositeSurface(comm, this->m_images[0]);
+  compositor.CompositeSurface(comm, this->Images[0]);
   m_log_stream << compositor.GetTimingString();
 #endif
 }
@@ -237,12 +237,12 @@ void Compositor::CompositeVisOrder()
 
 #ifdef VTKM_ENABLE_MPI
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
-  assert(m_images.size() != 0);
+  assert(this->Images.size() != 0);
   vtkm::rendering::compositing::DirectSendCompositor compositor;
-  compositor.CompositeVolume(comm, this->m_images);
+  compositor.CompositeVolume(comm, this->Images);
 #else
   vtkm::rendering::compositing::ImageCompositor compositor;
-  compositor.OrderedComposite(m_images);
+  compositor.OrderedComposite(this->Images);
 #endif
 }
 

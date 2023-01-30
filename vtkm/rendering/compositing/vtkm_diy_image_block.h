@@ -99,46 +99,46 @@ struct Serialization<vtkm::rendering::compositing::PayloadImage>
 {
   static void save(BinaryBuffer& bb, const vtkm::rendering::compositing::PayloadImage& image)
   {
-    vtkmdiy::save(bb, image.m_orig_bounds.X.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.Y.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.Z.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.X.Max);
-    vtkmdiy::save(bb, image.m_orig_bounds.Y.Max);
-    vtkmdiy::save(bb, image.m_orig_bounds.Z.Max);
+    vtkmdiy::save(bb, image.OrigBounds.X.Min);
+    vtkmdiy::save(bb, image.OrigBounds.Y.Min);
+    vtkmdiy::save(bb, image.OrigBounds.Z.Min);
+    vtkmdiy::save(bb, image.OrigBounds.X.Max);
+    vtkmdiy::save(bb, image.OrigBounds.Y.Max);
+    vtkmdiy::save(bb, image.OrigBounds.Z.Max);
 
-    vtkmdiy::save(bb, image.m_bounds.X.Min);
-    vtkmdiy::save(bb, image.m_bounds.Y.Min);
-    vtkmdiy::save(bb, image.m_bounds.Z.Min);
-    vtkmdiy::save(bb, image.m_bounds.X.Max);
-    vtkmdiy::save(bb, image.m_bounds.Y.Max);
-    vtkmdiy::save(bb, image.m_bounds.Z.Max);
+    vtkmdiy::save(bb, image.Bounds.X.Min);
+    vtkmdiy::save(bb, image.Bounds.Y.Min);
+    vtkmdiy::save(bb, image.Bounds.Z.Min);
+    vtkmdiy::save(bb, image.Bounds.X.Max);
+    vtkmdiy::save(bb, image.Bounds.Y.Max);
+    vtkmdiy::save(bb, image.Bounds.Z.Max);
 
-    vtkmdiy::save(bb, image.m_payloads);
-    vtkmdiy::save(bb, image.m_payload_bytes);
-    vtkmdiy::save(bb, image.m_depths);
-    vtkmdiy::save(bb, image.m_orig_rank);
+    vtkmdiy::save(bb, image.Payloads);
+    vtkmdiy::save(bb, image.PayloadBytes);
+    vtkmdiy::save(bb, image.Depths);
+    vtkmdiy::save(bb, image.OrigRank);
   }
 
   static void load(BinaryBuffer& bb, vtkm::rendering::compositing::PayloadImage& image)
   {
-    vtkmdiy::load(bb, image.m_orig_bounds.X.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.Y.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.Z.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.X.Max);
-    vtkmdiy::load(bb, image.m_orig_bounds.Y.Max);
-    vtkmdiy::load(bb, image.m_orig_bounds.Z.Max);
+    vtkmdiy::load(bb, image.OrigBounds.X.Min);
+    vtkmdiy::load(bb, image.OrigBounds.Y.Min);
+    vtkmdiy::load(bb, image.OrigBounds.Z.Min);
+    vtkmdiy::load(bb, image.OrigBounds.X.Max);
+    vtkmdiy::load(bb, image.OrigBounds.Y.Max);
+    vtkmdiy::load(bb, image.OrigBounds.Z.Max);
 
-    vtkmdiy::load(bb, image.m_bounds.X.Min);
-    vtkmdiy::load(bb, image.m_bounds.Y.Min);
-    vtkmdiy::load(bb, image.m_bounds.Z.Min);
-    vtkmdiy::load(bb, image.m_bounds.X.Max);
-    vtkmdiy::load(bb, image.m_bounds.Y.Max);
-    vtkmdiy::load(bb, image.m_bounds.Z.Max);
+    vtkmdiy::load(bb, image.Bounds.X.Min);
+    vtkmdiy::load(bb, image.Bounds.Y.Min);
+    vtkmdiy::load(bb, image.Bounds.Z.Min);
+    vtkmdiy::load(bb, image.Bounds.X.Max);
+    vtkmdiy::load(bb, image.Bounds.Y.Max);
+    vtkmdiy::load(bb, image.Bounds.Z.Max);
 
-    vtkmdiy::load(bb, image.m_payloads);
-    vtkmdiy::load(bb, image.m_payload_bytes);
-    vtkmdiy::load(bb, image.m_depths);
-    vtkmdiy::load(bb, image.m_orig_rank);
+    vtkmdiy::load(bb, image.Payloads);
+    vtkmdiy::load(bb, image.PayloadBytes);
+    vtkmdiy::load(bb, image.Depths);
+    vtkmdiy::load(bb, image.OrigRank);
   }
 };
 
@@ -147,46 +147,46 @@ struct Serialization<vtkm::rendering::compositing::Image>
 {
   static void save(BinaryBuffer& bb, const vtkm::rendering::compositing::Image& image)
   {
-    vtkmdiy::save(bb, image.m_orig_bounds.X.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.Y.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.Z.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.X.Max);
-    vtkmdiy::save(bb, image.m_orig_bounds.Y.Max);
-    vtkmdiy::save(bb, image.m_orig_bounds.Z.Max);
+    vtkmdiy::save(bb, image.OrigBounds.X.Min);
+    vtkmdiy::save(bb, image.OrigBounds.Y.Min);
+    vtkmdiy::save(bb, image.OrigBounds.Z.Min);
+    vtkmdiy::save(bb, image.OrigBounds.X.Max);
+    vtkmdiy::save(bb, image.OrigBounds.Y.Max);
+    vtkmdiy::save(bb, image.OrigBounds.Z.Max);
 
-    vtkmdiy::save(bb, image.m_bounds.X.Min);
-    vtkmdiy::save(bb, image.m_bounds.Y.Min);
-    vtkmdiy::save(bb, image.m_bounds.Z.Min);
-    vtkmdiy::save(bb, image.m_bounds.X.Max);
-    vtkmdiy::save(bb, image.m_bounds.Y.Max);
-    vtkmdiy::save(bb, image.m_bounds.Z.Max);
+    vtkmdiy::save(bb, image.Bounds.X.Min);
+    vtkmdiy::save(bb, image.Bounds.Y.Min);
+    vtkmdiy::save(bb, image.Bounds.Z.Min);
+    vtkmdiy::save(bb, image.Bounds.X.Max);
+    vtkmdiy::save(bb, image.Bounds.Y.Max);
+    vtkmdiy::save(bb, image.Bounds.Z.Max);
 
-    vtkmdiy::save(bb, image.m_pixels);
-    vtkmdiy::save(bb, image.m_depths);
-    vtkmdiy::save(bb, image.m_orig_rank);
-    vtkmdiy::save(bb, image.m_composite_order);
+    vtkmdiy::save(bb, image.Pixels);
+    vtkmdiy::save(bb, image.Depths);
+    vtkmdiy::save(bb, image.OrigRank);
+    vtkmdiy::save(bb, image.CompositeOrder);
   }
 
   static void load(BinaryBuffer& bb, vtkm::rendering::compositing::Image& image)
   {
-    vtkmdiy::load(bb, image.m_orig_bounds.X.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.Y.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.Z.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.X.Max);
-    vtkmdiy::load(bb, image.m_orig_bounds.Y.Max);
-    vtkmdiy::load(bb, image.m_orig_bounds.Z.Max);
+    vtkmdiy::load(bb, image.OrigBounds.X.Min);
+    vtkmdiy::load(bb, image.OrigBounds.Y.Min);
+    vtkmdiy::load(bb, image.OrigBounds.Z.Min);
+    vtkmdiy::load(bb, image.OrigBounds.X.Max);
+    vtkmdiy::load(bb, image.OrigBounds.Y.Max);
+    vtkmdiy::load(bb, image.OrigBounds.Z.Max);
 
-    vtkmdiy::load(bb, image.m_bounds.X.Min);
-    vtkmdiy::load(bb, image.m_bounds.Y.Min);
-    vtkmdiy::load(bb, image.m_bounds.Z.Min);
-    vtkmdiy::load(bb, image.m_bounds.X.Max);
-    vtkmdiy::load(bb, image.m_bounds.Y.Max);
-    vtkmdiy::load(bb, image.m_bounds.Z.Max);
+    vtkmdiy::load(bb, image.Bounds.X.Min);
+    vtkmdiy::load(bb, image.Bounds.Y.Min);
+    vtkmdiy::load(bb, image.Bounds.Z.Min);
+    vtkmdiy::load(bb, image.Bounds.X.Max);
+    vtkmdiy::load(bb, image.Bounds.Y.Max);
+    vtkmdiy::load(bb, image.Bounds.Z.Max);
 
-    vtkmdiy::load(bb, image.m_pixels);
-    vtkmdiy::load(bb, image.m_depths);
-    vtkmdiy::load(bb, image.m_orig_rank);
-    vtkmdiy::load(bb, image.m_composite_order);
+    vtkmdiy::load(bb, image.Pixels);
+    vtkmdiy::load(bb, image.Depths);
+    vtkmdiy::load(bb, image.OrigRank);
+    vtkmdiy::load(bb, image.CompositeOrder);
   }
 };
 } //namespace vtkmdiy

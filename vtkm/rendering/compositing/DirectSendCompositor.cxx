@@ -80,7 +80,7 @@ struct Redistribute
         proxy.enqueue(it->first, it->second);
       }
     } // if
-    else if (block->m_images.at(0).m_composite_order != -1)
+    else if (block->m_images.at(0).CompositeOrder != -1)
     {
       // blend images according to vis order
       std::vector<Image> images;
@@ -103,8 +103,8 @@ struct Redistribute
 
       block->m_output.Swap(images[0]);
     } // else if
-    else if (block->m_images.at(0).m_composite_order == -1 &&
-             block->m_images.at(0).HasTransparency())
+    else if (block->m_images.at(0).CompositeOrder == -1 &&
+             block->m_images.at(0).GetHasTransparency())
     {
       std::vector<Image> images;
       for (int i = 0; i < proxy.in_link().size(); ++i)
@@ -140,7 +140,7 @@ DirectSendCompositor::~DirectSendCompositor() {}
 void DirectSendCompositor::CompositeVolume(vtkmdiy::mpi::communicator& diy_comm,
                                            std::vector<Image>& images)
 {
-  vtkmdiy::DiscreteBounds global_bounds = vtkh::VTKMBoundsToDIY(images.at(0).m_orig_bounds);
+  vtkmdiy::DiscreteBounds global_bounds = vtkh::VTKMBoundsToDIY(images.at(0).OrigBounds);
 
   const int num_threads = 1;
   const int num_blocks = diy_comm.size();

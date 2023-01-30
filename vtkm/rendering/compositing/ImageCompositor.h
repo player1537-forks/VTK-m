@@ -28,12 +28,11 @@ class VTKM_RENDERING_EXPORT ImageCompositor
 public:
   void Blend(vtkm::rendering::compositing::Image& front, vtkm::rendering::compositing::Image& back)
   {
-
-    assert(front.m_bounds.X.Min == back.m_bounds.X.Min);
-    assert(front.m_bounds.Y.Min == back.m_bounds.Y.Min);
-    assert(front.m_bounds.X.Max == back.m_bounds.X.Max);
-    assert(front.m_bounds.Y.Max == back.m_bounds.Y.Max);
-    const int size = static_cast<int>(front.m_pixels.size() / 4);
+    assert(front.Bounds.X.Min == back.Bounds.X.Min);
+    assert(front.Bounds.Y.Min == back.Bounds.Y.Min);
+    assert(front.Bounds.X.Max == back.Bounds.X.Max);
+    assert(front.Bounds.Y.Max == back.Bounds.Y.Max);
+    const int size = static_cast<int>(front.Pixels.size() / 4);
 
 #ifdef VTKH_OPENMP_ENABLED
 #pragma omp parallel for
@@ -41,52 +40,52 @@ public:
     for (int i = 0; i < size; ++i)
     {
       const int offset = i * 4;
-      unsigned int alpha = front.m_pixels[offset + 3];
+      unsigned int alpha = front.Pixels[offset + 3];
       const unsigned int opacity = 255 - alpha;
 
-      front.m_pixels[offset + 0] +=
-        static_cast<unsigned char>(opacity * back.m_pixels[offset + 0] / 255);
-      front.m_pixels[offset + 1] +=
-        static_cast<unsigned char>(opacity * back.m_pixels[offset + 1] / 255);
-      front.m_pixels[offset + 2] +=
-        static_cast<unsigned char>(opacity * back.m_pixels[offset + 2] / 255);
-      front.m_pixels[offset + 3] +=
-        static_cast<unsigned char>(opacity * back.m_pixels[offset + 3] / 255);
+      front.Pixels[offset + 0] +=
+        static_cast<unsigned char>(opacity * back.Pixels[offset + 0] / 255);
+      front.Pixels[offset + 1] +=
+        static_cast<unsigned char>(opacity * back.Pixels[offset + 1] / 255);
+      front.Pixels[offset + 2] +=
+        static_cast<unsigned char>(opacity * back.Pixels[offset + 2] / 255);
+      front.Pixels[offset + 3] +=
+        static_cast<unsigned char>(opacity * back.Pixels[offset + 3] / 255);
 
-      float d1 = std::min(front.m_depths[i], 1.001f);
-      float d2 = std::min(back.m_depths[i], 1.001f);
+      float d1 = std::min(front.Depths[i], 1.001f);
+      float d2 = std::min(back.Depths[i], 1.001f);
       float depth = std::min(d1, d2);
-      front.m_depths[i] = depth;
+      front.Depths[i] = depth;
     }
   }
 
   void ZBufferComposite(vtkm::rendering::compositing::Image& front,
                         const vtkm::rendering::compositing::Image& image)
   {
-    assert(front.m_depths.size() == front.m_pixels.size() / 4);
-    assert(front.m_bounds.X.Min == image.m_bounds.X.Min);
-    assert(front.m_bounds.Y.Min == image.m_bounds.Y.Min);
-    assert(front.m_bounds.X.Max == image.m_bounds.X.Max);
-    assert(front.m_bounds.Y.Max == image.m_bounds.Y.Max);
+    assert(front.Depths.size() == front.Pixels.size() / 4);
+    assert(front.Bounds.X.Min == image.Bounds.X.Min);
+    assert(front.Bounds.Y.Min == image.Bounds.Y.Min);
+    assert(front.Bounds.X.Max == image.Bounds.X.Max);
+    assert(front.Bounds.Y.Max == image.Bounds.Y.Max);
 
-    const int size = static_cast<int>(front.m_depths.size());
+    const int size = static_cast<int>(front.Depths.size());
 
 #ifdef VTKH_OPENMP_ENABLED
 #pragma omp parallel for
 #endif
     for (int i = 0; i < size; ++i)
     {
-      const float depth = image.m_depths[i];
-      if (depth > 1.f || front.m_depths[i] < depth)
+      const float depth = image.Depths[i];
+      if (depth > 1.f || front.Depths[i] < depth)
       {
         continue;
       }
       const int offset = i * 4;
-      front.m_depths[i] = abs(depth);
-      front.m_pixels[offset + 0] = image.m_pixels[offset + 0];
-      front.m_pixels[offset + 1] = image.m_pixels[offset + 1];
-      front.m_pixels[offset + 2] = image.m_pixels[offset + 2];
-      front.m_pixels[offset + 3] = image.m_pixels[offset + 3];
+      front.Depths[i] = abs(depth);
+      front.Pixels[offset + 0] = image.Pixels[offset + 0];
+      front.Pixels[offset + 1] = image.Pixels[offset + 1];
+      front.Pixels[offset + 2] = image.Pixels[offset + 2];
+      front.Pixels[offset + 3] = image.Pixels[offset + 3];
     }
   }
 
@@ -111,19 +110,19 @@ public:
 
   struct Pixel
   {
-    unsigned char m_color[4];
-    float m_depth;
-    int m_pixel_id; // local (sub-image) pixels id
+    unsigned char Color[4];
+    float Depth;
+    int PixelId; // local (sub-image) pixels id
 
     bool operator<(const Pixel& other) const
     {
-      if (m_pixel_id != other.m_pixel_id)
+      if (this->PixelId != other.PixelId)
       {
-        return m_pixel_id < other.m_pixel_id;
+        return this->PixelId < other.PixelId;
       }
       else
       {
-        return m_depth < other.m_depth;
+        return this->Depth < other.Depth;
       }
     }
   };
@@ -147,12 +146,12 @@ public:
       for (int j = 0; j < image_size; ++j)
       {
         const int image_offset = j * 4;
-        pixels[offset + j].m_color[0] = images[i].m_pixels[image_offset + 0];
-        pixels[offset + j].m_color[1] = images[i].m_pixels[image_offset + 1];
-        pixels[offset + j].m_color[2] = images[i].m_pixels[image_offset + 2];
-        pixels[offset + j].m_color[3] = images[i].m_pixels[image_offset + 3];
-        pixels[offset + j].m_depth = images[i].m_depths[j];
-        pixels[offset + j].m_pixel_id = j;
+        pixels[offset + j].Color[0] = images[i].Pixels[image_offset + 0];
+        pixels[offset + j].Color[1] = images[i].Pixels[image_offset + 1];
+        pixels[offset + j].Color[2] = images[i].Pixels[image_offset + 2];
+        pixels[offset + j].Color[3] = images[i].Pixels[image_offset + 3];
+        pixels[offset + j].Depth = images[i].Depths[j];
+        pixels[offset + j].PixelId = j;
       } // for pixels
     }   // for images
   }
@@ -174,10 +173,10 @@ public:
     }
 
     // check to see if that worked
-    int pixel_id_0 = pixels[0].m_pixel_id;
+    int pixel_id_0 = pixels[0].PixelId;
     for (int i = 1; i < num_images; ++i)
     {
-      assert(pixel_id_0 == pixels[i].m_pixel_id);
+      assert(pixel_id_0 == pixels[i].PixelId);
     }
 
 
@@ -190,27 +189,23 @@ public:
       Pixel pixel = pixels[index];
       for (int j = 1; j < num_images; ++j)
       {
-        if (pixel.m_color[3] == 255 || pixel.m_depth > 1.f)
+        if (pixel.Color[3] == 255 || pixel.Depth > 1.f)
         {
           break;
         }
-        unsigned int alpha = pixel.m_color[3];
+        unsigned int alpha = pixel.Color[3];
         const unsigned int opacity = 255 - alpha;
-        pixel.m_color[0] +=
-          static_cast<unsigned char>(opacity * pixels[index + j].m_color[0] / 255);
-        pixel.m_color[1] +=
-          static_cast<unsigned char>(opacity * pixels[index + j].m_color[1] / 255);
-        pixel.m_color[2] +=
-          static_cast<unsigned char>(opacity * pixels[index + j].m_color[2] / 255);
-        pixel.m_color[3] +=
-          static_cast<unsigned char>(opacity * pixels[index + j].m_color[3] / 255);
-        pixel.m_depth = pixels[index + j].m_depth;
+        pixel.Color[0] += static_cast<unsigned char>(opacity * pixels[index + j].Color[0] / 255);
+        pixel.Color[1] += static_cast<unsigned char>(opacity * pixels[index + j].Color[1] / 255);
+        pixel.Color[2] += static_cast<unsigned char>(opacity * pixels[index + j].Color[2] / 255);
+        pixel.Color[3] += static_cast<unsigned char>(opacity * pixels[index + j].Color[3] / 255);
+        pixel.Depth = pixels[index + j].Depth;
       } // for each image
-      images[0].m_pixels[i * 4 + 0] = pixel.m_color[0];
-      images[0].m_pixels[i * 4 + 1] = pixel.m_color[1];
-      images[0].m_pixels[i * 4 + 2] = pixel.m_color[2];
-      images[0].m_pixels[i * 4 + 3] = pixel.m_color[3];
-      images[0].m_depths[i] = pixel.m_depth;
+      images[0].Pixels[i * 4 + 0] = pixel.Color[0];
+      images[0].Pixels[i * 4 + 1] = pixel.Color[1];
+      images[0].Pixels[i * 4 + 2] = pixel.Color[2];
+      images[0].Pixels[i * 4 + 3] = pixel.Color[3];
+      images[0].Depths[i] = pixel.Depth;
     } // for each pixel
   }
 };
