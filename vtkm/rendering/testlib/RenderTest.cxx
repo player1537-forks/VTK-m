@@ -173,8 +173,11 @@ void DoRenderTest(vtkm::rendering::Canvas& canvas,
   vtkm::Range fieldRange;
   for (std::size_t dataFieldId = 0; dataFieldId < numFields; ++dataFieldId)
   {
+    std::cout << "   AddActor: " << dataFieldId << std::endl;
+
     vtkm::cont::DataSet dataSet = dataSetsFields[dataFieldId].first;
     std::string fieldName = dataSetsFields[dataFieldId].second;
+    dataSet.PrintSummary(std::cout);
     if (options.Colors.empty())
     {
       scene.AddActor(vtkm::rendering::Actor(dataSet.GetCellSet(),
@@ -280,6 +283,7 @@ void RenderTest(const vtkm::cont::DataSet& dataSet,
                 const std::string& outputFile,
                 const RenderTestOptions& options)
 {
+  std::cout << "RenderTest_1!!!" << std::endl;
   RenderTest({ { dataSet, fieldName } }, outputFile, options);
 }
 
@@ -287,6 +291,7 @@ void RenderTest(const DataSetFieldVector& dataSetsFields,
                 const std::string& outputFile,
                 const RenderTestOptions& options)
 {
+  std::cout << "RenderTest_2!!!" << std::endl;
   std::unique_ptr<vtkm::cont::ScopedRuntimeDeviceTracker> deviceScope;
   if (options.AllowAnyDevice)
   {

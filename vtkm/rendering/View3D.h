@@ -16,6 +16,10 @@
 #include <vtkm/rendering/BoundingBoxAnnotation.h>
 #include <vtkm/rendering/ColorBarAnnotation.h>
 
+#ifdef VTKM_ENABLE_MPI
+#include <vtkm/rendering/compositing/Compositor.h>
+#endif
+
 namespace vtkm
 {
 namespace rendering
@@ -53,6 +57,10 @@ private:
   vtkm::rendering::AxisAnnotation3D YAxisAnnotation;
   vtkm::rendering::AxisAnnotation3D ZAxisAnnotation;
   vtkm::rendering::ColorBarAnnotation ColorBarAnnotation;
+
+#ifdef VTKM_ENABLE_MPI
+  vtkm::rendering::compositing::Compositor Compositor;
+#endif
 };
 }
 } // namespace vtkm::rendering

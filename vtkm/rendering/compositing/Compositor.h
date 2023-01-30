@@ -13,6 +13,7 @@
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
 
+#include <vtkm/rendering/Canvas.h>
 #include <vtkm/rendering/compositing/Image.h>
 
 #ifdef VTKM_ENABLE_MPI
@@ -43,6 +44,9 @@ public:
 
   void ClearImages();
 
+  void AddImage(vtkm::rendering::Canvas& canvas);
+
+  /*
   void AddImage(const unsigned char* color_buffer,
                 const float* depth_buffer,
                 const int width,
@@ -64,6 +68,7 @@ public:
                 const int width,
                 const int height,
                 const int vis_order);
+*/
 
   Image Composite();
 

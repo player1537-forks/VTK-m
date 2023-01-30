@@ -25,7 +25,7 @@ set(unit_tests
   UnitTestMapperGlyphVector.cxx
 )
 
-vtkm_unit_tests(SOURCES ${unit_tests} LIBRARIES vtkm_source)
+vtkm_unit_tests(SOURCES ${unit_tests} LIBRARIES vtkm_source vtkm_filter_field_transform)
 
 #add distributed tests i.e.test to run with MPI
 #if MPI is enabled.

@@ -85,8 +85,8 @@ struct VTKM_RENDERING_EXPORT Image
 
   void Init(const float* color_buffer,
             const float* depth_buffer,
-            int width,
-            int height,
+            vtkm::Id width,
+            vtkm::Id height,
             int composite_order = -1)
   {
     m_composite_order = composite_order;
@@ -120,8 +120,8 @@ struct VTKM_RENDERING_EXPORT Image
 
   void Init(const unsigned char* color_buffer,
             const float* depth_buffer,
-            int width,
-            int height,
+            vtkm::Id width,
+            vtkm::Id height,
             int composite_order = -1)
   {
     m_composite_order = composite_order;

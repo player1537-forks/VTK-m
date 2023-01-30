@@ -8,6 +8,7 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
+#include <vtkm/cont/EnvironmentTracker.h>
 #include <vtkm/rendering/View3D.h>
 
 namespace vtkm
@@ -41,6 +42,42 @@ void View3D::Paint()
   this->GetCanvas().Clear();
   this->RenderAnnotations();
   this->GetScene().Render(this->GetMapper(), this->GetCanvas(), this->GetCamera());
+
+#ifdef VTKM_ENABLE_MPI
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  if (comm.size() == 1)
+    return;
+
+  this->Compositor.SetCompositeMode(vtkm::rendering::compositing::Compositor::Z_BUFFER_SURFACE);
+  /*
+  auto colors = (this->GetCanvas().GetColorBuffer().WritePortal().GetArray())[0][0];
+  auto depths = (this->GetCanvas().GetDepthBuffer().WritePortal().GetArray());
+  //auto colors = &GetVTKMPointer(this->GetCanvas().GetColorBuffer())[0][0];
+  //auto depths = GetVTKMPointer(this->GetCanvas().GetDepthBuffer());
+  */
+  this->Compositor.AddImage(this->GetCanvas());
+  auto result = this->Compositor.Composite();
+
+  //Rank 0 has the composited result, so put it into the Canvas.
+  if (comm.rank() == 0)
+  {
+    this->GetCanvas().Clear();
+    auto colors = this->GetCanvas().GetColorBuffer();
+    auto depths = this->GetCanvas().GetDepthBuffer();
+
+    int size = this->GetCanvas().GetWidth() * this->GetCanvas().GetHeight();
+    for (int i = 0; i < size; i++)
+    {
+      const int offset = i * 4;
+      vtkm::Vec4f_32 rgba;
+      for (int j = 0; j < 4; j++)
+        rgba[j] = static_cast<vtkm::FloatDefault>(result.m_pixels[offset + j] / 255.f);
+
+      colors.WritePortal().Set(i, rgba);
+      depths.WritePortal().Set(i, result.m_depths[i]);
+    }
+  }
+#endif
 }
 
 void View3D::RenderScreenAnnotations()

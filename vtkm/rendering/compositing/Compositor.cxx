@@ -48,6 +48,51 @@ void Compositor::ClearImages()
   m_images.clear();
 }
 
+void Compositor::AddImage(vtkm::rendering::Canvas& canvas)
+{
+  auto colors = &(canvas.GetColorBuffer().ReadPortal().GetArray()[0][0]);
+  auto depths = canvas.GetDepthBuffer().ReadPortal().GetArray();
+  vtkm::Id width = canvas.GetWidth();
+  vtkm::Id height = canvas.GetHeight();
+
+  assert(m_composite_mode != VIS_ORDER_BLEND);
+  assert(depths != NULL);
+  Image image;
+  if (m_images.size() == 0)
+  {
+    m_images.push_back(image);
+    m_images[0].Init(colors, depths, width, height);
+    //m_images[0].Save("first.png");
+  }
+  else if (m_composite_mode == Z_BUFFER_SURFACE)
+  {
+    //
+    // Do local composite and keep a single image
+    //
+    image.Init(colors, depths, width, height);
+    vtkm::rendering::compositing::ImageCompositor compositor;
+    compositor.ZBufferComposite(m_images[0], image);
+  }
+  else
+  {
+    const size_t image_index = m_images.size();
+    m_images.push_back(image);
+    m_images[image_index].Init(colors, depths, width, height);
+  }
+}
+
+
+/*
+void Compositor::AddImage(const vtkm::cont::ArrayHandle<vtkm::Vec4<T>>& colors,
+                          const vtkm::cont::ArrayHandle<T>& depths,
+                          vtkm::Id width,
+                          vtkm::Id height)
+{
+  auto c = colors.WritePortal().GetArray();
+  auto d = depths.WritePortal().GetArray();
+  this->AddImage(c, d, width, height);
+}
+
 void Compositor::AddImage(const unsigned char* color_buffer,
                           const float* depth_buffer,
                           const int width,
@@ -123,6 +168,7 @@ void Compositor::AddImage(const unsigned char* color_buffer,
   m_images[image_index].Init(color_buffer, depth_buffer, width, height, vis_order);
 }
 
+
 void Compositor::AddImage(const float* color_buffer,
                           const float* depth_buffer,
                           const int width,
@@ -136,6 +182,7 @@ void Compositor::AddImage(const float* color_buffer,
 
   m_images[image_index].Init(color_buffer, depth_buffer, width, height, vis_order);
 }
+*/
 
 Image Compositor::Composite()
 {

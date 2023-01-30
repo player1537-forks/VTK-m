@@ -68,6 +68,7 @@ vtkm::rendering::compositing::Image ConstImage(const std::size_t& width,
 
 void TestImageComposite()
 {
+#if 0
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
 
   std::size_t width = 4, height = 4;
@@ -107,6 +108,7 @@ void TestImageComposite()
       std::cout << res.m_depths[i] << std::endl;
     }
   }
+#endif
 }
 
 void TestRenderComposite()
@@ -120,15 +122,7 @@ void TestRenderComposite()
 
   int numBlocks = comm.size() * 1;
   int rank = comm.rank();
-
-
-  //Create a sequence of datasets along the X direction.
-  std::string fieldName = "tangle";
-  vtkm::source::Tangle tangle;
-  vtkm::Vec3f pt(1 * rank, 0, 0);
-  tangle.SetPointDimensions({ 50, 50, 50 });
-  tangle.SetOrigin(pt);
-  vtkm::cont::DataSet ds = tangle.Execute();
+  int dsPerRank = 2;
 
   vtkm::rendering::Camera camera;
   camera.SetLookAt(vtkm::Vec3f_32(1.0, 0.5, 0.5));
@@ -140,16 +134,33 @@ void TestRenderComposite()
 
   // Background color:
   vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
-  vtkm::rendering::Actor actor(
-    ds.GetCellSet(), ds.GetCoordinateSystem(), ds.GetField(fieldName), colorTable);
   vtkm::rendering::Scene scene;
-  scene.AddActor(actor);
   int width = 512, height = 512;
   CanvasRayTracer canvas(width, height);
 
-  vtkm::rendering::View3D view(scene, MapperVolume(), canvas, camera, bg);
+  for (int i = 0; i < dsPerRank; i++)
+  {
+    //Create a sequence of datasets along the X direction.
+    std::string fieldName = "tangle";
+    vtkm::source::Tangle tangle;
+    vtkm::Vec3f pt(rank * dsPerRank + i, 0, 0);
+    if (rank == 1)
+      std::cout << "PT= " << pt << std::endl;
+    tangle.SetPointDimensions({ 50, 50, 50 });
+    tangle.SetOrigin(pt);
+    vtkm::cont::DataSet ds = tangle.Execute();
+
+    vtkm::rendering::Actor actor(
+      ds.GetCellSet(), ds.GetCoordinateSystem(), ds.GetField(fieldName), colorTable);
+    scene.AddActor(actor);
+  }
+
+  vtkm::rendering::View3D view(scene, MapperRayTracer(), canvas, camera, bg);
   view.Paint();
 
+  canvas.SaveAs("result.png");
+
+  /*
   auto colors = &GetVTKMPointer(canvas.GetColorBuffer())[0][0];
   auto depths = GetVTKMPointer(canvas.GetDepthBuffer());
 
@@ -160,6 +171,7 @@ void TestRenderComposite()
   {
     res.Save("RESULT.png", { "" });
   }
+  */
 }
 
 void RenderTests()

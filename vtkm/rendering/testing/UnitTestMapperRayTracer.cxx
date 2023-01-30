@@ -17,6 +17,9 @@
 #include <vtkm/rendering/View3D.h>
 #include <vtkm/rendering/testing/RenderTest.h>
 
+
+#include <vtkm/filter/field_transform/PointTransform.h>
+
 namespace
 {
 
@@ -29,8 +32,23 @@ void RenderTests()
   options.AllowAnyDevice = false;
   options.ColorTable = vtkm::cont::ColorTable::Preset::Inferno;
 
+
+  //  vtkm::rendering::testing::RenderTest(
+  //    maker.Make3DRegularDataSet0(), "pointvar", "rendering/raytracer/regular3D.png", options);
+
+  auto ds0 = maker.Make3DRegularDataSet0();
+  auto ds1 = maker.Make3DRegularDataSet0();
+
+  vtkm::filter::field_transform::PointTransform filter;
+  filter.SetTranslation({ -1, 2, 2 });
+  filter.SetOutputFieldName("coordinates");
+  filter.SetChangeCoordinateSystem(true);
+  auto res = filter.Execute(ds1);
+
   vtkm::rendering::testing::RenderTest(
-    maker.Make3DRegularDataSet0(), "pointvar", "rendering/raytracer/regular3D.png", options);
+    { { ds0, "pointvar" }, { res, "pointvar" } }, "rendering/raytracer/regular3D.png", options);
+
+
   vtkm::rendering::testing::RenderTest(maker.Make3DRectilinearDataSet0(),
                                        "pointvar",
                                        "rendering/raytracer/rectilinear3D.png",

@@ -12,6 +12,7 @@
 
 #include <vtkm/cont/ArrayHandleCounting.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
+#include <vtkm/cont/EnvironmentTracker.h>
 #include <vtkm/cont/TryExecute.h>
 #include <vtkm/io/DecodePNG.h>
 #include <vtkm/io/EncodePNG.h>
@@ -615,6 +616,13 @@ void Canvas::SetViewToScreenSpace(const vtkm::rendering::Camera& vtkmNotUsed(cam
 
 void Canvas::SaveAs(const std::string& fileName) const
 {
+  //Only rank 0 has the composited image.
+#ifdef VTKM_ENABLE_MPI
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  if (comm.rank() != 0)
+    return;
+#endif
+
   this->RefreshColorBuffer();
   ColorBufferType::ReadPortalType colorPortal = GetColorBuffer().ReadPortal();
   vtkm::Id width = GetWidth();
