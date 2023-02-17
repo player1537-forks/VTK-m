@@ -1,0 +1,123 @@
+vtkh:
+tests/vtkh/vtk-h_render.cpp
+
+TEST(vtkh_render, vtkh_bg_color)
+
+
+make data
+bounds
+camera setup.
+vtkh::MakeRender(...)
+   vtkh::Render: info needed to create a single image. N domains = N canvases
+     camera, bounds, FG/BG colors
+
+vtkh::RayTracer tracer;
+tracer.SetInput(...);
+
+vtkh::Scene scene;
+scene.AddRender(render);
+scene.AddRenderer(&tracer);
+scene.Render();
+
+vtkh::RayTracer : public vtkh::Renderer
+ --it returns a vtkm::rendering::CanvasRayTracer(width,height)
+ DoExecute() does the rendering
+ PostExecute() does the compositing.
+
+
+vtkh::Scene
+  list of vtkh::Renderer (raytracer, ...)
+  vector of vtkh::Render (camera, data, fg/bg)
+  Scene::Render():
+    for each renderer:
+      renderer->Update() does the rendering.
+    (do opaque, then volume)
+ RenderWorldAnnotations()
+   Render::RenderWorldAnnotations()
+     if rank != 0 then RETURN
+     Annotator annotator(canvas, camera, m_scene_bounds)
+     annotator.RenderWorldAnnotations()
+ RenderScreenAnnotations()
+
+vtkh::Image. pixels, depth, composite order, ...
+
+
+vtkh::Renderer : public Filter
+  DoExecute:
+     for each ds in m_input
+       m_mapper->RenderCells(ds)
+     this->Composite(...)
+
+
+vtkh::Compositor
+  Composite()
+    calls RadixKCompositor, etc.
+
+
+
+vtkh::Render
+  camera
+  image name
+  width/height/bounds
+  fg/bg colors
+
+vtkh::RayTracer
+  SetInput: dataset
+  SetField: scalar
+
+vtkh::Scene
+  AddRender: vtkh::Render
+  AddRenderer: vtkh::RayTracer
+
+
+
+vtkh::Scene.Render();
+
+
+
+=======================================================================================
+vtkm:
+vtkm::rendering::Scene
+  AddActor: dataset
+  Render(mapper, canvas, camera)
+
+vtkm::rendering::View
+  camera
+  canvas
+  mapper
+  scene
+  annotations
+  Paint() does the rendering
+
+vtkm::rendering::Canvas
+ Fg/Bg
+ color/depth buffers
+ model/view mtx
+
+
+============================================
+VTK-m: simpler example... ?
+examples/demo/Demo.cxx
+
+vtkm::rendering::Camera (look at, up, clip, etc).
+vtkm::rendering::Actor (dataset)
+vtkm::rendering::CanvasRayTracer (x,y)
+
+vtkm::rendering::Scene (actor)
+vtkm::rendering::View3D view (scene, mapper, canvas, camera, bg)
+
+view.Paint() (renders the image).
+
+
+
+
+
+=========================================================================================
+Comparing classes, etc.
+Camera: the same. vtkm::rendering::Camera
+
+Scene:
+vtkm: vector of vtkm::rendering::Actor
+vtkh: list/vector of vtkh::Renderer, batchsize, has_volume.
+
+vtkh::Render aprox equal to vtkm::rendering::View
