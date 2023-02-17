@@ -176,10 +176,62 @@ void TestRenderComposite()
   */
 }
 
+void TestVolumeRenderComposite()
+{
+  using vtkm::rendering::CanvasRayTracer;
+  using vtkm::rendering::MapperVolume;
+
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+
+  int numBlocks = comm.size() * 1;
+  int rank = comm.rank();
+  int dsPerRank = 1;
+
+  vtkm::rendering::Camera camera;
+  camera.SetLookAt(vtkm::Vec3f_32(1.0, 0.5, 0.5));
+  camera.SetViewUp(vtkm::make_Vec(0.f, 1.f, 0.f));
+  camera.SetClippingRange(1.f, 10.f);
+  camera.SetFieldOfView(60.f);
+  camera.SetPosition(vtkm::Vec3f_32(-2, 1.75, 1.75));
+  vtkm::cont::ColorTable colorTable("inferno");
+
+  colorTable.AddPointAlpha(0.0, .01f);
+  colorTable.AddPointAlpha(1.0, .01f);
+
+  // Background color:
+  vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
+  vtkm::rendering::Scene scene;
+  int width = 512, height = 512;
+  CanvasRayTracer canvas(width, height);
+
+  for (int i = 0; i < dsPerRank; i++)
+  {
+    //Create a sequence of datasets along the X direction.
+    std::string fieldName = "tangle";
+    vtkm::source::Tangle tangle;
+    vtkm::Vec3f pt(rank * dsPerRank + i, 0, 0);
+    if (rank == 1)
+      std::cout << "PT= " << pt << std::endl;
+    tangle.SetPointDimensions({ 50, 50, 50 });
+    tangle.SetOrigin(pt);
+    vtkm::cont::DataSet ds = tangle.Execute();
+
+    vtkm::rendering::Actor actor(
+      ds.GetCellSet(), ds.GetCoordinateSystem(), ds.GetField(fieldName), colorTable);
+    scene.AddActor(actor);
+  }
+
+  vtkm::rendering::View3D view(scene, MapperVolume(), canvas, camera, bg);
+  view.Paint();
+
+  canvas.SaveAs("result.png");
+}
+
 void RenderTests()
 {
   //  TestImageComposite();
-  TestRenderComposite();
+  //TestRenderComposite();
+  TestVolumeRenderComposite();
 }
 
 } //namespace
