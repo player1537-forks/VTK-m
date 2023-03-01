@@ -1931,9 +1931,13 @@ StreamingPoincare(std::map<std::string, std::vector<std::string>>& args)
 {
   XGCParameters xgcParams;
 
+  std::string coeffFile = "xgc.poincare_init.bp";
+  if (args.find("--CoeffFile") != args.end())
+    coeffFile = args["--CoeffFile"][0];
+
   std::map<std::string, std::string> adiosArgs;
   adiosArgs["--dir"] = args["--dir"][0];
-  auto ds = ReadStaticData(args, xgcParams, "xgc.poincare_init.bp");
+  auto ds = ReadStaticData(args, xgcParams, coeffFile);
 
   std::string fName = args["--streaming"][0];
   std::string outputFile = args["--output"][0];
