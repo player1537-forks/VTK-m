@@ -1254,8 +1254,14 @@ ReadTurbData(adiosS* turbStuff,
              vtkm::cont::ArrayHandle<vtkm::FloatDefault>& As_arr,
              vtkm::cont::ArrayHandle<vtkm::FloatDefault>& dAs_arr)
 {
-  auto asV = turbStuff->io.InquireVariable<double>("As_phi_ff");
-  auto dAsV = turbStuff->io.InquireVariable<double>("dAs_phi_ff");
+  std::string As_phiName = "As_phi_ff", dAs_phiName = "dAs_phi_ff";
+  if (args.find("--AsVarName") != args.end())
+    As_phiName = args["--AsVarName"][0];
+  if (args.find("--dAsVarName") != args.end())
+    dAs_phiName = args["--dAsVarName"][0];
+
+  auto asV = turbStuff->io.InquireVariable<double>(As_phiName.c_str());
+  auto dAsV = turbStuff->io.InquireVariable<double>(dAs_phiName.c_str());
 
   std::vector<double> arrAs, arrdAs;
   turbStuff->engine.Get(asV, arrAs, adios2::Mode::Sync);
