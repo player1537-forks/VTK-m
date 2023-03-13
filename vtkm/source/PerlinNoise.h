@@ -55,6 +55,9 @@ public:
   VTKM_CONT vtkm::Vec3f GetOrigin() const { return this->Origin; }
   VTKM_CONT void SetOrigin(const vtkm::Vec3f& origin) { this->Origin = origin; }
 
+  VTKM_CONT vtkm::Vec3f GetMaxExtent() const { return this->MaxExtent; }
+  VTKM_CONT void SetMaxExtent(const vtkm::Vec3f& maxExtent) { this->MaxExtent = maxExtent; }
+
   /// \brief The seed used for the pseudorandom number generation of the noise.
   ///
   /// If the seed is not set, then a new, unique seed is picked each time `Execute` is run.
@@ -70,6 +73,7 @@ private:
 
   vtkm::Id3 PointDimensions = { 16, 16, 16 };
   vtkm::Vec3f Origin = { 0, 0, 0 };
+  vtkm::Vec3f MaxExtent = { 1, 1, 1 };
   vtkm::IdComponent Seed = 0;
   bool SeedSet = false;
 };

@@ -55,7 +55,7 @@ void Compositor::AddImage(vtkm::rendering::Canvas& canvas)
   vtkm::Id width = canvas.GetWidth();
   vtkm::Id height = canvas.GetHeight();
 
-  assert(this->CompositingMode != VIS_ORDER_BLEND);
+  // assert(this->CompositingMode != VIS_ORDER_BLEND);
   assert(depths != NULL);
   Image image;
   if (this->Images.size() == 0)

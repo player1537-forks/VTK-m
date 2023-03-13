@@ -9,6 +9,7 @@
 //============================================================================
 
 #include <vtkm/cont/EnvironmentTracker.h>
+#include <vtkm/cont/Timer.h>
 #include <vtkm/rendering/View3D.h>
 
 #ifdef VTKM_ENABLE_MPI
@@ -45,47 +46,40 @@ View3D::~View3D() {}
 
 void View3D::Paint()
 {
-  this->GetCanvas().Clear();
-  this->RenderAnnotations();
-  this->GetScene().Render(this->GetMapper(), this->GetCanvas(), this->GetCamera());
+  this->Times.clear();
 
+  vtkm::cont::Timer totalTimer;
+  vtkm::cont::Timer renderTimer;
+  totalTimer.Start();
+  renderTimer.Start();
+  this->GetCanvas().Clear();
+  this->GetScene().Render(this->GetMapper(), this->GetCanvas(), this->GetCamera());
+  renderTimer.Stop();
+
+  vtkm::cont::Timer compositeTimer;
+  compositeTimer.Start();
 #ifdef VTKM_ENABLE_MPI
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
-  if (comm.size() == 1)
-    return;
-
-  this->Compositor.SetCompositeMode(vtkm::rendering::compositing::Compositor::Z_BUFFER_SURFACE);
-  //volume render
-  this->Compositor.SetCompositeMode(vtkm::rendering::compositing::Compositor::VIS_ORDER_BLEND);
-  /*
-  auto colors = (this->GetCanvas().GetColorBuffer().WritePortal().GetArray())[0][0];
-  auto depths = (this->GetCanvas().GetDepthBuffer().WritePortal().GetArray());
-  //auto colors = &GetVTKMPointer(this->GetCanvas().GetColorBuffer())[0][0];
-  //auto depths = GetVTKMPointer(this->GetCanvas().GetDepthBuffer());
-  */
-  this->Compositor.AddImage(this->GetCanvas());
-  auto result = this->Compositor.Composite();
-
-  //Rank 0 has the composited result, so put it into the Canvas.
-  if (comm.rank() == 0)
+  if (comm.size() > 1)
   {
-    this->GetCanvas().Clear();
-    auto colors = this->GetCanvas().GetColorBuffer();
-    auto depths = this->GetCanvas().GetDepthBuffer();
-
-    int size = this->GetCanvas().GetWidth() * this->GetCanvas().GetHeight();
-    for (int i = 0; i < size; i++)
+    this->Compositor.SetCompositeMode(vtkm::rendering::compositing::Compositor::Z_BUFFER_SURFACE);
+    this->Compositor.AddImage(this->GetCanvas());
+    auto result = this->Compositor.Composite();
+    //Rank 0 has the composited result, so put it into the Canvas.
+    if (comm.rank() == 0)
     {
-      const int offset = i * 4;
-      vtkm::Vec4f_32 rgba;
-      for (int j = 0; j < 4; j++)
-        rgba[j] = static_cast<vtkm::FloatDefault>(result.Pixels[offset + j] / 255.f);
-
-      colors.WritePortal().Set(i, rgba);
-      depths.WritePortal().Set(i, result.Depths[i]);
+      this->GetCanvas().CopyFrom(vtkm::cont::make_ArrayHandle(result.Pixels, vtkm::CopyFlag::Off),
+                                 vtkm::cont::make_ArrayHandle(result.Depths, vtkm::CopyFlag::Off));
     }
   }
+  this->RenderAnnotations();
 #endif
+  compositeTimer.Stop();
+  totalTimer.Stop();
+
+  this->Times[RENDER_TIME_KEY] = renderTimer.GetElapsedTime();
+  this->Times[COMPOSITE_TIME_KEY] = compositeTimer.GetElapsedTime();
+  this->Times[TOTAL_TIME_KEY] = totalTimer.GetElapsedTime();
 }
 
 void View3D::RenderScreenAnnotations()
@@ -181,7 +175,7 @@ void View3D::RenderWorldAnnotations()
 
   this->GetWorldAnnotator().BeginLineRenderingBatch();
   this->BoxAnnotation.SetColor(Color(.5f, .5f, .5f));
-  this->BoxAnnotation.SetExtents(this->GetScene().GetSpatialBounds());
+  this->BoxAnnotation.SetExtents(bounds);
   this->BoxAnnotation.Render(this->GetCamera(), this->GetWorldAnnotator());
   this->GetWorldAnnotator().EndLineRenderingBatch();
 

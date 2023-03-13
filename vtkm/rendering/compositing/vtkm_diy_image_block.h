@@ -61,9 +61,9 @@ struct AddImageBlock
 
 struct AddMultiImageBlock
 {
+  const vtkmdiy::Master& m_master;
   std::vector<vtkm::rendering::compositing::Image>& m_images;
   vtkm::rendering::compositing::Image& m_output;
-  const vtkmdiy::Master& m_master;
 
   AddMultiImageBlock(vtkmdiy::Master& master,
                      std::vector<vtkm::rendering::compositing::Image>& images,

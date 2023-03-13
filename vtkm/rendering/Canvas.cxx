@@ -196,6 +196,27 @@ struct DrawColorBar : public vtkm::worklet::WorkletMapField
   bool Horizontal;
 }; // struct DrawColorBar
 
+struct CopyFromBuffers : public vtkm::worklet::WorkletMapField
+{
+  using ControlSignature = void(FieldInOut, FieldInOut, WholeArrayIn, WholeArrayIn);
+  using ExecutionSignature = void(_1, _2, _3, _4, WorkIndex);
+
+  template <typename ColorPortalType, typename DepthPortalType>
+  VTKM_EXEC void operator()(vtkm::Vec4f_32& color,
+                            vtkm::Float32& depth,
+                            const ColorPortalType& colorBuffer,
+                            const DepthPortalType& depthBuffer,
+                            const vtkm::Id& index) const
+  {
+    vtkm::Id colorOffset = index * 4;
+    for (vtkm::IdComponent i = 0; i < 4; ++i)
+    {
+      color[i] = static_cast<vtkm::Float32>(colorBuffer.Get(colorOffset + i) / 255.0f);
+    }
+    depth = static_cast<vtkm::Float32>(depthBuffer.Get(index));
+  }
+}; // struct CopyFromBuffers
+
 } // namespace internal
 
 struct Canvas::CanvasInternals
@@ -668,6 +689,14 @@ void Canvas::SaveAs(const std::string& fileName) const
 vtkm::rendering::WorldAnnotator* Canvas::CreateWorldAnnotator() const
 {
   return new vtkm::rendering::WorldAnnotator(this);
+}
+
+void Canvas::CopyFrom(const vtkm::cont::ArrayHandle<unsigned char>& colorBuffer,
+                      const vtkm::cont::ArrayHandle<vtkm::Float32>& depthBuffer)
+{
+  vtkm::worklet::DispatcherMapField<internal::CopyFromBuffers> dispatcher(
+    internal::CopyFromBuffers{});
+  dispatcher.Invoke(this->GetColorBuffer(), this->GetDepthBuffer(), colorBuffer, depthBuffer);
 }
 }
 } // vtkm::rendering

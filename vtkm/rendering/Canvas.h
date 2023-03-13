@@ -200,6 +200,10 @@ public:
   VTKM_CONT
   void EndTextRenderingBatch() const;
 
+  VTKM_CONT
+  void CopyFrom(const vtkm::cont::ArrayHandle<unsigned char>& colorBuffer,
+                const vtkm::cont::ArrayHandle<vtkm::Float32>& depthBuffer);
+
   friend class AxisAnnotation2D;
   friend class ColorBarAnnotation;
   friend class ColorLegendAnnotation;

@@ -212,8 +212,8 @@ vtkm::cont::DataSet PerlinNoise::DoExecute() const
 
   vtkm::cont::DataSet dataSet;
   const vtkm::Vec3f cellDims = this->GetCellDimensions();
-  const vtkm::Vec3f spacing(1.0f / cellDims[0], 1.0f / cellDims[1], 1.0f / cellDims[2]);
-
+  const vtkm::Vec3f extentDelta = this->MaxExtent - this->Origin;
+  const vtkm::Vec3f spacing = extentDelta / cellDims;
 
   vtkm::cont::CellSetStructured<3> cellSet;
   cellSet.SetPointDimensions(this->PointDimensions);
