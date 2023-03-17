@@ -18,6 +18,7 @@ set(Poincare_srcs
  Poincare.cxx
  FindMaxR.cxx
  RunPoincare2.cxx
+ SavePoincare.cxx
  EvalField.cxx
  )
 

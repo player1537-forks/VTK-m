@@ -45,6 +45,7 @@
 #include "FindMaxR.h"
 #include "EvalField.h"
 #include "RunPoincare2.h"
+#include "SavePoincare.h"
 #include "XGCHelpers.h"
 
 adios2::ADIOS *adios = NULL;
@@ -2116,6 +2117,15 @@ main(int argc, char** argv)
   if (args.find("--streaming") != args.end())
   {
     StreamingPoincare(args);
+  }
+  else if (args.find("--saveVecField") != args.end())
+  {
+    XGCParameters xgcParams;
+    auto ds = ReadDataSet(args, xgcParams);
+    //ds.PrintSummary(std::cout);
+    //vtkm::io::VTKDataSetWriter writer2("grid.vtk");
+    //writer2.WriteDataSet(ds);
+    SavePoincare(ds, xgcParams, args);
   }
   else
   {
