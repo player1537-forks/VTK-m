@@ -195,6 +195,19 @@ public:
     return this->FindCellImpl(point, cellId, parametric, lastCell);
   }
 
+  VTKM_EXEC
+  void FindCells(const vtkm::Vec<FloatVec3,10>& points, vtkm::Vec<vtkm::Id,10>& cellIds, vtkm::Vec<FloatVec3,10>& parametrics,
+                 vtkm::Vec<vtkm::ErrorCode,10>& errorCodes) const
+  {
+    //LastCell lastCell;
+    //errorCodes[0] = this->FindCellImpl(points[0], cellIds[0], parametrics[0], lastCell);
+    for (vtkm::IdComponent i = 0; i < 10; i++)
+    {
+      LastCell lastCell;
+      errorCodes[i] = this->FindCellImpl(points[i], cellIds[i], parametrics[i], lastCell);
+    }
+  }
+
   VTKM_DEPRECATED(1.6, "Locators are no longer pointers. Use . operator.")
   VTKM_EXEC CellLocatorTwoLevel* operator->() { return this; }
   VTKM_DEPRECATED(1.6, "Locators are no longer pointers. Use . operator.")

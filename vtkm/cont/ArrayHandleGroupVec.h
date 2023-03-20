@@ -260,7 +260,7 @@ struct ArrayExtractComponentImpl<
   : vtkm::cont::internal::ArrayExtractComponentImpl<ComponentsStorageTag>
 {
   template <typename T>
-  vtkm::cont::ArrayHandleStride<typename vtkm::VecTraits<T>::BaseComponentType> operator()(
+  vtkm::cont::ArrayHandleStride<typename vtkm::internal::SafeVecTraits<T>::BaseComponentType> operator()(
     const vtkm::cont::ArrayHandle<
       vtkm::Vec<T, NUM_COMPONENTS>,
       vtkm::cont::StorageTagGroupVec<ComponentsStorageTag, NUM_COMPONENTS>>& src,
@@ -271,12 +271,12 @@ struct ArrayExtractComponentImpl<
                                     NUM_COMPONENTS>
       srcArray(src);
     constexpr vtkm::IdComponent NUM_SUB_COMPONENTS = vtkm::VecFlat<T>::NUM_COMPONENTS;
-    vtkm::cont::ArrayHandleStride<typename vtkm::VecTraits<T>::BaseComponentType> dest =
+    vtkm::cont::ArrayHandleStride<typename vtkm::internal::SafeVecTraits<T>::BaseComponentType> dest =
       ArrayExtractComponentImpl<ComponentsStorageTag>{}(
         srcArray.GetComponentsArray(), componentIndex % NUM_SUB_COMPONENTS, allowCopy);
 
     // Adjust stride and offset to expectations of grouped values
-    return vtkm::cont::ArrayHandleStride<typename vtkm::VecTraits<T>::BaseComponentType>(
+    return vtkm::cont::ArrayHandleStride<typename vtkm::internal::SafeVecTraits<T>::BaseComponentType>(
       dest.GetBasicArray(),
       dest.GetNumberOfValues() / NUM_COMPONENTS,
       dest.GetStride() * NUM_COMPONENTS,

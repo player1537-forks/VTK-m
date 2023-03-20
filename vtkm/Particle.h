@@ -12,6 +12,7 @@
 
 #include <ostream>
 #include <vtkm/Bitset.h>
+#include <vtkm/VecTraits.h>
 #include <vtkm/VecVariable.h>
 #include <vtkm/VectorAnalysis.h>
 #include <vtkm/cont/Serialization.h>

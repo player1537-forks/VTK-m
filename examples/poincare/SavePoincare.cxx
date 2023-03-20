@@ -355,8 +355,8 @@ SavePoincare(const vtkm::cont::DataSet& ds,
         for (vtkm::Id j = 0; j < coords.GetNumberOfValues(); j++)
         {
           vtkm::Vec3f ptRZ = coordsPortal.Get(j);
-          auto R = ptRZ[0];
-          auto Z = ptRZ[1];
+          //auto R = ptRZ[0];
+          //auto Z = ptRZ[1];
 
           vtkm::Vec3f ptRPZ(ptRZ[0], phi, ptRZ[1]);
           //vtkm::Vec3f ptXYZ(R*vtkm::Cos(phi), R*vtkm::Sin(phi), Z);

@@ -137,9 +137,9 @@ public:
     //Find the triangle.
     vtkm::ErrorCode status = locator2L.FindCell(CoordRZ, cellId, param);
 
-    auto dR = (this->rmax-this->rmin), dZ = (this->zmax-this->zmin);
-    auto drInv = dR / vtkm::FloatDefault(this->NumSampsX);
-    auto dzInv = dZ / vtkm::FloatDefault(this->NumSampsY);
+//    auto dR = (this->rmax-this->rmin), dZ = (this->zmax-this->zmin);
+//    auto drInv = dR / vtkm::FloatDefault(this->NumSampsX);
+//    auto dzInv = dZ / vtkm::FloatDefault(this->NumSampsY);
     auto R_i = this->GetIndex(CoordRZ[0], this->NumSampsX, this->rmin, this->InvSpacingRZ[0]);
     auto Z_i = this->GetIndex(CoordRZ[1], this->NumSampsY, this->zmin, this->InvSpacingRZ[1]);
     /*
@@ -186,8 +186,8 @@ public:
     this->CalcPsiTheta(CoordRZ, Coeff_2D, ptPT, PTidx);
     //ptPT[0] = 0.75;
 
-    vtkm::Id idx_x = idx / this->NumSampsX;
-    vtkm::Id idx_y = idx % this->NumSampsY;
+    //vtkm::Id idx_x = idx / this->NumSampsX;
+    //vtkm::Id idx_y = idx % this->NumSampsY;
 
     auto P_i = this->GetIndex(ptPT[0], this->NumSampsX, this->min_psi, this->InvSpacingPT[0]);
     auto T_i = this->GetIndex(ptPT[1], this->NumSampsY, 0, this->InvSpacingPT[1]);
@@ -257,7 +257,7 @@ public:
     //Use the param values to set the point for each plane.
     for (vtkm::Id n = 0; n < this->NumPlanes*2; n++)
     {
-      vtkm::FloatDefault as = 0;
+      vtkm::FloatDefault as2 = 0;
       vtkm::Vec3f das_rzp;
 
       vtkm::Id offset = n*this->NumNodes;
@@ -265,7 +265,7 @@ public:
       vals.Append(As_phi_ff.Get(vIds[0]+offset));
       vals.Append(As_phi_ff.Get(vIds[1]+offset));
       vals.Append(As_phi_ff.Get(vIds[2]+offset));
-      vtkm::exec::CellInterpolate(vals, param, vtkm::CellShapeTagTriangle(), as);
+      vtkm::exec::CellInterpolate(vals, param, vtkm::CellShapeTagTriangle(), as2);
 
       vtkm::VecVariable<vtkm::Vec3f, 3> valv;
       valv.Append(dAs_phi_ff_RZP.Get(vIds[0]+offset));
@@ -273,12 +273,12 @@ public:
       valv.Append(dAs_phi_ff_RZP.Get(vIds[2]+offset));
       vtkm::exec::CellInterpolate(valv, param, vtkm::CellShapeTagTriangle(), das_rzp);
 
-      vtkm::Id outIdx = n*(this->NumSampsX * this->NumSampsY) + idx; //works
-      //vtkm::Id outIdx = n*(this->NumSampsX * this->NumSampsY) + PTidx;
-      as = idx;
-      as = ptPT[0];
-      as = 10;
-      AsOut.Set(outIdx, as);
+      //vtkm::Id outIdx = n*(this->NumSampsX * this->NumSampsY) + idx; //works
+
+      as2 = idx;
+      as2 = ptPT[0];
+      as2 = 10;
+      AsOut.Set(outIdx, as2);
       dAsOut_RZP.Set(outIdx, das_rzp);
     }
   }
@@ -335,12 +335,12 @@ public:
                const vtkm::FloatDefault& xmin,
                const vtkm::FloatDefault& dx_inv) const
   {
-    int A = nx-1;
-    auto B = (x-xmin)*dx_inv;
-    vtkm::FloatDefault B0 = (x-xmin);
-    vtkm::FloatDefault B1 = B0*dx_inv;
-    int C = int(B1);
-    int D = std::min(nx-1, C);
+    //int A = nx-1;
+    //auto B = (x-xmin)*dx_inv;
+    //vtkm::FloatDefault B0 = (x-xmin);
+    //vtkm::FloatDefault B1 = B0*dx_inv;
+    //int C = int(B1);
+    //int D = std::min(nx-1, C);
     int idx = std::max(0, std::min(nx-1,
                                    int((x-xmin)*dx_inv)) );
     return idx;

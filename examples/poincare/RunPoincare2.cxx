@@ -1,5 +1,8 @@
 #include <vtkm/Particle.h>
 #include <vtkm/cont/ArrayCopy.h>
+#include <vtkm/cont/ArrayHandleGroupVec.h>
+#include <vtkm/cont/ArrayHandleGroupVecVariable.h>
+#include <vtkm/cont/ArrayHandleCounting.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
 #include <vtkm/cont/CellLocatorUniformGrid.h>
 #include <vtkm/cont/CellLocatorUniformBins.h>
@@ -11,6 +14,7 @@
 #include "XGCParameters.h"
 #include "RunPoincare2.h"
 #include "Poincare2.h"
+#include "Poincare2_multi_particle.h"
 
 #include "ComputeAs.h"
 //#include "ComputeAsCell.h"
@@ -310,6 +314,10 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
     std::cout<<"SetUniformBins: "<<nx<<" "<<ny<<std::endl;
   }
 
+  bool useMultiPointWorklet = false;
+  if (args.find("--MultiPointWorklet") != args.end())
+    useMultiPointWorklet = true;
+
   if (args.find("--LocatorDensity") != args.end())
   {
     auto d = args["--LocatorDensity"];
@@ -355,7 +363,6 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
   }
 
   PoincareWorklet2 worklet(numPunc, 0.0f, stepSize, maxItersPerPunc, useTraces, xgcParams, bothDir, fwdIdxRange);
-
   worklet.one_d_cub_dpsi_inv = 1.0/dPsi;
   worklet.UseLinearB = useLinearB;
   worklet.ValidateInterpolation = validateInterp;
@@ -367,6 +374,19 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
   worklet.UseBOnly = useBOnly;
   worklet.UsePrevCell = usePrevCell;
   worklet.FlipBPhi = flipBPhi;
+
+  PoincareWorklet2_multi_particle workletMP(numPunc, 0.0f, stepSize, maxItersPerPunc, useTraces, xgcParams, bothDir, fwdIdxRange);
+  workletMP.one_d_cub_dpsi_inv = 1.0/dPsi;
+  workletMP.UseLinearB = useLinearB;
+  workletMP.ValidateInterpolation = validateInterp;
+  workletMP.ValidateInterpolationSkip = validateInterpSkip;
+  workletMP.UseDeltaBScale = useDeltaBScale;
+  workletMP.DeltaBScale = deltaBScale;
+  workletMP.UseBScale = useBScale;
+  workletMP.BScale = bScale;
+  workletMP.UseBOnly = useBOnly;
+  workletMP.UsePrevCell = usePrevCell;
+  workletMP.FlipBPhi = flipBPhi;
 
   auto seedsArray = vtkm::cont::make_ArrayHandle(seeds, vtkm::CopyFlag::On);
 
@@ -382,10 +402,64 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
   vtkm::cont::ArrayCopy(ds.GetCoordinateSystem().GetData(), coords);
 
   locTimer.Reset();
-  if (useUB)
+  if (useMultiPointWorklet)
+  {
+    //doesn't work....
+    //auto groupArr = vtkm::cont::make_ArrayHandleGroupVec<10>(seeds);
+
+    //using SeedArrType = vtkm::cont::ArrayHandle<vtkm::Particle>;
+    vtkm::Id start = 0, end = seedsArray.GetNumberOfValues(), step=1;
+    if (end % 10 != 0)
+      throw vtkm::cont::ErrorBadType("Num seeds not divisible by 10");
+
+    auto counter = vtkm::cont::make_ArrayHandleCounting(start, step, end);
+    auto indexGroupArr = vtkm::cont::make_ArrayHandleGroupVec<10>(counter);
+    std::cout<<"PT0: "<<seedsArray.ReadPortal().Get(0)<<std::endl;
+
+    if (useUB)
+    {
+      invoker(workletMP, seedsArray, indexGroupArr,
+              locatorUB,
+              cellSet, coords,
+              As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+              tracesArr, outR, outZ, outTheta, outPsi, outID);
+    }
+    else
+    {
+      invoker(workletMP, seedsArray, indexGroupArr,
+              locator2L,
+              cellSet, coords,
+              As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+              tracesArr, outR, outZ, outTheta, outPsi, outID);
+    }
+  }
+  else
+  {
+    if (useUB)
+    {
+      invoker(worklet, seedsArray,
+              locatorUB,
+              cellSet, coords,
+              As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+              B_RZP, psi,
+              tracesArr, outR, outZ, outTheta, outPsi, outID);
+    }
+    else
+    {
+      invoker(worklet, seedsArray,
+              locator2L,
+              cellSet, coords,
+              As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
+              B_RZP, psi,
+              tracesArr, outR, outZ, outTheta, outPsi, outID);
+    }
+  }
+
+#if 0
+  else if (false)
   {
     invoker(worklet, seedsArray,
-            locatorUB,
+            locatorUB, //locator2L,
             cellSet, coords,
             As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
             B_RZP, psi,
@@ -393,13 +467,8 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
   }
   else
   {
-    invoker(worklet, seedsArray,
-            locator2L,
-            cellSet, coords,
-            As_ff, dAs_ff_rzp, coeff_1D, coeff_2D,
-            B_RZP, psi,
-            tracesArr, outR, outZ, outTheta, outPsi, outID);
   }
+#endif
 
   outID.SyncControlArray();
 

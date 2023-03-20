@@ -50,6 +50,38 @@ struct FindCellFunctor
   }
 };
 
+/*
+struct FindCellsFunctor
+{
+  template <typename Locator>
+  VTKM_EXEC void operator()(Locator&& locator,
+                            const vtkm::Vec<vtkm::Vec3f, 10>& points,
+                            vtkm::Vec<vtkm::Id,10>& cellIds,
+                            vtkm::Vec<vtkm::Vec3f, 10>& parametrics,
+                            vtkm::Vec<vtkm::ErrorCode, 10>& status) const
+  {
+    locator.FindCells(points, cellIds, parametrics, status);
+  }
+
+#if 0
+  template <typename Locator, typename LastCell>
+  VTKM_EXEC vtkm::ErrorCode operator()(Locator&& locator,
+                                       const vtkm::Vec3f& point,
+                                       vtkm::Id& cellId,
+                                       vtkm::Vec3f& parametric,
+                                       LastCell& lastCell) const
+  {
+    using ConcreteLastCell = typename std::decay_t<Locator>::LastCell;
+    if (!lastCell.template IsType<ConcreteLastCell>())
+    {
+      lastCell = ConcreteLastCell{};
+    }
+    return locator.FindCell(point, cellId, parametric, lastCell.template Get<ConcreteLastCell>());
+  }
+#endif
+};
+*/
+
 } // namespace detail
 
 template <typename... LocatorTypes>
@@ -74,6 +106,18 @@ public:
   {
     return this->Locators.CastAndCall(detail::FindCellFunctor{}, point, cellId, parametric);
   }
+
+  /*
+  VTKM_EXEC vtkm::Vec<vtkm::ErrorCode,10> FindCells(const vtkm::Vec<vtkm::Vec3f, 10>& points,
+                                                    vtkm::Vec<vtkm::Id, 10>& cellIds,
+                                                    vtkm::Vec<vtkm::Vec3f,10>& parametrics) const
+  {
+    vtkm::Vec<vtkm::ErrorCode, 10> errorCodes;
+    this->Locators.CastAndCall(detail::FindCellsFunctor{}, points, cellIds, parametrics, errorCodes);
+
+    return errorCodes;
+  }
+  */
 
   VTKM_EXEC vtkm::ErrorCode FindCell(const vtkm::Vec3f& point,
                                      vtkm::Id& cellId,
