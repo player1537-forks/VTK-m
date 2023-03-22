@@ -34,6 +34,7 @@ protected:
   vtkm::cont::ArrayHandle<vtkm::Vec4f_32> ColorMap;
   vtkm::Range ScalarRange;
   bool Shade;
+  vtkm::Vec3f_32 LightPosition;
 
   template <typename Precision>
   void RenderOnDevice(Ray<Precision>& rays);

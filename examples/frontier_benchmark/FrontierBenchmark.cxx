@@ -30,6 +30,16 @@
 #include <vtkm/rendering/testing/RenderTest.h>
 #include <vtkm/source/PerlinNoise.h>
 
+#include <iomanip>
+#include <iostream>
+#include <random>
+#include <sstream>
+
+const static std::string PERLIN_MODE_GROW = "grow";
+const static std::string PERLIN_MODE_SUBDIVIDE = "subdivide";
+const static std::string CAMERA_MODE_STATIC = "static";
+const static std::string CAMERA_MODE_ORBIT = "orbit";
+
 struct BenchmarkOptions
 {
   BenchmarkOptions(int argc, char** argv) { this->Parse(argc, argv); }
@@ -42,11 +52,15 @@ struct BenchmarkOptions
       auto seperatorPos = arg.find('=');
       if (seperatorPos == std::string::npos)
       {
-        continue;
+        seperatorPos = arg.size();
       }
 
-      auto key = arg.substr(0, seperatorPos);
-      auto val = arg.substr(seperatorPos + 1);
+      std::string key = arg.substr(0, seperatorPos);
+      std::string val = "";
+      if (seperatorPos != std::string::npos && seperatorPos + 1 < arg.size())
+      {
+        val = arg.substr(seperatorPos + 1);
+      }
 
       if (key == "--perlin-dims")
       {
@@ -62,6 +76,14 @@ struct BenchmarkOptions
       else if (key == "--perlin-seed")
       {
         this->PerlinSeed = std::stoi(val);
+      }
+      else if (key == "--perlin-mode")
+      {
+        this->PerlinMode = val;
+      }
+      else if (key == "--perlin-scale")
+      {
+        this->PerlinScale = std::stof(val);
       }
       else if (key == "--width")
       {
@@ -79,14 +101,31 @@ struct BenchmarkOptions
       {
         this->TimingFileName = val;
       }
+      else if (key == "--camera-mode")
+      {
+        this->CameraMode = val;
+      }
+      else if (key == "--image-format")
+      {
+        this->ImageFormat = val;
+      }
+      else if (key == "--show-args")
+      {
+        this->ShowArgs = true;
+      }
     }
   }
   vtkm::Id3 PerlinDimensions = vtkm::Id3(1024, 1024, 1024);
   vtkm::IdComponent PerlinSeed = 1;
+  std::string PerlinMode = PERLIN_MODE_GROW;
+  vtkm::Float32 PerlinScale = 3.0f;
   vtkm::Id CanvasWidth = 1920;
   vtkm::Id CanvasHeight = 1080;
   vtkm::Id NumIterations = 10;
   std::string TimingFileName = "timing.csv";
+  std::string ImageFormat = "png";
+  std::string CameraMode = CAMERA_MODE_STATIC;
+  bool ShowArgs = false;
 };
 
 struct MpiTopology
@@ -133,8 +172,21 @@ std::string GetImageName(const std::string& prefix,
                          const MpiTopology& mpiTopology)
 {
   std::stringstream ss;
-  ss << prefix << "_" << options.CanvasWidth << "x" << options.CanvasHeight << "_"
-     << mpiTopology.Size << ".png";
+  ss << options.CameraMode << "/" << prefix << "_" << options.PerlinMode << "_"
+     << options.CanvasWidth << "x" << options.CanvasHeight << "_" << mpiTopology.Size << "."
+     << options.ImageFormat;
+  return ss.str();
+}
+
+std::string GetFrameName(const std::string& prefix,
+                         int frameNumber,
+                         const BenchmarkOptions& options,
+                         const MpiTopology& mpiTopology)
+{
+  std::stringstream ss;
+  ss << options.CameraMode << "/" << prefix << "_" << options.PerlinMode << "_" << mpiTopology.Size
+     << "_" << options.CameraMode << "_frame_" << std::setw(4) << std::setfill('0') << frameNumber
+     << "." << options.ImageFormat;
   return ss.str();
 }
 
@@ -231,31 +283,66 @@ void GenerateDataSet(const BenchmarkOptions& options,
 
   // Perlin Noise does not generate "interesting" surfaces when the scale is too small, .i.e,
   // X, Y, Z values are too close to each other. Hence we scale the perlin noise by a factor
-  vtkm::FloatDefault scale = 3.0f;
-  vtkm::Vec3f origin = { mpiTopology.XRank * scale,
-                         mpiTopology.YRank * scale,
-                         mpiTopology.ZRank * scale };
-  vtkm::Vec3f maxExtent = origin + vtkm::Vec3f{ scale, scale, scale };
-  perlin.SetOrigin(origin);
-  perlin.SetMaxExtent(maxExtent);
-  dataSet = perlin.Execute();
+  if (options.PerlinMode == PERLIN_MODE_GROW)
+  {
+    vtkm::Vec3f origin = vtkm::Vec3f_32{ static_cast<vtkm::Float32>(mpiTopology.XRank),
+                                         static_cast<vtkm::Float32>(mpiTopology.YRank),
+                                         static_cast<vtkm::Float32>(mpiTopology.ZRank) } *
+      options.PerlinScale;
+    vtkm::Vec3f maxExtent = origin + vtkm::Vec3f{ options.PerlinScale };
+    perlin.SetOrigin(origin);
+    perlin.SetMaxExtent(maxExtent);
+    dataSet = perlin.Execute();
+  }
+  else if (options.PerlinMode == PERLIN_MODE_SUBDIVIDE)
+  {
+    vtkm::Vec3f_32 blockSpacing = vtkm::Vec3f_32{ options.PerlinScale } *
+      vtkm::Vec3f_32{ 1.0f / static_cast<vtkm::Float32>(mpiTopology.XSize),
+                      1.0f / static_cast<vtkm::Float32>(mpiTopology.YSize),
+                      1.0f / static_cast<vtkm::Float32>(mpiTopology.ZSize) };
+    vtkm::Vec3f_32 origin = vtkm::Vec3f_32{ static_cast<vtkm::Float32>(mpiTopology.XRank),
+                                            static_cast<vtkm::Float32>(mpiTopology.YRank),
+                                            static_cast<vtkm::Float32>(mpiTopology.ZRank) } *
+      blockSpacing;
+    vtkm::Vec3f_32 maxExtent = origin + blockSpacing;
+
+    perlin.SetOrigin(origin);
+    perlin.SetMaxExtent(maxExtent);
+    dataSet = perlin.Execute();
+  }
+
+  std::vector<vtkm::Float64> isoValues{ 0.4f, 0.75f };
   vtkm::filter::contour::Contour contour;
-  contour.SetNumberOfIsoValues(1);
-  contour.SetIsoValue(0, 0.5f);
+  contour.SetIsoValues(isoValues);
   contour.SetActiveField(fieldName);
   dataSet = contour.Execute(dataSet);
 
   globalFiendRange = { 0.0f, 1.0f };
-  globalBounds = { vtkm::Vec3f{ 0.0f, 0.0f, 0.0f },
-                   vtkm::Vec3f{ static_cast<vtkm::FloatDefault>(mpiTopology.XSize),
-                                static_cast<vtkm::FloatDefault>(mpiTopology.YSize),
-                                static_cast<vtkm::FloatDefault>(mpiTopology.ZSize) } *
-                     scale };
-  vtkm::Float64 boundsEps = 0.1f;
+  if (options.PerlinMode == PERLIN_MODE_GROW)
+  {
+    globalBounds = { vtkm::Vec3f{ 0.0f, 0.0f, 0.0f },
+                     vtkm::Vec3f{ static_cast<vtkm::FloatDefault>(mpiTopology.XSize),
+                                  static_cast<vtkm::FloatDefault>(mpiTopology.YSize),
+                                  static_cast<vtkm::FloatDefault>(mpiTopology.ZSize) } *
+                       options.PerlinScale };
+  }
+  else if (options.PerlinMode == PERLIN_MODE_SUBDIVIDE)
+  {
+    globalBounds = { vtkm::Vec3f{ 0.0f }, vtkm::Vec3f{ options.PerlinScale } };
+  }
+
+  // Add a small epsilon to the bounds to prevent the world annotations from being clipped
+  /*
+  vtkm::Float64 boundsEps = 0.0f;
+  if (options.CameraMode == CAMERA_MODE_ORBIT)
+  {
+    boundsEps = 0.2f;
+  }
   globalBounds.Include(globalBounds.MinCorner() -
                        vtkm::Vec3f_64{ boundsEps, boundsEps, boundsEps });
   globalBounds.Include(globalBounds.MaxCorner() +
                        vtkm::Vec3f_64{ boundsEps, boundsEps, boundsEps });
+  */
 }
 
 void RunBenchmark(const BenchmarkOptions& options)
@@ -280,28 +367,61 @@ void RunBenchmark(const BenchmarkOptions& options)
 
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(globalBounds);
-  camera.Azimuth(10.0f);
-  camera.Elevation(20.0f);
 
-  std::vector<IterationTimes> benchmarkTimes;
   vtkm::rendering::CanvasRayTracer canvas(options.CanvasWidth, options.CanvasHeight);
-  for (int iter = 0; iter < options.NumIterations; iter++)
+
+  if (options.CameraMode == CAMERA_MODE_STATIC)
   {
-    vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
-    vtkm::rendering::View3D view(scene, vtkm::rendering::MapperRayTracer(), canvas, camera, bg);
-    view.Paint();
-    if (comm.rank() == 0)
+    camera.Azimuth(10.0f);
+    camera.Elevation(20.0f);
+    std::vector<IterationTimes> benchmarkTimes;
+    for (int iter = 0; iter < options.NumIterations; iter++)
     {
-      benchmarkTimes.push_back(
-        IterationTimes{ .RenderTime = view.GetTimes()[vtkm::rendering::RENDER_TIME_KEY],
-                        .CompositeTime = view.GetTimes()[vtkm::rendering::COMPOSITE_TIME_KEY],
-                        .TotalTime = view.GetTimes()[vtkm::rendering::TOTAL_TIME_KEY] });
+      vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
+      vtkm::rendering::View3D view(scene, vtkm::rendering::MapperRayTracer(), canvas, camera, bg);
+      view.Paint();
+      if (comm.rank() == 0)
+      {
+        benchmarkTimes.push_back(
+          IterationTimes{ .RenderTime = view.GetTimes()[vtkm::rendering::RENDER_TIME_KEY],
+                          .CompositeTime = view.GetTimes()[vtkm::rendering::COMPOSITE_TIME_KEY],
+                          .TotalTime = view.GetTimes()[vtkm::rendering::TOTAL_TIME_KEY] });
+      }
+    }
+    SaveTimeStats(benchmarkTimes, options, mpiTopology);
+    if (mpiTopology.Rank == 0)
+    {
+      canvas.SaveAs(GetImageName("perlin_static", options, mpiTopology));
     }
   }
+  else if (options.CameraMode == CAMERA_MODE_ORBIT)
+  {
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_real_distribution<vtkm::Float64> dist(0.0, 1.0);
+    vtkm::Float64 dirX = -1.0f;
+    for (int iter = 0; iter < options.NumIterations; iter++)
+    {
+      vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
+      vtkm::rendering::View3D view(scene, vtkm::rendering::MapperRayTracer(), canvas, camera, bg);
+      view.Paint();
 
-  SaveTimeStats(benchmarkTimes, options, mpiTopology);
+      if (mpiTopology.Rank == 0)
+      {
+        canvas.SaveAs(GetFrameName("perlin_movie", iter, options, mpiTopology));
+      }
 
-  canvas.SaveAs(GetImageName("perlin_surface", options, mpiTopology));
+      vtkm::Float64 speedX = 0.01f * dirX;
+      vtkm::Float64 speedY = 0.0f;
+      camera.TrackballRotate(0.0, 0.0, speedX, speedY);
+
+      if (mpiTopology.Rank == 0 && iter > 0 && (iter + 1) % 10 == 0)
+      {
+        std::cerr << "Frame " << (iter + 1) << " of " << options.NumIterations << " done"
+                  << std::endl;
+      }
+    }
+  }
 }
 
 int main(int argc, char* argv[])
@@ -317,6 +437,21 @@ int main(int argc, char* argv[])
   vtkm::cont::Initialize(argc, argv, vtkm::cont::InitializeOptions::None);
 
   BenchmarkOptions options(argc, argv);
+  if (options.ShowArgs)
+  {
+    std::cerr << std::boolalpha;
+    std::cerr << argv[0] << ":" << std::endl;
+    std::cerr << "\tPerlin Dimensions: " << options.PerlinDimensions << std::endl;
+    std::cerr << "\tPerlin Seed: " << options.PerlinSeed << std::endl;
+    std::cerr << "\tCanvas Width: " << options.CanvasWidth << std::endl;
+    std::cerr << "\tCanvas Height: " << options.CanvasHeight << std::endl;
+    std::cerr << "\tNum Iterations: " << options.NumIterations << std::endl;
+    std::cerr << "\tTiming File: " << options.TimingFileName << std::endl;
+    std::cerr << "\tCamera Mode: " << options.CameraMode << std::endl;
+    std::cerr << "\tShow Args: " << options.ShowArgs << std::endl;
+    std::cerr << std::noboolalpha;
+  }
+
   RunBenchmark(options);
   return 0;
 }

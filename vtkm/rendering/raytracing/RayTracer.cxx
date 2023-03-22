@@ -56,16 +56,18 @@ public:
       , LookAt(lookAt)
     {
       //Set up some default lighting parameters for now
-      LightAbmient[0] = .5f;
-      LightAbmient[1] = .5f;
-      LightAbmient[2] = .5f;
-      LightDiffuse[0] = .7f;
-      LightDiffuse[1] = .7f;
-      LightDiffuse[2] = .7f;
-      LightSpecular[0] = .7f;
-      LightSpecular[1] = .7f;
-      LightSpecular[2] = .7f;
-      SpecularExponent = 20.f;
+      LightAbmient[0] = 0.1f;
+      LightAbmient[1] = 0.1f;
+      LightAbmient[2] = 0.1f;
+
+      LightDiffuse[0] = 1.0f;
+      LightDiffuse[1] = 1.0f;
+      LightDiffuse[2] = 1.0f;
+
+      LightSpecular[0] = 1.0f;
+      LightSpecular[1] = 1.0f;
+      LightSpecular[2] = 1.0f;
+      SpecularExponent = 50.0f;
     }
 
     using ControlSignature =
@@ -116,14 +118,30 @@ public:
       // clamp color index
       colorIdx = vtkm::Max(0, colorIdx);
       colorIdx = vtkm::Min(colorMapSize - 1, colorIdx);
-      color = colorMap.Get(colorIdx);
+      vtkm::Vec<Precision, 4> diffuseColor = colorMap.Get(colorIdx);
 
-      color[0] *= vtkm::Min(
-        LightAbmient[0] + LightDiffuse[0] * cosTheta + LightSpecular[0] * specularConstant, one);
-      color[1] *= vtkm::Min(
-        LightAbmient[1] + LightDiffuse[1] * cosTheta + LightSpecular[1] * specularConstant, one);
-      color[2] *= vtkm::Min(
-        LightAbmient[2] + LightDiffuse[2] * cosTheta + LightSpecular[2] * specularConstant, one);
+      // Add ambient lighting
+      color[0] = LightAbmient[0];
+      color[1] = LightAbmient[1];
+      color[2] = LightAbmient[2];
+
+      // Add diffuse lighting
+      color[0] += LightDiffuse[0] * diffuseColor[0] * cosTheta;
+      color[1] += LightDiffuse[1] * diffuseColor[1] * cosTheta;
+      color[2] += LightDiffuse[2] * diffuseColor[2] * cosTheta;
+
+      // Add specular lighting
+      color[0] += LightSpecular[0] * specularConstant;
+      color[1] += LightSpecular[1] * specularConstant;
+      color[2] += LightSpecular[2] * specularConstant;
+
+      // Set alpha to 1.0 (opaque)
+      color[3] = 1.0f;
+
+      // Clamp color values to [0,1]
+      color[0] = vtkm::Clamp(color[0], zero, one);
+      color[1] = vtkm::Clamp(color[1], zero, one);
+      color[2] = vtkm::Clamp(color[2], zero, one);
 
       colors.Set(offset + 0, color[0]);
       colors.Set(offset + 1, color[1]);

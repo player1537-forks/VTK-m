@@ -42,6 +42,8 @@ public:
   vtkm::rendering::Mapper* NewCopy() const override;
   void SetShadingOn(bool on);
 
+  void SetLightPosition(const vtkm::Vec3f_32& lightPosition);
+
 private:
   struct InternalsType;
   std::shared_ptr<InternalsType> Internals;

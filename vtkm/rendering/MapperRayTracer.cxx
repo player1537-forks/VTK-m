@@ -149,6 +149,11 @@ void MapperRayTracer::SetShadingOn(bool on)
   this->Internals->Shade = on;
 }
 
+void MapperRayTracer::SetLightPosition(const vtkm::Vec3f_32& lightPosition)
+{
+  // this->Internals->Tracer.SetLightPosition(lightPosition);
+}
+
 vtkm::rendering::Mapper* MapperRayTracer::NewCopy() const
 {
   return new vtkm::rendering::MapperRayTracer(*this);

@@ -183,9 +183,6 @@ void View::RenderAnnotations()
 {
   if (this->RenderAnnotationsEnabled)
   {
-    this->SetupForScreenSpace();
-    this->RenderScreenAnnotations();
-
     this->GetCanvas().BeginTextRenderingBatch();
     for (auto& textAnnotation : this->Internal->TextAnnotations)
     {
@@ -203,6 +200,9 @@ void View::RenderAnnotations()
     {
       this->RenderWorldAnnotations();
     }
+
+    this->SetupForScreenSpace();
+    this->RenderScreenAnnotations();
   }
 }
 
