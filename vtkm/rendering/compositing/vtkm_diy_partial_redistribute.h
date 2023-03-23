@@ -1,56 +1,31 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-// Copyright (c) 2018, Lawrence Livermore National Security, LLC.
+//============================================================================
+//  Copyright (c) Kitware, Inc.
+//  All rights reserved.
+//  See LICENSE.txt for details.
 //
-// Produced at the Lawrence Livermore National Laboratory
-//
-// LLNL-CODE-749865
-//
-// All rights reserved.
-//
-// This file is part of Rover.
-//
-// Please also read rover/LICENSE
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// * Redistributions of source code must retain the above copyright notice,
-//   this list of conditions and the disclaimer below.
-//
-// * Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the disclaimer (as noted below) in the
-//   documentation and/or other materials provided with the distribution.
-//
-// * Neither the name of the LLNS/LLNL nor the names of its contributors may
-//   be used to endorse or promote products derived from this software without
-//   specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-// LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-// IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
-//
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-#ifndef rover_compositing_redistribute_h
-#define rover_compositing_redistribute_h
+//  This software is distributed WITHOUT ANY WARRANTY; without even
+//  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+//  PURPOSE.  See the above copyright notice for more information.
+//============================================================================
 
-#include "vtkh_diy_partial_blocks.hpp"
-#include <diy/assigner.hpp>
-#include <diy/decomposition.hpp>
-#include <diy/master.hpp>
-#include <diy/reduce-operations.hpp>
+#ifndef vtkm_rendering_compositing_vtkm_diy_partial_redistribute_h
+#define vtkm_rendering_compositing_vtkm_diy_partial_redistribute_h
+
 #include <map>
+#include <vtkm/rendering/compositing/vtkm_diy_partial_blocks.h>
+#include <vtkm/thirdparty/diy/assigner.h>
+#include <vtkm/thirdparty/diy/decomposition.h>
+#include <vtkm/thirdparty/diy/master.h>
+#include <vtkm/thirdparty/diy/point.h>
+#include <vtkm/thirdparty/diy/reduce-operations.h>
 
-namespace vtkh
+namespace vtkm
 {
+namespace rendering
+{
+namespace compositing
+{
+
 //
 // Redistributes partial composites to the ranks that owns
 // that sectoon of the image. Currently, the domain is decomposed
@@ -59,14 +34,14 @@ namespace vtkh
 template <typename BlockType>
 struct Redistribute
 {
-  const vtkhdiy::RegularDecomposer<vtkhdiy::DiscreteBounds>& m_decomposer;
+  const vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds>& m_decomposer;
 
-  Redistribute(const vtkhdiy::RegularDecomposer<vtkhdiy::DiscreteBounds>& decomposer)
+  Redistribute(const vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds>& decomposer)
     : m_decomposer(decomposer)
   {
   }
 
-  void operator()(void* v_block, const vtkhdiy::ReduceProxy& proxy) const
+  void operator()(void* v_block, const vtkmdiy::ReduceProxy& proxy) const
   {
     BlockType* block = static_cast<BlockType*>(v_block);
     //
@@ -76,14 +51,14 @@ struct Redistribute
     if (proxy.in_link().size() == 0)
     {
       const int size = block->m_partials.size();
-      std::map<vtkhdiy::BlockID, std::vector<typename BlockType::PartialType>> outgoing;
+      std::map<vtkmdiy::BlockID, std::vector<typename BlockType::PartialType>> outgoing;
 
       for (int i = 0; i < size; ++i)
       {
-        vtkhdiy::Point<int, DIY_MAX_DIM> point;
+        vtkmdiy::Point<int, VTKMDIY_MAX_DIM> point;
         point[0] = block->m_partials[i].m_pixel_id;
         int dest_gid = m_decomposer.point_to_gid(point);
-        vtkhdiy::BlockID dest = proxy.out_link().target(dest_gid);
+        vtkmdiy::BlockID dest = proxy.out_link().target(dest_gid);
         outgoing[dest].push_back(block->m_partials[i]);
       } //for
 
@@ -93,7 +68,7 @@ struct Redistribute
       for (int i = 0; i < proxy.out_link().size(); ++i)
       {
         int dest_gid = proxy.out_link().target(i).gid;
-        vtkhdiy::BlockID dest = proxy.out_link().target(dest_gid);
+        vtkmdiy::BlockID dest = proxy.out_link().target(dest_gid);
         proxy.enqueue(dest, outgoing[dest]);
         //outgoing[dest].clear();
       }
@@ -128,8 +103,10 @@ void redistribute_detail(std::vector<typename AddBlockType::PartialType>& partia
 {
   typedef typename AddBlockType::Block Block;
 
-  vtkhdiy::mpi::communicator world(comm);
-  vtkhdiy::DiscreteBounds global_bounds;
+  vtkmdiy::mpi::communicator world(vtkmdiy::mpi::make_DIY_MPI_Comm(comm));
+  std::cout << __FILE__ << " " << __LINE__ << std::endl;
+  std::cout << "             DRP: Is this the right dimension???" << std::endl;
+  vtkmdiy::DiscreteBounds global_bounds(1); //DRP???
   global_bounds.min[0] = domain_min_pixel;
   global_bounds.max[0] = domain_max_pixel;
 
@@ -138,16 +115,16 @@ void redistribute_detail(std::vector<typename AddBlockType::PartialType>& partia
   const int num_blocks = world.size();
   const int magic_k = 2;
 
-  vtkhdiy::Master master(world, num_threads);
+  vtkmdiy::Master master(world, num_threads);
 
   // create an assigner with one block per rank
-  vtkhdiy::ContiguousAssigner assigner(num_blocks, num_blocks);
+  vtkmdiy::ContiguousAssigner assigner(num_blocks, num_blocks);
   AddBlockType create(master, partials);
 
   const int dims = 1;
-  vtkhdiy::RegularDecomposer<vtkhdiy::DiscreteBounds> decomposer(dims, global_bounds, num_blocks);
+  vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> decomposer(dims, global_bounds, num_blocks);
   decomposer.decompose(world.rank(), assigner, create);
-  vtkhdiy::all_to_all(master, assigner, Redistribute<Block>(decomposer), magic_k);
+  vtkmdiy::all_to_all(master, assigner, Redistribute<Block>(decomposer), magic_k);
 }
 
 //
@@ -221,6 +198,8 @@ void redistribute<EmissionPartial<float>>(std::vector<EmissionPartial<float>>& p
     partials, comm, domain_min_pixel, domain_max_pixel);
 }
 
-} //namespace rover
+}
+}
+} //vtkm::rendering::compositing
 
-#endif
+#endif //vtkm_rendering_compositing_vtkm_diy_partial_redistribute_h

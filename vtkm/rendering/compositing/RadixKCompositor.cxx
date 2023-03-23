@@ -17,13 +17,12 @@
 #include <vtkm/rendering/compositing/vtkm_diy_collect.h>
 #include <vtkm/rendering/compositing/vtkm_diy_utils.h>
 
-/*
-#include <diy/master.hpp>
-#include <diy/mpi.hpp>
-#include <diy/partners/swap.hpp>
-#include <diy/reduce-operations.hpp>
-#include <diy/reduce.hpp>
-*/
+#include <vtkm/thirdparty/diy/diy.h>
+#include <vtkm/thirdparty/diy/master.h>
+//#include <vtkm/thirdparty/diy/mpi.h>
+#include <vtkm/thirdparty/diy/reduce-operations.h>
+#include <vtkm/thirdparty/diy/reduce.h>
+#include <vtkm/thirdparty/diy/swap.h>
 
 namespace vtkm
 {
@@ -84,7 +83,8 @@ void reduce_images(void* b,
   const int current_dim = partners.dim(round);
 
   //create balanced set of ranges for current dim
-  vtkmdiy::DiscreteBounds image_bounds = vtkh::VTKMBoundsToDIY(image.Bounds);
+  vtkmdiy::DiscreteBounds image_bounds =
+    vtkm::rendering::compositing::VTKMBoundsToDIY(image.Bounds);
   int range_length = image_bounds.max[current_dim] - image_bounds.min[current_dim];
   int base_step = range_length / group_size;
   int rem = range_length % group_size;
@@ -101,8 +101,8 @@ void reduce_images(void* b,
   }
   assert(count == range_length);
 
-  std::vector<vtkmdiy::DiscreteBounds> subset_bounds(group_size,
-                                                     vtkh::VTKMBoundsToDIY(image.Bounds));
+  std::vector<vtkmdiy::DiscreteBounds> subset_bounds(
+    group_size, vtkm::rendering::compositing::VTKMBoundsToDIY(image.Bounds));
   int min_pixel = image_bounds.min[current_dim];
   for (int i = 0; i < group_size; ++i)
   {
@@ -126,7 +126,8 @@ void reduce_images(void* b,
   std::vector<ImageType> out_images(group_size);
   for (int i = 0; i < group_size; ++i)
   {
-    out_images[i].SubsetFrom(image, vtkh::DIYBoundsToVTKM(subset_bounds[i]));
+    out_images[i].SubsetFrom(image,
+                             vtkm::rendering::compositing::DIYBoundsToVTKM(subset_bounds[i]));
   } //for
 
   for (int i = 0; i < group_size; ++i)
@@ -150,7 +151,8 @@ RadixKCompositor::~RadixKCompositor() {}
 template <typename ImageType>
 void RadixKCompositor::CompositeImpl(vtkmdiy::mpi::communicator& diy_comm, ImageType& image)
 {
-  vtkmdiy::DiscreteBounds global_bounds = vtkh::VTKMBoundsToDIY(image.OrigBounds);
+  vtkmdiy::DiscreteBounds global_bounds =
+    vtkm::rendering::compositing::VTKMBoundsToDIY(image.OrigBounds);
 
   // tells diy to use one thread
   const int num_threads = 1;

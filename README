@@ -121,3 +121,22 @@ vtkm: vector of vtkm::rendering::Actor
 vtkh: list/vector of vtkh::Renderer, batchsize, has_volume.
 
 vtkh::Render aprox equal to vtkm::rendering::View
+
+
+
+
+
+
+==============================================================================
+vtkh volume render unstructured:
+
+
+scene.AddRender()
+scene.AddRenderer(vtkh::VolumeRenderer);
+scene.Render()
+  // pass 2 for volume
+  renderer->SetComponosite(true)
+  renderer->SetRenders(current_batch);
+  renderer->Update() //does the rendering...
+     DoExecute()
+       vtkm::rendering::Mapper::RenderCells()

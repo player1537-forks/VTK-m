@@ -1,61 +1,34 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-// Copyright (c) 2018, Lawrence Livermore National Security, LLC.
+//============================================================================
+//  Copyright (c) Kitware, Inc.
+//  All rights reserved.
+//  See LICENSE.txt for details.
 //
-// Produced at the Lawrence Livermore National Laboratory
-//
-// LLNL-CODE-749865
-//
-// All rights reserved.
-//
-// This file is part of Rover.
-//
-// Please also read rover/LICENSE
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// * Redistributions of source code must retain the above copyright notice,
-//   this list of conditions and the disclaimer below.
-//
-// * Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the disclaimer (as noted below) in the
-//   documentation and/or other materials provided with the distribution.
-//
-// * Neither the name of the LLNS/LLNL nor the names of its contributors may
-//   be used to endorse or promote products derived from this software without
-//   specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-// LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-// IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
-//
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-#ifndef rover_blocks_h
-#define rover_blocks_h
+//  This software is distributed WITHOUT ANY WARRANTY; without even
+//  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+//  PURPOSE.  See the above copyright notice for more information.
+//============================================================================
 
-#include <diy/master.hpp>
+#ifndef vtkm_rendering_compositing_vtkm_diy_partial_blocks_h
+#define vtkm_rendering_compositing_vtkm_diy_partial_blocks_h
 
-#include "AbsorptionPartial.hpp"
-#include "EmissionPartial.hpp"
-#include "VolumePartial.hpp"
+#include <vtkm/thirdparty/diy/master.h>
 
-namespace vtkh
+#include <vtkm/rendering/compositing/AbsorptionPartial.h>
+#include <vtkm/rendering/compositing/EmissionPartial.h>
+#include <vtkm/rendering/compositing/VolumePartial.h>
+
+namespace vtkm
+{
+namespace rendering
+{
+namespace compositing
 {
 
 //--------------------------------------Volume Block Structure-----------------------------------
 template <typename FloatType>
 struct VolumeBlock
 {
-  typedef vtkhdiy::DiscreteBounds Bounds;
+  typedef vtkmdiy::DiscreteBounds Bounds;
   typedef VolumePartial<FloatType> PartialType;
   std::vector<VolumePartial<FloatType>>& m_partials;
   VolumeBlock(std::vector<VolumePartial<FloatType>>& partials)
@@ -69,7 +42,7 @@ struct VolumeBlock
 template <typename FloatType>
 struct AbsorptionBlock
 {
-  typedef vtkhdiy::DiscreteBounds Bounds;
+  typedef vtkmdiy::DiscreteBounds Bounds;
   typedef AbsorptionPartial<FloatType> PartialType;
   std::vector<AbsorptionPartial<FloatType>>& m_partials;
 
@@ -83,7 +56,7 @@ struct AbsorptionBlock
 template <typename FloatType>
 struct EmissionBlock
 {
-  typedef vtkhdiy::DiscreteBounds Bounds;
+  typedef vtkmdiy::DiscreteBounds Bounds;
   typedef EmissionPartial<FloatType> PartialType;
   std::vector<EmissionPartial<FloatType>>& m_partials;
 
@@ -100,9 +73,9 @@ struct AddBlock
   typedef typename BlockType::PartialType PartialType;
   typedef BlockType Block;
   std::vector<PartialType>& m_partials;
-  const vtkhdiy::Master& m_master;
+  const vtkmdiy::Master& m_master;
 
-  AddBlock(vtkhdiy::Master& master, std::vector<PartialType>& partials)
+  AddBlock(vtkmdiy::Master& master, std::vector<PartialType>& partials)
     : m_master(master)
     , m_partials(partials)
   {
@@ -119,98 +92,107 @@ struct AddBlock
     (void)local_with_ghost_bounds;
     Block* block = new Block(m_partials);
     LinkType* rg_link = new LinkType(link);
-    vtkhdiy::Master& master = const_cast<vtkhdiy::Master&>(m_master);
+    vtkmdiy::Master& master = const_cast<vtkmdiy::Master&>(m_master);
     int lid = master.add(gid, block, rg_link);
     (void)lid;
   }
 };
 
-} //namespace vtkh
+}
+}
+} //vtkm::rendering::compositing
 
 //-------------------------------Serialization Specializations--------------------------------
-namespace vtkhdiy
+namespace vtkmdiy
 {
 
 template <>
-struct Serialization<vtkh::AbsorptionPartial<double>>
+struct Serialization<vtkm::rendering::compositing::AbsorptionPartial<double>>
 {
 
-  static void save(BinaryBuffer& bb, const vtkh::AbsorptionPartial<double>& partial)
+  static void save(BinaryBuffer& bb,
+                   const vtkm::rendering::compositing::AbsorptionPartial<double>& partial)
   {
-    vtkhdiy::save(bb, partial.m_bins);
-    vtkhdiy::save(bb, partial.m_pixel_id);
-    vtkhdiy::save(bb, partial.m_depth);
+    vtkmdiy::save(bb, partial.m_bins);
+    vtkmdiy::save(bb, partial.m_pixel_id);
+    vtkmdiy::save(bb, partial.m_depth);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::AbsorptionPartial<double>& partial)
+  static void load(vtkmdiy::BinaryBuffer& bb,
+                   vtkm::rendering::compositing::AbsorptionPartial<double>& partial)
   {
-    vtkhdiy::load(bb, partial.m_bins);
-    vtkhdiy::load(bb, partial.m_pixel_id);
-    vtkhdiy::load(bb, partial.m_depth);
+    vtkmdiy::load(bb, partial.m_bins);
+    vtkmdiy::load(bb, partial.m_pixel_id);
+    vtkmdiy::load(bb, partial.m_depth);
   }
 };
 
 template <>
-struct Serialization<vtkh::AbsorptionPartial<float>>
+struct Serialization<vtkm::rendering::compositing::AbsorptionPartial<float>>
 {
 
-  static void save(BinaryBuffer& bb, const vtkh::AbsorptionPartial<float>& partial)
+  static void save(BinaryBuffer& bb,
+                   const vtkm::rendering::compositing::AbsorptionPartial<float>& partial)
   {
-    vtkhdiy::save(bb, partial.m_bins);
-    vtkhdiy::save(bb, partial.m_pixel_id);
-    vtkhdiy::save(bb, partial.m_depth);
+    vtkmdiy::save(bb, partial.m_bins);
+    vtkmdiy::save(bb, partial.m_pixel_id);
+    vtkmdiy::save(bb, partial.m_depth);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::AbsorptionPartial<float>& partial)
+  static void load(BinaryBuffer& bb,
+                   vtkm::rendering::compositing::AbsorptionPartial<float>& partial)
   {
-    vtkhdiy::load(bb, partial.m_bins);
-    vtkhdiy::load(bb, partial.m_pixel_id);
-    vtkhdiy::load(bb, partial.m_depth);
+    vtkmdiy::load(bb, partial.m_bins);
+    vtkmdiy::load(bb, partial.m_pixel_id);
+    vtkmdiy::load(bb, partial.m_depth);
   }
 };
 
 template <>
-struct Serialization<vtkh::EmissionPartial<double>>
+struct Serialization<vtkm::rendering::compositing::EmissionPartial<double>>
 {
 
-  static void save(BinaryBuffer& bb, const vtkh::EmissionPartial<double>& partial)
+  static void save(BinaryBuffer& bb,
+                   const vtkm::rendering::compositing::EmissionPartial<double>& partial)
   {
-    vtkhdiy::save(bb, partial.m_bins);
-    vtkhdiy::save(bb, partial.m_emission_bins);
-    vtkhdiy::save(bb, partial.m_pixel_id);
-    vtkhdiy::save(bb, partial.m_depth);
+    vtkmdiy::save(bb, partial.m_bins);
+    vtkmdiy::save(bb, partial.m_emission_bins);
+    vtkmdiy::save(bb, partial.m_pixel_id);
+    vtkmdiy::save(bb, partial.m_depth);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::EmissionPartial<double>& partial)
+  static void load(BinaryBuffer& bb, vtkm::rendering::compositing::EmissionPartial<double>& partial)
   {
-    vtkhdiy::load(bb, partial.m_bins);
-    vtkhdiy::load(bb, partial.m_emission_bins);
-    vtkhdiy::load(bb, partial.m_pixel_id);
-    vtkhdiy::load(bb, partial.m_depth);
+    vtkmdiy::load(bb, partial.m_bins);
+    vtkmdiy::load(bb, partial.m_emission_bins);
+    vtkmdiy::load(bb, partial.m_pixel_id);
+    vtkmdiy::load(bb, partial.m_depth);
   }
 };
 
 template <>
-struct Serialization<vtkh::EmissionPartial<float>>
+struct Serialization<vtkm::rendering::compositing::EmissionPartial<float>>
 {
 
-  static void save(BinaryBuffer& bb, const vtkh::EmissionPartial<float>& partial)
+  static void save(BinaryBuffer& bb,
+                   const vtkm::rendering::compositing::EmissionPartial<float>& partial)
   {
-    vtkhdiy::save(bb, partial.m_bins);
-    vtkhdiy::save(bb, partial.m_emission_bins);
-    vtkhdiy::save(bb, partial.m_pixel_id);
-    vtkhdiy::save(bb, partial.m_depth);
+    vtkmdiy::save(bb, partial.m_bins);
+    vtkmdiy::save(bb, partial.m_emission_bins);
+    vtkmdiy::save(bb, partial.m_pixel_id);
+    vtkmdiy::save(bb, partial.m_depth);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::EmissionPartial<float>& partial)
+  static void load(BinaryBuffer& bb, vtkm::rendering::compositing::EmissionPartial<float>& partial)
   {
-    vtkhdiy::load(bb, partial.m_bins);
-    vtkhdiy::load(bb, partial.m_emission_bins);
-    vtkhdiy::load(bb, partial.m_pixel_id);
-    vtkhdiy::load(bb, partial.m_depth);
+    vtkmdiy::load(bb, partial.m_bins);
+    vtkmdiy::load(bb, partial.m_emission_bins);
+    vtkmdiy::load(bb, partial.m_pixel_id);
+    vtkmdiy::load(bb, partial.m_depth);
   }
 };
 
-} // namespace diy
+} //vtkmdiy
 
-#endif
+
+#endif //vtkm_rendering_compositing_vtkm_diy_partial_blocks_h

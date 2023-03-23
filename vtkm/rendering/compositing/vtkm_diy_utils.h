@@ -1,10 +1,24 @@
-#ifndef VTKH_DIY_UTILS_HPP
-#define VTKH_DIY_UTILS_HPP
+//============================================================================
+//  Copyright (c) Kitware, Inc.
+//  All rights reserved.
+//  See LICENSE.txt for details.
+//
+//  This software is distributed WITHOUT ANY WARRANTY; without even
+//  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+//  PURPOSE.  See the above copyright notice for more information.
+//============================================================================
+
+#ifndef vtkm_rendering_compositing_vtkm_diy_utils_h
+#define vtkm_rendering_compositing_vtkm_diy_utils_h
 
 #include <vtkm/Bounds.h>
 #include <vtkmdiy/decomposition.hpp>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering
+{
+namespace compositing
 {
 
 static vtkm::Bounds DIYBoundsToVTKM(const vtkmdiy::DiscreteBounds& bounds)
@@ -44,6 +58,8 @@ static vtkmdiy::DiscreteBounds VTKMBoundsToDIY(const vtkm::Bounds& bounds)
   return diy_bounds;
 }
 
-} //namespace vtkh
+}
+}
+} //vtkm::rendering::compositing
 
-#endif
+#endif //vtkm_rendering_compositing_vtkm_diy_utils_h

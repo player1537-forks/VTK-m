@@ -8,11 +8,16 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef rover_volume_block_h
-#define rover_volume_block_h
+#ifndef vtkm_rendering_compositing_VolumePartial_h
+#define vtkm_rendering_compositing_VolumePartial_h
 
 #include <limits>
-namespace vtkh
+
+namespace vtkm
+{
+namespace rendering
+{
+namespace compositing
 {
 
 template <typename FloatType>
@@ -87,5 +92,8 @@ struct VolumePartial
   }
 };
 
-} // namespace
-#endif
+}
+}
+} //vtkm::rendering::compositing
+
+#endif //vtkm_rendering_compositing_VolumePartial_h

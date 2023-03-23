@@ -63,7 +63,8 @@ struct Redistribute
       {
         vtkmdiy::DiscreteBounds sub_image_bounds(3);
         m_decomposer.fill_bounds(sub_image_bounds, i);
-        vtkm::Bounds vtkm_sub_bounds = vtkh::DIYBoundsToVTKM(sub_image_bounds);
+        vtkm::Bounds vtkm_sub_bounds =
+          vtkm::rendering::compositing::DIYBoundsToVTKM(sub_image_bounds);
 
         vtkmdiy::BlockID dest = proxy.out_link().target(i);
         outgoing[dest].resize(local_images);
@@ -140,7 +141,8 @@ DirectSendCompositor::~DirectSendCompositor() {}
 void DirectSendCompositor::CompositeVolume(vtkmdiy::mpi::communicator& diy_comm,
                                            std::vector<Image>& images)
 {
-  vtkmdiy::DiscreteBounds global_bounds = vtkh::VTKMBoundsToDIY(images.at(0).OrigBounds);
+  vtkmdiy::DiscreteBounds global_bounds =
+    vtkm::rendering::compositing::VTKMBoundsToDIY(images.at(0).OrigBounds);
 
   const int num_threads = 1;
   const int num_blocks = diy_comm.size();

@@ -13,14 +13,18 @@
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
 
-#include "AbsorptionPartial.hpp"
-#include "EmissionPartial.hpp"
-#include "VolumePartial.hpp"
 #include <iostream>
 #include <vector>
 #include <vtkm/Types.h>
+#include <vtkm/rendering/compositing/AbsorptionPartial.h>
+#include <vtkm/rendering/compositing/EmissionPartial.h>
+#include <vtkm/rendering/compositing/VolumePartial.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering
+{
+namespace compositing
 {
 
 template <typename PartialType>
@@ -48,6 +52,9 @@ protected:
   int m_mpi_comm_id;
 };
 
-}; // namespace rover
+
+}
+}
+} //vtkm::rendering::compositing
 
 #endif //vtkm_rendering_compositing_partial_compositor_h

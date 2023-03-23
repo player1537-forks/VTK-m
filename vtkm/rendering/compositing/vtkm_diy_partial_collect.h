@@ -1,56 +1,32 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-// Copyright (c) 2018, Lawrence Livermore National Security, LLC.
+//============================================================================
+//  All rights reserved.
+//  See LICENSE.txt for details.
 //
-// Produced at the Lawrence Livermore National Laboratory
-//
-// LLNL-CODE-749865
-//
-// All rights reserved.
-//
-// This file is part of Rover.
-//
-// Please also read rover/LICENSE
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// * Redistributions of source code must retain the above copyright notice,
-//   this list of conditions and the disclaimer below.
-//
-// * Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the disclaimer (as noted below) in the
-//   documentation and/or other materials provided with the distribution.
-//
-// * Neither the name of the LLNS/LLNL nor the names of its contributors may
-//   be used to endorse or promote products derived from this software without
-//   specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY,
-// LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-// IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
-//
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-#ifndef rover_compositing_collect_h
-#define rover_compositing_collect_h
+//  This software is distributed WITHOUT ANY WARRANTY; without even
+//  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+//  PURPOSE.  See the above copyright notice for more information.
+//============================================================================
 
-#include "AbsorptionPartial.hpp"
-#include "EmissionPartial.hpp"
-#include "VolumePartial.hpp"
-#include <diy/assigner.hpp>
-#include <diy/decomposition.hpp>
-#include <diy/master.hpp>
-#include <diy/reduce-operations.hpp>
+#ifndef vtkm_rendering_compositing_vtkm_diy_partial_collect_h
+#define vtkm_rendering_compositing_vtkm_diy_partial_collect_h
 
-namespace vtkh
+#include <vtkm/rendering/compositing/AbsorptionPartial.h>
+#include <vtkm/rendering/compositing/EmissionPartial.h>
+#include <vtkm/rendering/compositing/VolumePartial.h>
+#include <vtkm/rendering/compositing/vtkm_diy_partial_blocks.h>
+
+#include <vtkm/thirdparty/diy/assigner.h>
+#include <vtkm/thirdparty/diy/decomposition.h>
+#include <vtkm/thirdparty/diy/diy.h>
+#include <vtkm/thirdparty/diy/master.h>
+#include <vtkm/thirdparty/diy/mpi-cast.h>
+#include <vtkm/thirdparty/diy/reduce-operations.h>
+
+namespace vtkm
+{
+namespace rendering
+{
+namespace compositing
 {
 //
 // Collect struct sends all data to a single node.
@@ -58,14 +34,14 @@ namespace vtkh
 template <typename BlockType>
 struct Collect
 {
-  const vtkhdiy::RegularDecomposer<vtkhdiy::ContinuousBounds>& m_decomposer;
+  const vtkmdiy::RegularDecomposer<vtkmdiy::ContinuousBounds>& m_decomposer;
 
-  Collect(const vtkhdiy::RegularDecomposer<vtkhdiy::ContinuousBounds>& decomposer)
+  Collect(const vtkmdiy::RegularDecomposer<vtkmdiy::ContinuousBounds>& decomposer)
     : m_decomposer(decomposer)
   {
   }
 
-  void operator()(void* v_block, const vtkhdiy::ReduceProxy& proxy) const
+  void operator()(void* v_block, const vtkmdiy::ReduceProxy& proxy) const
   {
     BlockType* block = static_cast<BlockType*>(v_block);
     //
@@ -76,7 +52,7 @@ struct Collect
     if (proxy.in_link().size() == 0 && proxy.gid() != collection_rank)
     {
       int dest_gid = collection_rank;
-      vtkhdiy::BlockID dest = proxy.out_link().target(dest_gid);
+      vtkmdiy::BlockID dest = proxy.out_link().target(dest_gid);
       proxy.enqueue(dest, block->m_partials);
 
       block->m_partials.clear();
@@ -116,8 +92,10 @@ void collect_detail(std::vector<typename AddBlockType::PartialType>& partials, M
 {
   typedef typename AddBlockType::Block Block;
 
-  vtkhdiy::mpi::communicator world(comm);
-  vtkhdiy::ContinuousBounds global_bounds;
+  vtkmdiy::mpi::communicator world(vtkmdiy::mpi::make_DIY_MPI_Comm(comm));
+  std::cout << __FILE__ << " " << __LINE__ << std::endl;
+  std::cout << "             DRP: Is this the right dimension???" << std::endl;
+  vtkmdiy::ContinuousBounds global_bounds(1); //DRP???
   global_bounds.min[0] = 0;
   global_bounds.max[0] = 1;
 
@@ -126,17 +104,17 @@ void collect_detail(std::vector<typename AddBlockType::PartialType>& partials, M
   const int num_blocks = world.size();
   const int magic_k = 2;
 
-  vtkhdiy::Master master(world, num_threads);
+  vtkmdiy::Master master(world, num_threads);
 
   // create an assigner with one block per rank
-  vtkhdiy::ContiguousAssigner assigner(num_blocks, num_blocks);
+  vtkmdiy::ContiguousAssigner assigner(num_blocks, num_blocks);
   AddBlockType create(master, partials);
 
   const int dims = 1;
-  vtkhdiy::RegularDecomposer<vtkhdiy::ContinuousBounds> decomposer(dims, global_bounds, num_blocks);
+  vtkmdiy::RegularDecomposer<vtkmdiy::ContinuousBounds> decomposer(dims, global_bounds, num_blocks);
   decomposer.decompose(world.rank(), assigner, create);
 
-  vtkhdiy::all_to_all(master, assigner, Collect<Block>(decomposer), magic_k);
+  vtkmdiy::all_to_all(master, assigner, Collect<Block>(decomposer), magic_k);
 }
 
 template <typename T>
@@ -145,41 +123,93 @@ void collect(std::vector<T>& partials, MPI_Comm comm);
 template <>
 void collect<VolumePartial<float>>(std::vector<VolumePartial<float>>& partials, MPI_Comm comm)
 {
-  collect_detail<AddBlock<VolumeBlock<float>>>(partials, comm);
+  collect_detail<vtkm::rendering::compositing::AddBlock<VolumeBlock<float>>>(partials, comm);
+}
+
+
+template <>
+void collect<vtkm::rendering::compositing::VolumePartial<double>>(
+  std::vector<vtkm::rendering::compositing::VolumePartial<double>>& partials,
+  MPI_Comm comm)
+{
+  collect_detail<
+    vtkm::rendering::compositing::AddBlock<vtkm::rendering::compositing::VolumeBlock<double>>>(
+    partials, comm);
 }
 
 template <>
-void collect<VolumePartial<double>>(std::vector<VolumePartial<double>>& partials, MPI_Comm comm)
+void collect<vtkm::rendering::compositing::AbsorptionPartial<double>>(
+  std::vector<vtkm::rendering::compositing::AbsorptionPartial<double>>& partials,
+  MPI_Comm comm)
 {
-  collect_detail<AddBlock<VolumeBlock<double>>>(partials, comm);
+  collect_detail<
+    vtkm::rendering::compositing::AddBlock<vtkm::rendering::compositing::AbsorptionBlock<double>>>(
+    partials, comm);
 }
 
 template <>
-void collect<AbsorptionPartial<double>>(std::vector<AbsorptionPartial<double>>& partials,
-                                        MPI_Comm comm)
+void collect<vtkm::rendering::compositing::AbsorptionPartial<float>>(
+  std::vector<vtkm::rendering::compositing::AbsorptionPartial<float>>& partials,
+  MPI_Comm comm)
 {
-  collect_detail<AddBlock<AbsorptionBlock<double>>>(partials, comm);
+  collect_detail<
+    vtkm::rendering::compositing::AddBlock<vtkm::rendering::compositing::AbsorptionBlock<float>>>(
+    partials, comm);
 }
 
 template <>
-void collect<AbsorptionPartial<float>>(std::vector<AbsorptionPartial<float>>& partials,
-                                       MPI_Comm comm)
+void collect<vtkm::rendering::compositing::EmissionPartial<double>>(
+  std::vector<vtkm::rendering::compositing::EmissionPartial<double>>& partials,
+  MPI_Comm comm)
 {
-  collect_detail<AddBlock<AbsorptionBlock<float>>>(partials, comm);
+  collect_detail<vtkm::rendering::compositing::AddBlock<EmissionBlock<double>>>(partials, comm);
 }
 
 template <>
-void collect<EmissionPartial<double>>(std::vector<EmissionPartial<double>>& partials, MPI_Comm comm)
+void collect<vtkm::rendering::compositing::EmissionPartial<float>>(
+  std::vector<vtkm::rendering::compositing::EmissionPartial<float>>& partials,
+  MPI_Comm comm)
 {
-  collect_detail<AddBlock<EmissionBlock<double>>>(partials, comm);
+  collect_detail<
+    vtkm::rendering::compositing::AddBlock<vtkm::rendering::compositing::EmissionBlock<float>>>(
+    partials, comm);
 }
 
+}
+}
+} //vtkm::rendering::compositing
+
+#endif //vtkm_rendering_compositing_vtkm_diy_partial_collect_h
+
+
+#if 0
+  /*
 template <>
-void collect<EmissionPartial<float>>(std::vector<EmissionPartial<float>>& partials, MPI_Comm comm)
+void collect<vtkm::rendering::compositing::EmissionPartial<float>>(std::vector<vtkm::rendering::compositing::EmissionPartial<float>>& partials, MPI_Comm comm)
 {
-  collect_detail<AddBlock<EmissionBlock<float>>>(partials, comm);
+  collect_detail<vtkm::rendering::compositing::AddBlock<vtkm::rendering::compositing::EmissionBlock<float>>>(partials, comm);
+}
+  */
+  }
+  * /
+
+  }
+
+
 }
 
-} // namespace rover
+/*
 
+#endif //vtkm_rendering_compositing_vtkm_diy_partial_collect_h
+template <>
+template <>
+void colloct<EmissioiPartial<float>>(std::vector<Em ssionPartial<cloat>>& partials, MPI_Comm comm)
+{
+  ocollect_detail < ect<::missionPa::tial<float>::AddBloct<EdissvonBlock<float>>>(tor < Emis, simm);
+}al<float>>& partials, MPI_Comm comm)
+{
+  collect_detail<vtkm::rendering::compositing::AddBlock<EmissionBlock<float>>>(partials, comm);
+}
+
+*/
 #endif

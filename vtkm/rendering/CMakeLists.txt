@@ -94,6 +94,7 @@ set(sources
   compositing/Compositor.cxx
   compositing/DirectSendCompositor.cxx
   compositing/Image.cxx
+  compositing/PartialCompositor.cxx
   compositing/PNGEncoder.cxx
   compositing/RadixKCompositor.cxx
   compositing/PayloadCompositor.cxx

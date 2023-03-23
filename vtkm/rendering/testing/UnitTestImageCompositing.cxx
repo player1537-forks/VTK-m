@@ -17,6 +17,7 @@
 
 #include <vtkm/rendering/Actor.h>
 #include <vtkm/rendering/CanvasRayTracer.h>
+#include <vtkm/rendering/MapperConnectivity.h>
 #include <vtkm/rendering/MapperRayTracer.h>
 #include <vtkm/rendering/MapperVolume.h>
 #include <vtkm/rendering/MapperWireframer.h>
@@ -25,6 +26,9 @@
 #include <vtkm/rendering/testing/RenderTest.h>
 
 #include <vtkm/io/VTKDataSetReader.h>
+
+#include <vtkm/filter/clean_grid/CleanGrid.h>
+
 namespace
 {
 
@@ -176,9 +180,10 @@ void TestRenderComposite()
   */
 }
 
-void TestVolumeRenderComposite()
+void TestVolumeRenderComposite(bool unstructured)
 {
   using vtkm::rendering::CanvasRayTracer;
+  using vtkm::rendering::MapperConnectivity;
   using vtkm::rendering::MapperVolume;
 
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
@@ -216,22 +221,39 @@ void TestVolumeRenderComposite()
     tangle.SetOrigin(pt);
     vtkm::cont::DataSet ds = tangle.Execute();
 
+    if (unstructured)
+    {
+      vtkm::filter::clean_grid::CleanGrid cleanGrid;
+      ds = cleanGrid.Execute(ds);
+    }
+
     vtkm::rendering::Actor actor(
       ds.GetCellSet(), ds.GetCoordinateSystem(), ds.GetField(fieldName), colorTable);
     scene.AddActor(actor);
   }
 
-  vtkm::rendering::View3D view(scene, MapperVolume(), canvas, camera, bg);
-  view.Paint();
 
-  canvas.SaveAs("result.png");
+
+  if (unstructured)
+  {
+    vtkm::rendering::View3D view(scene, MapperConnectivity(), canvas, camera, bg);
+    view.Paint();
+    canvas.SaveAs("result-unstructured.png");
+  }
+  else
+  {
+    vtkm::rendering::View3D view(scene, MapperVolume(), canvas, camera, bg);
+    view.Paint();
+    canvas.SaveAs("result-structured.png");
+  }
 }
 
 void RenderTests()
 {
   //  TestImageComposite();
   //TestRenderComposite();
-  TestVolumeRenderComposite();
+  TestVolumeRenderComposite(false);
+  TestVolumeRenderComposite(true);
 }
 
 } //namespace

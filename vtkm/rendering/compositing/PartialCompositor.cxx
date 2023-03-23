@@ -8,19 +8,26 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
+#include <vtkm/rendering/compositing/PartialCompositor.h>
+
 #include <algorithm>
 #include <assert.h>
 #include <limits>
-#include <vtkm/rendering/compositing/PartialCompositor.h>
+#include <vector>
 
 #ifdef VTKM_ENABLE_MPI
-#include "vtkh_diy_partial_collect.hpp"
-#include "vtkh_diy_partial_redistribute.hpp"
 #include <mpi.h>
+#include <vtkm/rendering/compositing/vtkm_diy_partial_collect.h>
+#include <vtkm/rendering/compositing/vtkm_diy_partial_redistribute.h>
 #endif
 
-namespace vtkh
+namespace vtkm
 {
+namespace rendering
+{
+namespace compositing
+{
+
 namespace detail
 {
 template <template <typename> class PartialType, typename FloatType>
@@ -524,14 +531,22 @@ void PartialCompositor<PartialType>::set_comm_handle(int mpi_comm_id)
 }
 
 //Explicit function instantiations
-template class VTKH_API PartialCompositor<VolumePartial<vtkm::Float32>>;
-template class VTKH_API PartialCompositor<VolumePartial<vtkm::Float64>>;
+template class VTKM_RENDERING_EXPORT vtkm::rendering::compositing::PartialCompositor<
+  vtkm::rendering::compositing::VolumePartial<vtkm::Float32>>;
+template class VTKM_RENDERING_EXPORT vtkm::rendering::compositing::PartialCompositor<
+  vtkm::rendering::compositing::VolumePartial<vtkm::Float64>>;
 
-template class VTKH_API PartialCompositor<AbsorptionPartial<vtkm::Float32>>;
-template class VTKH_API PartialCompositor<AbsorptionPartial<vtkm::Float64>>;
+template class VTKM_RENDERING_EXPORT vtkm::rendering::compositing::PartialCompositor<
+  vtkm::rendering::compositing::AbsorptionPartial<vtkm::Float32>>;
+template class VTKM_RENDERING_EXPORT vtkm::rendering::compositing::PartialCompositor<
+  vtkm::rendering::compositing::AbsorptionPartial<vtkm::Float64>>;
 
-template class VTKH_API PartialCompositor<EmissionPartial<vtkm::Float32>>;
-template class VTKH_API PartialCompositor<EmissionPartial<vtkm::Float64>>;
+template class VTKM_RENDERING_EXPORT vtkm::rendering::compositing::PartialCompositor<
+  vtkm::rendering::compositing::EmissionPartial<vtkm::Float32>>;
+template class VTKM_RENDERING_EXPORT vtkm::rendering::compositing::PartialCompositor<
+  vtkm::rendering::compositing::EmissionPartial<vtkm::Float64>>;
 
 
-} // namespace vtkh
+}
+}
+} //vtkm::rendering::compositing
