@@ -120,11 +120,18 @@ vtkm_install_targets(TARGETS vtkm_diy)
 if (NOT VTKm_INSTALL_ONLY_LIBRARIES)
   install(FILES
     ${VTKm_BINARY_INCLUDE_DIR}/${kit_dir}/Configure.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/assigner.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/decomposition.h
     ${CMAKE_CURRENT_SOURCE_DIR}/diy.h
     ${CMAKE_CURRENT_SOURCE_DIR}/environment.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/master.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mpi-cast.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/point.h
     ${CMAKE_CURRENT_SOURCE_DIR}/post-include.h
     ${CMAKE_CURRENT_SOURCE_DIR}/pre-include.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/reduce.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/reduce-operations.h
     ${CMAKE_CURRENT_SOURCE_DIR}/serialization.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/swap.h
     DESTINATION ${VTKm_INSTALL_INCLUDE_DIR}/${kit_dir}/)
 endif()

@@ -55,6 +55,46 @@ set(headers
   View3D.h
   Wireframer.h
   WorldAnnotator.h
+
+  ## Add VTK-h headers
+  vtkh/DataSet.hpp
+  vtkh/vtkh.hpp
+  vtkh/utils/vtkm_dataset_info.hpp
+
+  vtkh/compositing/AbsorptionPartial.hpp
+  vtkh/compositing/Compositor.hpp
+  vtkh/compositing/DirectSendCompositor.hpp
+  vtkh/compositing/EmissionPartial.hpp
+  vtkh/compositing/ImageCompositor.hpp
+  vtkh/compositing/Image.hpp
+  vtkh/compositing/MPICollect.hpp
+  vtkh/compositing/PartialCompositor.hpp
+  vtkh/compositing/PayloadCompositor.hpp
+  vtkh/compositing/PayloadImageCompositor.hpp
+  vtkh/compositing/PayloadImage.hpp
+  vtkh/compositing/PNGEncoder.h
+  vtkh/compositing/RadixKCompositor.hpp
+  vtkh/compositing/VolumePartial.hpp
+  vtkh/compositing/vtkh_diy_collect.hpp
+  vtkh/compositing/vtkh_diy_image_block.hpp
+  vtkh/compositing/vtkh_diy_partial_blocks.hpp
+  vtkh/compositing/vtkh_diy_partial_collect.hpp
+  vtkh/compositing/vtkh_diy_partial_redistribute.hpp
+  vtkh/compositing/vtkh_diy_utils.hpp
+
+  vtkh/rendering/Annotator.hpp
+  vtkh/rendering/LineRenderer.hpp
+  vtkh/rendering/MeshRenderer.hpp
+  vtkh/rendering/PointRenderer.hpp
+  vtkh/rendering/RayTracer.hpp
+  vtkh/rendering/Renderer.hpp
+  vtkh/rendering/Render.hpp
+  vtkh/rendering/ScalarRenderer.hpp
+  vtkh/rendering/Scene.hpp
+  vtkh/rendering/VolumeRenderer.hpp
+
+  vtkh/filters/Filter.hpp
+  vtkh/filters/ParticleMerging.hpp
   )
 
 set(sources
@@ -86,6 +126,35 @@ set(sources
   raytracing/Logger.cxx
   raytracing/MeshConnectivityContainers.cxx
   raytracing/TriangleExtractor.cxx
+
+  ##vtk-h sources
+  vtkh/utils/vtkm_dataset_info.cpp
+
+  vtkh/DataSet.cpp
+  vtkh/vtkh.cpp
+
+  vtkh/compositing/Compositor.cpp
+  vtkh/compositing/DirectSendCompositor.cpp
+  vtkh/compositing/Image.cpp
+  vtkh/compositing/PartialCompositor.cpp
+  vtkh/compositing/PayloadCompositor.cpp
+  vtkh/compositing/PayloadImage.cpp
+  vtkh/compositing/PNGEncoder.cxx
+  vtkh/compositing/RadixKCompositor.cpp
+
+  vtkh/rendering/Annotator.cpp
+  vtkh/rendering/LineRenderer.cpp
+  vtkh/rendering/MeshRenderer.cpp
+  vtkh/rendering/PointRenderer.cpp
+  vtkh/rendering/RayTracer.cpp
+  vtkh/rendering/Render.cpp
+  vtkh/rendering/Renderer.cpp
+  vtkh/rendering/ScalarRenderer.cpp
+  vtkh/rendering/Scene.cpp
+  vtkh/rendering/VolumeRenderer.cpp
+
+  vtkh/filters/Filter.cpp
+  vtkh/filters/ParticleMerging.cpp
   )
 
 # This list of sources has code that uses devices and so might need to be
