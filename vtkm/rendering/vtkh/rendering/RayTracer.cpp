@@ -5,7 +5,7 @@
 #include <memory>
 
 namespace vtkh {
-  
+
 RayTracer::RayTracer()
 {
   typedef vtkm::rendering::MapperRayTracer TracerType;
@@ -18,7 +18,7 @@ RayTracer::~RayTracer()
 {
 }
 
-Renderer::vtkmCanvasPtr 
+Renderer::vtkmCanvasPtr
 RayTracer::GetNewCanvas(int width, int height)
 {
   return std::make_shared<vtkm::rendering::CanvasRayTracer>(width, height);
@@ -30,7 +30,7 @@ RayTracer::GetName() const
   return "vtkh::RayTracer";
 }
 
-void 
+void
 RayTracer::SetShadingOn(bool on)
 {
   // do nothing by default;

@@ -189,4 +189,3 @@ void collect<EmissionPartial<float>>(std::vector<EmissionPartial<float>> &partia
 } // namespace rover
 
 #endif
-
