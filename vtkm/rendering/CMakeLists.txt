@@ -128,10 +128,7 @@ set(sources
   raytracing/TriangleExtractor.cxx
 
   ##vtk-h sources
-  vtkh/utils/vtkm_dataset_info.cpp
 
-  vtkh/DataSet.cpp
-  vtkh/vtkh.cpp
 
   vtkh/compositing/Compositor.cpp
   vtkh/compositing/DirectSendCompositor.cpp
@@ -151,10 +148,8 @@ set(sources
   vtkh/rendering/Renderer.cpp
   vtkh/rendering/ScalarRenderer.cpp
   vtkh/rendering/Scene.cpp
-  vtkh/rendering/VolumeRenderer.cpp
 
   vtkh/filters/Filter.cpp
-  vtkh/filters/ParticleMerging.cpp
   )
 
 # This list of sources has code that uses devices and so might need to be
@@ -199,6 +194,16 @@ set(device_sources
   raytracing/SphereIntersector.cxx
   raytracing/TriangleIntersector.cxx
   raytracing/VolumeRendererStructured.cxx
+
+
+  vtkh/DataSet.cpp
+
+  vtkh/utils/vtkm_dataset_info.cpp
+  vtkh/vtkh.cpp
+
+  vtkh/rendering/VolumeRenderer.cpp
+
+  vtkh/filters/ParticleMerging.cpp
   )
 
 # the None backend supports not building the opengl version
