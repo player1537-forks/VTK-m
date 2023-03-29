@@ -42,11 +42,14 @@
 #ifndef rover_compositing_redistribute_h
 #define rover_compositing_redistribute_h
 
+#include <vtkm/thirdparty/diy/diy.h>
 #include "vtkh_diy_partial_blocks.hpp"
-#include <diy/assigner.hpp>
-#include <diy/decomposition.hpp>
-#include <diy/master.hpp>
-#include <diy/reduce-operations.hpp>
+#include <vtkm/thirdparty/diy/assigner.h>
+#include <vtkm/thirdparty/diy/decomposition.h>
+#include <vtkm/thirdparty/diy/master.h>
+#include <vtkm/thirdparty/diy/reduce-operations.h>
+#include <vtkm/thirdparty/diy/point.h>
+
 #include <map>
 
 namespace vtkh {
@@ -78,7 +81,7 @@ struct Redistribute
 
       for(int i = 0; i < size; ++i)
       {
-        vtkmdiy::Point<int,DIY_MAX_DIM> point;
+        vtkmdiy::Point<int, VTKMDIY_MAX_DIM> point;
         point[0] = block->m_partials[i].m_pixel_id;
         int dest_gid = m_decomposer.point_to_gid(point);
         vtkmdiy::BlockID dest = proxy.out_link().target(dest_gid);
@@ -113,7 +116,9 @@ struct Redistribute
       } // for
 
     } // else
+
     MPI_Barrier(MPI_COMM_WORLD); //HACK
+
   } // operator
 };
 
@@ -126,8 +131,12 @@ void redistribute_detail(std::vector<typename AddBlockType::PartialType> &partia
 {
   typedef typename AddBlockType::Block Block;
 
-  vtkmdiy::mpi::communicator world(comm);
-  vtkmdiy::DiscreteBounds global_bounds;
+  //vtkmdiy::mpi::communicator world(comm);
+  vtkmdiy::mpi::communicator world(vtkmdiy::mpi::make_DIY_MPI_Comm(comm));
+
+  std::cout << __FILE__ << " " << __LINE__ << std::endl;
+  std::cout << "             DRP: Is this the right dimension???" << std::endl;
+  vtkmdiy::DiscreteBounds global_bounds(1);
   global_bounds.min[0] = domain_min_pixel;
   global_bounds.max[0] = domain_max_pixel;
 

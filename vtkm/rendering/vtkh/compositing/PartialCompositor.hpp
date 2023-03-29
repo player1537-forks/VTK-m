@@ -51,6 +51,12 @@
 #include "VolumePartial.hpp"
 
 
+#include <vtkm/thirdparty/diy/diy.h>
+#ifdef VTKM_ENABLE_MPI
+#include <mpi.h>
+#endif
+
+
 namespace vtkh {
 
 template<typename PartialType>
@@ -64,7 +70,10 @@ public:
             std::vector<PartialType> &output_partials);
   void set_background(std::vector<vtkm::Float32> &background_values);
   void set_background(std::vector<vtkm::Float64> &background_values);
-  void set_comm_handle(int mpi_comm_id);
+#ifdef VTKM_ENABLE_MPI
+//  void set_comm_handle(int mpi_comm_id);
+  void set_comm_handle(MPI_Comm mpiComm) {this->m_mpi_comm = mpiComm;}
+#endif
 protected:
   void merge(const std::vector<std::vector<PartialType>> &in_partials,
              std::vector<PartialType> &partials,
@@ -75,7 +84,10 @@ protected:
                           std::vector<PartialType> &output_partials);
 
   std::vector<typename PartialType::ValueType> m_background_values;
-  int m_mpi_comm_id;
+#ifdef VTKM_ENABLE_MPI
+//  int m_mpi_comm_id;
+  MPI_Comm m_mpi_comm;
+#endif
 };
 
 }; // namespace rover

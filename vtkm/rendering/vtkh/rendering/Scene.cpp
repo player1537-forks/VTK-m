@@ -1,10 +1,13 @@
+#include <vtkm/cont/EnvironmentTracker.h>
+
 #include <vtkm/rendering/vtkh/rendering/Scene.hpp>
 #include <vtkm/rendering/vtkh/rendering/MeshRenderer.hpp>
 #include <vtkm/rendering/vtkh/rendering/VolumeRenderer.hpp>
 #include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
 
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
 #include <mpi.h>
+#include <vtkm/thirdparty/diy/mpi-cast.h>
 #endif
 
 namespace vtkh
@@ -243,11 +246,14 @@ Scene::Render()
 
 void Scene::SynchDepths(std::vector<vtkh::Render> &renders)
 {
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
   int root = 0; // full images in rank 0
-  MPI_Comm comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
-  int num_ranks = vtkh::GetMPISize();
-  int rank = vtkh::GetMPIRank();
+
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  //MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm);
+  MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
+  int num_ranks = diy_comm.size();
+  int rank = diy_comm.rank();
   for(auto render : renders)
   {
     vtkm::rendering::Canvas &canvas = render.GetCanvas();

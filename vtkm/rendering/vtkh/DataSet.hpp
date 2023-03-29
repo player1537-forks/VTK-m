@@ -1,12 +1,10 @@
 #ifndef VTK_H_DATA_SET_HPP
 #define VTK_H_DATA_SET_HPP
 
-
 #include <vector>
 #include <string>
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
-//#include <vtkh/vtkh.hpp>
 #include <vtkm/cont/DataSet.h>
 
 namespace vtkh

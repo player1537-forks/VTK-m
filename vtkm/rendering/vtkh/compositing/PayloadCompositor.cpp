@@ -1,14 +1,15 @@
+
+#include <vtkm/cont/EnvironmentTracker.h>
 #include <vtkm/rendering/vtkh/compositing/PayloadCompositor.hpp>
 #include <vtkm/rendering/vtkh/compositing/PayloadImageCompositor.hpp>
 
 #include <assert.h>
 #include <algorithm>
+#include <vtkm/thirdparty/diy/diy.h>
 
-#ifdef VTKH_PARALLEL
-#include <mpi.h>
-#include <vtkh/vtkh.hpp>
+#include <vtkm/thirdparty/diy/diy.h>
+#ifdef VTKM_ENABLE_MPI
 #include <vtkm/rendering/vtkh/compositing/RadixKCompositor.hpp>
-#include <diy/mpi.hpp>
 #endif
 
 namespace vtkh
@@ -50,9 +51,10 @@ PayloadCompositor::Composite()
   assert(m_images.size() != 0);
   // nothing to do here in serial. Images were composited as
   // they were added to the compositor
-#ifdef VTKH_PARALLEL
-  vtkmdiy::mpi::communicator diy_comm;
-  diy_comm = vtkmdiy::mpi::communicator(MPI_Comm_f2c(GetMPICommHandle()));
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  //vtkmdiy::mpi::communicator diy_comm;
+  //diy_comm = vtkmdiy::mpi::communicator(MPI_Comm_f2c(GetMPICommHandle()));
 
   assert(m_images.size() == 1);
   RadixKCompositor compositor;

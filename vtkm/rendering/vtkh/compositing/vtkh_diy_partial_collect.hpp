@@ -45,10 +45,11 @@
 #include "AbsorptionPartial.hpp"
 #include "EmissionPartial.hpp"
 #include "VolumePartial.hpp"
-#include <diy/assigner.hpp>
-#include <diy/decomposition.hpp>
-#include <diy/master.hpp>
-#include <diy/reduce-operations.hpp>
+
+#include <vtkm/thirdparty/diy/master.h>
+#include <vtkm/thirdparty/diy/assigner.h>
+#include <vtkm/thirdparty/diy/decomposition.h>
+#include <vtkm/thirdparty/diy/reduce-operations.h>
 
 namespace vtkh {
 //
@@ -115,8 +116,10 @@ void collect_detail(std::vector<typename AddBlockType::PartialType> &partials,
 {
   typedef typename AddBlockType::Block Block;
 
-  vtkmdiy::mpi::communicator world(comm);
-  vtkmdiy::ContinuousBounds global_bounds;
+  vtkmdiy::mpi::communicator world(vtkmdiy::mpi::make_DIY_MPI_Comm(comm));
+  std::cout << __FILE__ << " " << __LINE__ << std::endl;
+  std::cout << "             DRP: Is this the right dimension???" << std::endl;
+  vtkmdiy::ContinuousBounds global_bounds(1);
   global_bounds.min[0] = 0;
   global_bounds.max[0] = 1;
 

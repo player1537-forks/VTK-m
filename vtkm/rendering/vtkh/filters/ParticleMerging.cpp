@@ -57,6 +57,7 @@ void ParticleMerging::PostExecute()
 void ParticleMerging::DoExecute()
 {
   vtkm::cont::ErrorBadValue("FIX ME:: No support for ParticleMerging filter");
+  //Looks like filter::CleanGrid() will do this.
   /*
   this->m_output = new DataSet();
   const int num_domains = this->m_input->GetNumberOfDomains();

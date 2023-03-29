@@ -20,8 +20,17 @@
 void RayTrace(bool doStructured)
 {
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
-  int rank = comm.rank();
+  if (comm.rank() == 0)
+  {
+    std::cout << "RayTrace with: ";
+    if (doStructured)
+      std::cout << "structured data ";
+    else
+      std::cout << "unstructured data ";
+    std::cout << "NumRanks= " << comm.size() << std::endl;
+  }
 
+  int rank = comm.rank();
   const int base_size = 32;
   const int blocks_per_rank = 1;
   const int num_blocks = comm.size() * blocks_per_rank;
@@ -67,6 +76,17 @@ void RayTrace(bool doStructured)
 void VolumeRender(bool doStructured)
 {
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+
+  if (comm.rank() == 0)
+  {
+    std::cout << "VolumeRender with: ";
+    if (doStructured)
+      std::cout << "structured data ";
+    else
+      std::cout << "unstructured data ";
+    std::cout << "NumRanks= " << comm.size() << std::endl;
+  }
+
   int rank = comm.rank();
 
   const int base_size = 32;

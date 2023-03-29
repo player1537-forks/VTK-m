@@ -1,15 +1,14 @@
+#include <vtkm/cont/EnvironmentTracker.h>
 #include <vtkm/rendering/vtkh/compositing/Compositor.hpp>
 #include <vtkm/rendering/vtkh/compositing/ImageCompositor.hpp>
 
 #include <assert.h>
 #include <algorithm>
 
-#ifdef VTKH_PARALLEL
-#include <mpi.h>
-#include <vtkh/vtkh.hpp>
-#include <vtkh/compositing/DirectSendCompositor.hpp>
-#include <vtkh/compositing/RadixKCompositor.hpp>
-#include <diy/mpi.hpp>
+#include <vtkm/thirdparty/diy/diy.h>
+#ifdef VTKM_ENABLE_MPI
+#include <vtkm/rendering/vtkh/compositing/DirectSendCompositor.hpp>
+#include <vtkm/rendering/vtkh/compositing/RadixKCompositor.hpp>
 #endif
 
 namespace vtkh
@@ -201,9 +200,8 @@ Compositor::CompositeZBufferSurface()
 {
   // nothing to do here in serial. Images were composited as
   // they were added to the compositor
-#ifdef VTKH_PARALLEL
-  vtkmdiy::mpi::communicator diy_comm;
-  diy_comm = vtkmdiy::mpi::communicator(MPI_Comm_f2c(GetMPICommHandle()));
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
 
   assert(m_images.size() == 1);
   RadixKCompositor compositor;
@@ -222,9 +220,8 @@ void
 Compositor::CompositeVisOrder()
 {
 
-#ifdef VTKH_PARALLEL
-  vtkmdiy::mpi::communicator diy_comm;
-  diy_comm = vtkmdiy::mpi::communicator(MPI_Comm_f2c(GetMPICommHandle()));
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
 
   assert(m_images.size() != 0);
   DirectSendCompositor compositor;

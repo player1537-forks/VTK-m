@@ -40,14 +40,17 @@
 //
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
 
+#include <vtkm/cont/EnvironmentTracker.h>
 #include <vtkm/rendering/vtkh/compositing/VolumePartial.hpp>
 #include <vtkm/rendering/vtkh/compositing/PartialCompositor.hpp>
 #include <algorithm>
 #include <assert.h>
 #include <limits>
 
-#ifdef VTKH_PARALLEL
-#include <mpi.h>
+#include <vtkm/thirdparty/diy/diy.h>
+#ifdef VTKM_ENABLE_MPI
+#include <vtkm/thirdparty/diy/mpi-cast.h>
+
 #include "vtkh_diy_partial_redistribute.hpp"
 #include "vtkh_diy_partial_collect.hpp"
 #endif
@@ -309,14 +312,14 @@ PartialCompositor<PartialType>::merge(const std::vector<std::vector<PartialType>
   global_min_pixel = min_pixel;
   global_max_pixel = max_pixel;
 
-#ifdef VTKH_PARALLEL
-  MPI_Comm comm_handle = MPI_Comm_f2c(m_mpi_comm_id);
+#ifdef VTKM_ENABLE_MPI
+  //MPI_Comm comm_handle = MPI_Comm_f2c(m_mpi_comm_id);
   int rank_min = global_min_pixel;
   int rank_max = global_max_pixel;
   int mpi_min;
   int mpi_max;
-  MPI_Allreduce(&rank_min, &mpi_min, 1, MPI_INT, MPI_MIN, comm_handle);
-  MPI_Allreduce(&rank_max, &mpi_max, 1, MPI_INT, MPI_MAX, comm_handle);
+  MPI_Allreduce(&rank_min, &mpi_min, 1, MPI_INT, MPI_MIN, this->m_mpi_comm);
+  MPI_Allreduce(&rank_max, &mpi_max, 1, MPI_INT, MPI_MAX, this->m_mpi_comm);
   global_min_pixel = mpi_min;
   global_max_pixel = mpi_max;
 #endif
@@ -497,13 +500,13 @@ PartialCompositor<PartialType>::composite(std::vector<std::vector<PartialType>> 
                                    std::vector<PartialType> &output_partials)
 {
   int global_partial_images = partial_images.size();
-#ifdef VTKH_PARALLEL
-  MPI_Comm comm_handle = MPI_Comm_f2c(m_mpi_comm_id);
+#ifdef VTKM_ENABLE_MPI
+  //MPI_Comm comm_handle = MPI_Comm_f2c(m_mpi_comm_id);
   int local_partials = global_partial_images;
-  MPI_Allreduce(&local_partials, &global_partial_images, 1, MPI_INT, MPI_SUM, comm_handle);
+  MPI_Allreduce(&local_partials, &global_partial_images, 1, MPI_INT, MPI_SUM, this->m_mpi_comm);
 #endif
 
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
   // we could have no data, but it could exist elsewhere
 #endif
 
@@ -520,15 +523,15 @@ PartialCompositor<PartialType>::composite(std::vector<std::vector<PartialType>> 
   }
 
 
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
   //
   // Exchange partials with other ranks
   //
   redistribute(partials,
-               comm_handle,
+               this->m_mpi_comm,
                global_min_pixel,
                global_max_pixel);
-  MPI_Barrier(comm_handle);
+  MPI_Barrier(this->m_mpi_comm);
 #endif
 
   const int  total_partial_comps = partials.size();
@@ -540,12 +543,12 @@ PartialCompositor<PartialType>::composite(std::vector<std::vector<PartialType>> 
 
   composite_partials(partials, output_partials);
 
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
   //
   // Collect all of the distibuted pixels
   //
-  collect(output_partials, comm_handle);
-  MPI_Barrier(comm_handle);
+  collect(output_partials, this->m_mpi_comm);
+  MPI_Barrier(this->m_mpi_comm);
 #endif
 }
 
@@ -573,12 +576,14 @@ PartialCompositor<PartialType>::set_background(std::vector<vtkm::Float64> &backg
   }
 }
 
+/*
 template<typename PartialType>
 void
 PartialCompositor<PartialType>::set_comm_handle(int mpi_comm_id)
 {
   m_mpi_comm_id  = mpi_comm_id;
 }
+*/
 
 //Explicit function instantiations
 template class VTKM_RENDERING_EXPORT vtkh::PartialCompositor<vtkh::VolumePartial<vtkm::Float32>>;

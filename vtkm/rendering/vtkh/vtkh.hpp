@@ -7,7 +7,7 @@
 
 namespace vtkh
 {
-
+#if 0
   VTKM_RENDERING_EXPORT std::string AboutVTKH();
   VTKM_RENDERING_EXPORT void        Initialize();
 
@@ -22,6 +22,7 @@ namespace vtkh
   VTKM_RENDERING_EXPORT bool        IsOpenMPEnabled();
   VTKM_RENDERING_EXPORT bool        IsCUDAEnabled();
   VTKM_RENDERING_EXPORT bool        IsKokkosEnabled();
+
 
   VTKM_RENDERING_EXPORT bool        IsMPIEnabled();
 
@@ -42,5 +43,6 @@ namespace vtkh
 
   VTKM_RENDERING_EXPORT void        SetMPICommHandle(int mpi_comm_id);
   VTKM_RENDERING_EXPORT int         GetMPICommHandle();
+#endif
 }
 #endif

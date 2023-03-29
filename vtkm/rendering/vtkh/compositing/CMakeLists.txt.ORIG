@@ -105,7 +105,7 @@ if (MPI_FOUND)
       set_target_properties(vtkh_compositing_mpi PROPERTIES CXX_VISIBILITY_PRESET hidden)
     endif()
     #
-    target_compile_definitions(vtkh_compositing_mpi PRIVATE VTKH_PARALLEL)
+    target_compile_definitions(vtkh_compositing_mpi PRIVATE VTKm_ENABLE_MPI)
 
     # build includes
     # this allows us to include as <vtkh/header.hpp>

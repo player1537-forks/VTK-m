@@ -10,6 +10,7 @@
 #include <vtkm/cont/cuda/DeviceAdapterCuda.h>
 #include <vtkm/cont/kokkos/DeviceAdapterKokkos.h>
 
+#if 0
 
 #ifdef VTKM_CUDA
 #include <cuda.h>
@@ -465,3 +466,5 @@ AboutVTKH()
 }
 
 }
+
+#endif

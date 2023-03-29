@@ -1,4 +1,5 @@
-#include <vtkm/rendering/vtkh/vtkh.hpp>
+#include <vtkm/cont/EnvironmentTracker.h>
+
 #include <vtkm/rendering/vtkh/rendering/VolumeRenderer.hpp>
 
 #include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
@@ -9,8 +10,11 @@
 
 #include <memory>
 
-#ifdef VTKH_PARALLEL
+#include <vtkm/thirdparty/diy/diy.h>
+
+#ifdef VTKM_ENABLE_MPI
 #include <mpi.h>
+#include <vtkm/thirdparty/diy/mpi-cast.h>
 #endif
 
 #include <vtkm/cont/ColorTable.h>
@@ -581,15 +585,17 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
   }
 
   PartialCompositor<VolumePartial<float>> compositor;
-#ifdef VTKH_PARALLEL
-  compositor.set_comm_handle(GetMPICommHandle());
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
+  compositor.set_comm_handle(comm);
 #endif
   // composite
   for(int r = 0; r < total_renders; ++r)
   {
     std::vector<VolumePartial<float>> res;
     compositor.composite(render_partials[r],res);
-    if(vtkh::GetMPIRank() == 0)
+    if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
       detail::partials_to_canvas(res,
                                  m_renders[r].GetCamera(),
@@ -678,12 +684,12 @@ VolumeRenderer::Composite(const int &num_images)
 
     Image result = m_compositor->Composite();
     const std::string image_name = m_renders[i].GetImageName() + ".png";
-#ifdef VTKH_PARALLEL
-    if(vtkh::GetMPIRank() == 0)
+#ifdef VTKM_ENABLE_MPI
+    if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
 #endif
       ImageToCanvas(result, m_renders[i].GetCanvas(), true);
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
     }
 #endif
     m_compositor->ClearImages();
@@ -703,11 +709,12 @@ VolumeRenderer::DepthSort(int num_domains,
   {
     throw vtkm::cont::ErrorBadValue("local vis order not equal to number of domains");
   }
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
   int root = 0;
-  MPI_Comm comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
-  int num_ranks = vtkh::GetMPISize();
-  int rank = vtkh::GetMPIRank();
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
+  int num_ranks = diy_comm.size();
+  int rank = diy_comm.rank();
   int *domain_counts = NULL;
   int *domain_offsets = NULL;
   int *vis_order = NULL;

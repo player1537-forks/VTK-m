@@ -1,3 +1,5 @@
+#include <vtkm/cont/EnvironmentTracker.h>
+
 #include "DataSet.hpp"
 
 //#include <vtkh/Error.hpp>
@@ -14,9 +16,13 @@
 #include <vtkm/cont/TryExecute.h>
 #include <vtkm/worklet/WorkletMapField.h>
 #include <vtkm/worklet/DispatcherMapField.h>
-#ifdef VTKH_PARALLEL
-  #include <mpi.h>
+
+#include <vtkm/thirdparty/diy/diy.h>
+#ifdef VTKM_ENABLE_MPI
+#include <vtkm/thirdparty/diy/mpi-cast.h>
+#include <mpi.h>
 #endif
+
 namespace vtkh {
 namespace detail
 {
@@ -26,10 +32,11 @@ namespace detail
 bool GlobalAgreement(bool local)
 {
   bool agreement = local;
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
   int local_boolean = local ? 1 : 0;
   int global_boolean;
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
   MPI_Allreduce((void *)(&local_boolean),
                 (void *)(&global_boolean),
                 1,
@@ -37,7 +44,7 @@ bool GlobalAgreement(bool local)
                 MPI_SUM,
                 mpi_comm);
 
-  if(global_boolean != vtkh::GetMPISize())
+  if(global_boolean != diy_comm.size())
   {
     agreement = false;
   }
@@ -48,10 +55,11 @@ bool GlobalAgreement(bool local)
 bool GlobalSomeoneAgrees(bool local)
 {
   bool agreement = local;
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
   int local_boolean = local ? 1 : 0;
   int global_boolean;
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
   MPI_Allreduce((void *)(&local_boolean),
                 (void *)(&global_boolean),
                 1,
@@ -194,8 +202,10 @@ vtkm::Id
 DataSet::GetGlobalNumberOfCells() const
 {
   vtkm::Id num_cells = GetNumberOfCells();;
-#ifdef VTKH_PARALLEL
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
+
   long long int local_cells = static_cast<long long int>(num_cells);
   long long int global_cells = 0;
   MPI_Allreduce(&local_cells,
@@ -215,8 +225,10 @@ vtkm::Id
 DataSet::GetGlobalNumberOfDomains() const
 {
   vtkm::Id domains = this->GetNumberOfDomains();
-#ifdef VTKH_PARALLEL
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
+
   int local_doms = static_cast<int>(domains);
   int global_doms = 0;
   MPI_Allreduce(&local_doms,
@@ -278,8 +290,9 @@ DataSet::GetGlobalBounds(vtkm::Id coordinate_system_index) const
   vtkm::Bounds bounds;
   bounds = GetBounds(coordinate_system_index);
 
-#ifdef VTKH_PARALLEL
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
 
   vtkm::Float64 x_min = bounds.X.Min;
   vtkm::Float64 x_max = bounds.X.Max;
@@ -407,15 +420,16 @@ DataSet::GetGlobalRange(const std::string &field_name) const
   vtkm::cont::ArrayHandle<vtkm::Range> range;
   range = GetRange(field_name);
 
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
   vtkm::Id num_components = range.GetNumberOfValues();
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
   //
   // it is possible to have an empty dataset at one of the ranks
   // so we must check for this so MPI comm does not hang.
   // We also want to check for num components mis-match
   //
-  int *global_components = new int[vtkh::GetMPISize()];
+  int *global_components = new int[diy_comm.size()];
   int comps = static_cast<int>(num_components);
 
   MPI_Allgather(&comps,
@@ -430,7 +444,7 @@ DataSet::GetGlobalRange(const std::string &field_name) const
   //
   // find the largest component
   //
-  for(int i = 0; i < vtkh::GetMPISize(); ++i)
+  for(int i = 0; i < diy_comm.size(); ++i)
   {
     if(components == 0 && global_components[i] != 0)
     {
@@ -717,11 +731,12 @@ bool
 DataSet::GlobalFieldExists(const std::string &field_name) const
 {
   bool exists = FieldExists(field_name);
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
   int local_boolean = exists ? 1 : 0;
   int global_boolean;
 
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
   MPI_Allreduce((void *)(&local_boolean),
                 (void *)(&global_boolean),
                 1,
@@ -787,12 +802,11 @@ DataSet::GetFieldAssociation(const std::string field_name, bool &valid_field) co
     }
   }
 
-#ifdef VTKH_PARALLEL
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
 
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
-
-
-  int *global_assocs = new int[vtkh::GetMPISize()];
+  int *global_assocs = new int[diy_comm.size()];
 
   MPI_Allgather(&assoc_id,
                 1,
@@ -804,7 +818,7 @@ DataSet::GetFieldAssociation(const std::string field_name, bool &valid_field) co
 
   int id = -1;
 
-  for(int i = 0; i < vtkh::GetMPISize(); ++i)
+  for(int i = 0; i < diy_comm.size(); ++i)
   {
     if(global_assocs[i] != -1)
     {
@@ -864,8 +878,9 @@ vtkm::Id DataSet::NumberOfComponents(const std::string &field_name) const
     }
   }
 
-#ifdef VTKH_PARALLEL
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
 
   int global_comps;
   MPI_Allreduce((void *)(&num_components),

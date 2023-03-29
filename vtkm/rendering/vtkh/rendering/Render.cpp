@@ -1,3 +1,5 @@
+#include <vtkm/cont/EnvironmentTracker.h>
+
 #include "Render.hpp"
 #include <vtkm/rendering/vtkh/rendering/Annotator.hpp>
 #include <vtkm/rendering/vtkh/compositing/PNGEncoder.h>
@@ -185,8 +187,10 @@ Render::RenderWorldAnnotations()
 {
   if(!m_render_annotations) return;
   if(!m_render_world_annotations) return;
-#ifdef VTKH_PARALLEL
-  if(vtkh::GetMPIRank() != 0) return;
+#ifdef VTKM_ENABLE_MPI
+  //if(vtkh::GetMPIRank() != 0) return;
+  if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
+    return;
 #endif
   m_canvas.SetBackgroundColor(m_bg_color);
   m_canvas.SetForegroundColor(m_fg_color);
@@ -203,8 +207,10 @@ Render::RenderScreenAnnotations(const std::vector<std::string> &field_names,
 {
   if(!m_render_annotations) return;
   if(!m_render_screen_annotations) return;
-#ifdef VTKH_PARALLEL
-  if(vtkh::GetMPIRank() != 0) return;
+#ifdef VTKM_ENABLE_MPI
+  //if(vtkh::GetMPIRank() != 0) return;
+  if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
+    return;
 #endif
   m_canvas.SetBackgroundColor(m_bg_color);
   m_canvas.SetForegroundColor(m_fg_color);
@@ -283,8 +289,10 @@ Render::Save()
 {
   // After rendering and compositing
   // Rank 0 contains the complete image.
-#ifdef VTKH_PARALLEL
-  if(vtkh::GetMPIRank() != 0) return;
+#ifdef VTKM_ENABLE_MPI
+  //if(vtkh::GetMPIRank() != 0) return;
+  if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
+    return;
 #endif
   float* color_buffer = &GetVTKMPointer(m_canvas.GetColorBuffer())[0][0];
   int height = m_canvas.GetHeight();

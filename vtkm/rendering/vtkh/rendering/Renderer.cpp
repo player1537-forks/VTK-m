@@ -1,3 +1,4 @@
+#include <vtkm/cont/EnvironmentTracker.h>
 
 #include <vtkm/cont/ErrorBadValue.h>
 #include "Renderer.hpp"
@@ -118,8 +119,9 @@ Renderer::Composite(const int &num_images)
 
     Image result = m_compositor->Composite();
 
-#ifdef VTKH_PARALLEL
-    if(vtkh::GetMPIRank() == 0)
+#ifdef VTKM_ENABLE_MPI
+    //if(vtkh::GetMPIRank() == 0)
+    if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
       ImageToCanvas(result, m_renders[i].GetCanvas(), true);
     }

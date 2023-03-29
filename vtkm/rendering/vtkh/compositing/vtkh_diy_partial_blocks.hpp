@@ -42,7 +42,7 @@
 #ifndef rover_blocks_h
 #define rover_blocks_h
 
-#include <diy/master.hpp>
+#include <vtkm/thirdparty/diy/master.h>
 
 #include "AbsorptionPartial.hpp"
 #include "EmissionPartial.hpp"

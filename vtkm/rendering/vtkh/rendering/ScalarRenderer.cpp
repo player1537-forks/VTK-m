@@ -1,7 +1,7 @@
+#include <vtkm/cont/EnvironmentTracker.h>
+
 #include "ScalarRenderer.hpp"
 #include <vtkm/rendering/vtkh/compositing/PayloadCompositor.hpp>
-
-#include <vtkm/rendering/vtkh/vtkh.hpp>
 
 //#include <vtkh/Logger.hpp>
 #include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
@@ -9,9 +9,11 @@
 #include <vtkm/rendering/raytracing/Logger.h>
 #include <vtkm/rendering/ScalarRenderer.h>
 
-#ifdef VTKH_PARALLEL
-  #include <mpi.h>
+#ifdef VTKM_ENABLE_MPI
+#include <mpi.h>
+#include <vtkm/thirdparty/diy/mpi-cast.h>
 #endif
+
 #include <assert.h>
 #include <string.h>
 
@@ -181,11 +183,11 @@ ScalarRenderer::DoExecute()
     }
   }
 
-#ifdef VTKH_PARALLEL
-  MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
-
-  int comm_size = GetMPISize();
-  int rank = GetMPIRank();
+#ifdef VTKM_ENABLE_MPI
+  //MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  int comm_size = comm.size();
+  int rank = comm.rank();
   std::vector<int> votes;
 
   if(!no_data && num_cells == 0)
@@ -193,6 +195,7 @@ ScalarRenderer::DoExecute()
   int vote = num_cells > 0 ? 1 : 0;
   votes.resize(comm_size);
 
+  MPI_Comm mpi_comm = vtkmdiy::mpi::mpi_cast(comm.handle());
   MPI_Allgather(&vote, 1, MPI_INT, &votes[0], 1, MPI_INT, mpi_comm);
   int winner = -1;
   for(int i = 0; i < comm_size; ++i)
@@ -213,7 +216,9 @@ ScalarRenderer::DoExecute()
 
   if(winner > 0)
   {
-    if(vtkh::GetMPIRank() == 0 && num_cells == 0)
+
+    //if(vtkh::GetMPIRank() == 0 && num_cells == 0)
+    if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0 && num_cells == 0)
     {
       MPI_Status status;
       int num_fields = 0;
@@ -231,7 +236,8 @@ ScalarRenderer::DoExecute()
         delete[] array;
       }
     }
-    if(vtkh::GetMPIRank() == winner)
+    //if(vtkh::GetMPIRank() == winner)
+    if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == winner)
     {
       int num_fields = field_names.size();
       MPI_Send(&num_fields, 1, MPI_INT, 0, 0, mpi_comm);
@@ -265,7 +271,8 @@ ScalarRenderer::DoExecute()
     }
 
     PayloadImage final_image = compositor.Composite();
-    if(vtkh::GetMPIRank() == 0)
+    if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
+      //if(vtkh::GetMPIRank() == 0)
     {
       Result final_result = Convert(final_image, field_names);
       if(final_result.Scalars.size() != 0)

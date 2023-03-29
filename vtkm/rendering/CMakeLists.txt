@@ -58,7 +58,6 @@ set(headers
 
   ## Add VTK-h headers
   vtkh/DataSet.hpp
-  vtkh/vtkh.hpp
   vtkh/utils/vtkm_dataset_info.hpp
 
   vtkh/compositing/AbsorptionPartial.hpp
@@ -199,7 +198,6 @@ set(device_sources
   vtkh/DataSet.cpp
 
   vtkh/utils/vtkm_dataset_info.cpp
-  vtkh/vtkh.cpp
 
   vtkh/rendering/VolumeRenderer.cpp
 
