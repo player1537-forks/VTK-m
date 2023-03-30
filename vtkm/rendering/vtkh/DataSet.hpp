@@ -25,11 +25,11 @@ class VTKM_RENDERING_EXPORT DataSet
 protected:
   std::vector<vtkm::cont::DataSet> m_domains;
   std::vector<vtkm::Id>            m_domain_ids;
-  vtkm::UInt64                     m_cycle;
-  double                           m_time;
+  vtkm::UInt64                     m_cycle = 0;
+//  double                           m_time;
 public:
-  DataSet();
-  ~DataSet();
+  DataSet() {}
+  ~DataSet() {}
 
   void AddDomain(vtkm::cont::DataSet data_set, vtkm::Id domain_id);
 
@@ -40,10 +40,7 @@ public:
   // set cycle meta data
   void SetCycle(const vtkm::UInt64 cycle);
   vtkm::UInt64 GetCycle() const;
-  void SetTime(const double time);
-  double GetTime() const;
   vtkm::cont::DataSet& GetDomain(const vtkm::Id index);
-  vtkm::cont::DataSet& GetDomainById(const vtkm::Id domain_id);
 
   // check to see of field exists in at least one domain on this rank
   bool FieldExists(const std::string &field_name) const;
@@ -68,11 +65,11 @@ public:
   // returns the number of domains on this rank
   vtkm::Id GetNumberOfDomains() const;
   // returns the number of domains on all ranks
-  vtkm::Id GetGlobalNumberOfDomains() const;
+//vtkm::Id GetGlobalNumberOfDomains() const;
   // returns the number of cells on this rank
   vtkm::Id GetNumberOfCells() const;
   // returns the number of cells on this rank
-  vtkm::Id GetGlobalNumberOfCells() const;
+//vtkm::Id GetGlobalNumberOfCells() const;
   // returns the union of all domains bounds on this rank
   vtkm::Bounds GetBounds(vtkm::Id coordinate_system_index = 0) const;
   // returns the union of all abounds on all ranks
@@ -100,7 +97,6 @@ public:
   // add a scalar field to this data set with a constant value
   void AddConstantPointField(const vtkm::Float32 value, const std::string fieldname);
 
-  bool HasDomainId(const vtkm::Id &domain_id) const;
   /*! \brief IsStructured returns true if all domains, globally,
    *         are stuctured data sets of the same topological dimension.
    *  \param topological_dims set to the dimensions of the cell set (1,2, or 3)

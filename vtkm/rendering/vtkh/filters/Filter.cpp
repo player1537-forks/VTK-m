@@ -164,7 +164,6 @@ Filter::PropagateMetadata()
   m_output->SetCycle(m_input->GetCycle());
 }
 
-
 vtkm::filter::FieldSelection
 Filter::GetFieldSelection() const
 {
