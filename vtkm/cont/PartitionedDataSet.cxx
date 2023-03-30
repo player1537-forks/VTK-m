@@ -10,6 +10,7 @@
 
 #include <vtkm/StaticAssert.h>
 #include <vtkm/cont/ArrayHandle.h>
+#include <vtkm/cont/BoundsCompute.h>
 #include <vtkm/cont/DataSet.h>
 #include <vtkm/cont/EnvironmentTracker.h>
 #include <vtkm/cont/ErrorBadValue.h>
@@ -66,10 +67,10 @@ vtkm::Id PartitionedDataSet::GetGlobalNumberOfPartitions() const
 #ifdef VTKM_ENABLE_MPI
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   vtkm::Id globalSize = 0;
-  vtkmdiy::mpi::all_reduce(comm, GetNumberOfPartitions(), globalSize, std::plus<vtkm::Id>{});
+  vtkmdiy::mpi::all_reduce(comm, this->GetNumberOfPartitions(), globalSize, std::plus<vtkm::Id>{});
   return globalSize;
 #else
-  return GetNumberOfPartitions();
+  return this->GetNumberOfPartitions();
 #endif
 }
 
@@ -146,5 +147,67 @@ void PartitionedDataSet::PrintSummary(std::ostream& stream) const
     this->GetField(index).PrintSummary(stream);
   }
 }
+
+VTKM_CONT
+vtkm::Id PartitionedDataSet::GetNumberOfCells() const
+{
+  vtkm::Id numCells = 0;
+  for (const auto& ds : this->Partitions)
+    numCells += ds.GetNumberOfCells();
+
+  return numCells;
+}
+
+VTKM_CONT
+vtkm::Id PartitionedDataSet::GetGlobalNumberOfCells() const
+{
+  vtkm::Id numCells = this->GetNumberOfCells();
+#ifdef VTKM_ENABLE_MPI
+  vtkm::Id globalNumCells = 0;
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  vtkmdiy::mpi::all_reduce(comm, numCells, globalNumCells, std::plus<vtkm::Id>{});
+  numCells = globalNumCells;
+#endif
+
+  return numCells;
+}
+
+VTKM_CONT
+vtkm::Bounds PartitionedDataSet::GetBounds(vtkm::Id coordinateIndex) const
+{
+  return vtkm::cont::BoundsCompute(*this, coordinateIndex);
+}
+
+VTKM_CONT
+vtkm::Bounds PartitionedDataSet::GetGlobalBounds(vtkm::Id coordinateIndex) const
+{
+  vtkm::Bounds localBounds = this->GetBounds(coordinateIndex);
+
+#ifdef VTKM_ENABLE_MPI
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+
+  std::vector<vtkm::Float64> vals(3), globalMinVals(3), globalMaxVals(3);
+  vals[0] = localBounds.X.Min;
+  vals[1] = localBounds.Y.Min;
+  vals[2] = localBounds.Z.Min;
+  vtkmdiy::mpi::all_reduce(comm, vals, globalMinVals, vtkmdiy::mpi::minimum<vtkm::Id>{});
+
+  vals[0] = localBounds.X.Max;
+  vals[1] = localBounds.Y.Max;
+  vals[2] = localBounds.Z.Max;
+  vtkmdiy::mpi::all_reduce(comm, vals, globalMaxVals, vtkmdiy::mpi::maximum<vtkm::Id>{});
+
+  return vtkm::Bounds(globalMinVals[0],
+                      globalMaxVals[0],
+                      globalMinVals[1],
+                      globalMaxVals[1],
+                      globalMinVals[2],
+                      globalMaxVals[2]);
+#else
+
+  return localBounds;
+#endif
+}
+
 }
 } // namespace vtkm::cont

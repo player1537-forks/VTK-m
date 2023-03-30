@@ -49,10 +49,10 @@ public:
 
   // Use to indentify if the field is a scalar, vec2, vec3 ...
   // returns 0 if the field does not exist
-  vtkm::Id NumberOfComponents(const std::string &field_name) const;
+//  vtkm::Id NumberOfComponents(const std::string &field_name) const;
 
-  vtkm::cont::Field GetField(const std::string &field_name,
-                             const vtkm::Id domain_index);
+//  vtkm::cont::Field GetField(const std::string &field_name,
+//                             const vtkm::Id domain_index);
 
   // checks to see if cells exist on this rank
   bool IsEmpty() const;
@@ -63,32 +63,37 @@ public:
   bool OneDomainPerRank() const;
 
   // returns the number of domains on this rank
-  vtkm::Id GetNumberOfDomains() const;
+vtkm::Id GetNumberOfDomains() const; //DONE
   // returns the number of domains on all ranks
 //vtkm::Id GetGlobalNumberOfDomains() const;
   // returns the number of cells on this rank
-  vtkm::Id GetNumberOfCells() const;
+vtkm::Id GetNumberOfCells() const; //DONE
   // returns the number of cells on this rank
 //vtkm::Id GetGlobalNumberOfCells() const;
   // returns the union of all domains bounds on this rank
-  vtkm::Bounds GetBounds(vtkm::Id coordinate_system_index = 0) const;
+vtkm::Bounds GetBounds(vtkm::Id coordinate_system_index = 0) const; //DONE
   // returns the union of all abounds on all ranks
-  vtkm::Bounds GetGlobalBounds(vtkm::Id coordinate_system_index = 0) const;
+vtkm::Bounds GetGlobalBounds(vtkm::Id coordinate_system_index = 0) const; //DONE
   // returns a bounds of a single domain
   vtkm::Bounds GetDomainBounds(const int &domain_index,
                                vtkm::Id coordinate_system_index = 0) const;
 
+/*
   vtkm::cont::Field::Association GetFieldAssociation(const std::string field_name,
                                                      bool &valid_field) const;
+*/
   // returns the range of the scalar field across domains in this rank
   // If the field does not exist, the call returns an array of 0
   // throws an error if the number of components in different domains
   // do not match
+
+//DRP: These should probably go into helper functions?
   vtkm::cont::ArrayHandle<vtkm::Range> GetRange(const std::string &field_named) const;
   // returns the range of the scalar field across all ranks
   // If the field does not exist, the call returns an array of 0
   // throws an error if the number of components in different domains
   // do not match
+//DRP: These should probably go into helper functions?
   vtkm::cont::ArrayHandle<vtkm::Range> GetGlobalRange(const std::string &field_name) const;
 
   // returns the a list of domain ids on this rank

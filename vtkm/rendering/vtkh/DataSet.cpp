@@ -138,6 +138,7 @@ DataSet::AddDomain(vtkm::cont::DataSet data_set, vtkm::Id domain_id)
   m_domain_ids.push_back(domain_id);
 }
 
+  /*
 vtkm::cont::Field
 DataSet::GetField(const std::string &field_name, const vtkm::Id domain_index)
 {
@@ -146,6 +147,7 @@ DataSet::GetField(const std::string &field_name, const vtkm::Id domain_index)
 
   return m_domains[domain_index].GetField(field_name);
 }
+  */
 
 vtkm::cont::DataSet&
 DataSet::GetDomain(const vtkm::Id index)
@@ -426,6 +428,7 @@ DataSet::GetRange(const std::string &field_name) const
   return range;
 }
 
+
 vtkm::cont::ArrayHandle<vtkm::Range>
 DataSet::GetGlobalRange(const std::string &field_name) const
 {
@@ -539,6 +542,7 @@ DataSet::PrintSummary(std::ostream &stream) const
     m_domains[dom].PrintSummary(stream);
   }
 }
+
 
 bool
 DataSet::IsEmpty() const
@@ -724,6 +728,7 @@ DataSet::GlobalFieldExists(const std::string &field_name) const
   return exists;
 }
 
+/*
 vtkm::cont::Field::Association
 DataSet::GetFieldAssociation(const std::string field_name, bool &valid_field) const
 {
@@ -829,7 +834,9 @@ DataSet::GetFieldAssociation(const std::string field_name, bool &valid_field) co
   }
   return assoc;
 }
+*/
 
+/*
 vtkm::Id DataSet::NumberOfComponents(const std::string &field_name) const
 {
   int num_components = 0;
@@ -860,5 +867,6 @@ vtkm::Id DataSet::NumberOfComponents(const std::string &field_name) const
 #endif
   return num_components;
 }
+*/
 
 } // namspace vtkh
