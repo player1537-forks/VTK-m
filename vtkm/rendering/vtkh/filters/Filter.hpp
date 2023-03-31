@@ -11,9 +11,9 @@
 #ifndef VTK_H_FILTER_HPP
 #define VTK_H_FILTER_HPP
 
+
 #include <vtkm/rendering/vtkm_rendering_export.h>
-//#include <vtkh/vtkh.hpp>
-#include <vtkm/rendering/vtkh/DataSet.hpp>
+#include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/filter/FieldSelection.h>
 
 namespace vtkh
@@ -22,17 +22,16 @@ namespace vtkh
 class VTKM_RENDERING_EXPORT Filter
 {
 public:
-  Filter();
-  virtual ~Filter();
-  virtual void SetInput(vtkh::DataSet *input);
+virtual ~Filter() {}
+
   virtual std::string GetName() const = 0;
+  virtual void SetInput(vtkm::cont::PartitionedDataSet *input) {this->m_input = input;}
+  vtkm::cont::PartitionedDataSet* GetOutput() { return this->m_output; }
 
-  vtkh::DataSet* GetOutput();
-  vtkh::DataSet* Update();
+  vtkm::cont::PartitionedDataSet* Update();
 
-  void AddMapField(const std::string &field_name);
-
-  void ClearMapFields();
+  void AddMapField(const std::string &field_name) {this->m_map_fields.push_back(field_name);}
+  void ClearMapFields() { this->m_map_fields.clear(); }
 
 protected:
   virtual void DoExecute() = 0;
@@ -48,8 +47,8 @@ protected:
 
   std::vector<std::string> m_map_fields;
 
-  vtkh::DataSet *m_input;
-  vtkh::DataSet *m_output;
+  vtkm::cont::PartitionedDataSet *m_input = nullptr;
+  vtkm::cont::PartitionedDataSet *m_output = nullptr;
 
   void MapAllFields();
 

@@ -8,6 +8,9 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
+#if 0
+
+
 #ifndef VTK_H_DATA_SET_HPP
 #define VTK_H_DATA_SET_HPP
 
@@ -107,5 +110,7 @@ vtkm::Bounds GetGlobalBounds(vtkm::Id coordinate_system_index = 0) const; //DONE
 };
 
 } // namespace vtkh
+
+#endif
 
 #endif

@@ -385,7 +385,7 @@ vtkh::Render
 MakeRender(int width,
            int height,
            vtkm::rendering::Camera camera,
-           vtkh::DataSet &data_set,
+           vtkm::cont::PartitionedDataSet& data_set,
            const std::string &image_name,
            float bg_color[4],
            float fg_color[4])

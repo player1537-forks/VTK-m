@@ -8,6 +8,9 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
+#if 0
+
+
 #include <vtkm/cont/EnvironmentTracker.h>
 
 #include "DataSet.hpp"
@@ -855,3 +858,6 @@ vtkm::Id DataSet::NumberOfComponents(const std::string &field_name) const
 */
 
 } // namspace vtkh
+
+
+#endif

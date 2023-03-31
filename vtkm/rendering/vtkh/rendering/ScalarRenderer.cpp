@@ -118,9 +118,8 @@ ScalarRenderer::PostExecute()
 void
 ScalarRenderer::DoExecute()
 {
-
-  int num_domains = static_cast<int>(m_input->GetNumberOfDomains());
-  this->m_output = new DataSet();
+  vtkm::Id num_domains = this->m_input->GetGlobalNumberOfPartitions();
+  this->m_output = new vtkm::cont::PartitionedDataSet();
 
   //
   // There external faces + bvh construction happens
@@ -136,11 +135,9 @@ ScalarRenderer::DoExecute()
   std::vector<vtkm::Id> cell_counts;
   renderers.resize(num_domains);
   cell_counts.resize(num_domains);
-  for(int dom = 0; dom < num_domains; ++dom)
+  for(vtkm::Id dom = 0; dom < num_domains; ++dom)
   {
-    vtkm::cont::DataSet data_set;
-    vtkm::Id domain_id;
-    m_input->GetDomain(dom, data_set, domain_id);
+    auto data_set = this->m_input->GetPartition(dom);
     vtkm::cont::DataSet filtered = detail::filter_scalar_fields(data_set);
     renderers[dom].SetInput(filtered);
     renderers[dom].SetWidth(m_width);
@@ -164,11 +161,9 @@ ScalarRenderer::DoExecute()
 
   //Bounds needed for parallel execution
   float bounds[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};;
-  for(int dom = 0; dom < num_domains; ++dom)
+  for(vtkm::Id dom = 0; dom < num_domains; ++dom)
   {
-    vtkm::cont::DataSet data_set;
-    vtkm::Id domain_id;
-    m_input->GetDomain(dom, data_set, domain_id);
+    auto data_set = this->m_input->GetPartition(dom);
     num_cells = data_set.GetCellSet().GetNumberOfCells();
 
     if(data_set.GetCellSet().GetNumberOfCells())
@@ -286,8 +281,10 @@ ScalarRenderer::DoExecute()
       if(final_result.Scalars.size() != 0)
       {
         vtkm::cont::DataSet dset = final_result.ToDataSet();
-        const int domain_id = 0;
-        this->m_output->AddDomain(dset, domain_id);
+        //const int domain_id = 0;
+        throw vtkm::cont::ErrorBadValue("add domain_id to partitions");
+        //this->m_output->AddDomain(dset, domain_id);
+        this->m_output->AppendPartition(dset);
       }
     }
   }
@@ -389,7 +386,7 @@ ScalarRenderer::SetWidth(const int width)
   m_width = width;
 }
 
-vtkh::DataSet *
+vtkm::cont::PartitionedDataSet *
 ScalarRenderer::GetInput()
 {
   return m_input;

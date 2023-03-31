@@ -9,6 +9,8 @@
 //============================================================================
 
 #include <vtkm/filter/clean_grid/worklet/PointMerge.h>
+#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
+
 //TODO: Header for wrapped filter
 //#include <vtkm/filter/clean_grid/CleanGrid.h>
 //#include <vtkh/Error.hpp>
@@ -49,7 +51,8 @@ void ParticleMerging::PreExecute()
 {
   Filter::PreExecute();
   Filter::CheckForRequiredField(m_field_name);
-  if(!this->m_input->IsPointMesh())
+//  if(!this->m_input->IsPointMesh())
+  if (vtkh::IsPointMesh(*this->m_input))
   {
     throw vtkm::cont::ErrorBadValue("Particle Merging: input must be a point mesh");
   }

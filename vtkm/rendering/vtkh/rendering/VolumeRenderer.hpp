@@ -12,6 +12,7 @@
 #define VTK_H_RENDERER_VOLUME_HPP
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
+#include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
 #include <vtkm/rendering/MapperVolume.h>
 
@@ -32,7 +33,7 @@ public:
   static Renderer::vtkmCanvasPtr GetNewCanvas(int width = 1024, int height = 1024);
 
   void Update() override;
-  virtual void SetInput(DataSet *input) override;
+  virtual void SetInput(vtkm::cont::PartitionedDataSet *input) override;
 
   virtual void SetColorTable(const vtkm::cont::ColorTable &color_table) override;
 protected:

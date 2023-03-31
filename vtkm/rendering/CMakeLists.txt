@@ -57,8 +57,8 @@ set(headers
   WorldAnnotator.h
 
   ## Add VTK-h headers
-  vtkh/DataSet.hpp
   vtkh/utils/vtkm_dataset_info.hpp
+  vtkh/utils/vtkm_array_utils.hpp
 
   vtkh/compositing/AbsorptionPartial.hpp
   vtkh/compositing/Compositor.hpp
@@ -193,10 +193,8 @@ set(device_sources
   raytracing/TriangleIntersector.cxx
   raytracing/VolumeRendererStructured.cxx
 
-
-  vtkh/DataSet.cpp
-
   vtkh/utils/vtkm_dataset_info.cpp
+  vtkh/utils/vtkm_array_utils.cpp
 
   vtkh/rendering/VolumeRenderer.cpp
 

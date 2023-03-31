@@ -12,6 +12,7 @@
 
 #include <vtkm/rendering/CanvasRayTracer.h>
 #include <vtkm/rendering/MapperPoint.h>
+#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
 #include <vtkm/rendering/vtkh/filters/ParticleMerging.hpp>
 #include <memory>
 
@@ -134,7 +135,7 @@ PointRenderer::PreExecute()
     mesh_mapper->SetRadius(radius);
   }
 
-  if(!m_use_nodes && this->m_input->IsPointMesh() && m_use_point_merging)
+  if(!m_use_nodes && vtkh::IsPointMesh(*this->m_input) && m_use_point_merging)
   {
     vtkm::Float32 max_radius = radius;
     if(m_use_variable_radius)

@@ -14,7 +14,6 @@
 
 #include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
 #include <vtkm/rendering/vtkh/compositing/Compositor.hpp>
-//#include <vtkh/Logger.hpp>
 
 #include <vtkm/rendering/CanvasRayTracer.h>
 
@@ -485,7 +484,7 @@ void VolumeRenderer::CorrectOpacity()
 void
 VolumeRenderer::DoExecute()
 {
-  if(m_input->OneDomainPerRank() && !m_has_unstructured)
+  if(vtkh::GlobalHasOnePartition(*this->m_input) && !m_has_unstructured)
   {
     // Danger: this logic only works if there is exactly one per rank
     RenderOneDomainPerRank();
@@ -508,16 +507,15 @@ VolumeRenderer::RenderOneDomainPerRank()
   m_tracer->SetSampleDistance(m_sample_dist);
 
   int total_renders = static_cast<int>(m_renders.size());
-  int num_domains = static_cast<int>(m_input->GetNumberOfDomains());
+  int num_domains = static_cast<int>(this->m_input->GetNumberOfPartitions());
   if(num_domains > 1)
   {
     throw vtkm::cont::ErrorBadValue("RenderOneDomainPerRank: this should never happend.");
   }
+
   for(int dom = 0; dom < num_domains; ++dom)
   {
-    vtkm::cont::DataSet data_set;
-    vtkm::Id domain_id;
-    m_input->GetDomain(0, data_set, domain_id);
+    vtkm::cont::DataSet data_set = this->m_input->GetPartition(dom);
 
     if(!data_set.HasField(m_field_name))
     {
@@ -853,8 +851,8 @@ VolumeRenderer::DepthSort(int num_domains,
 void
 VolumeRenderer::FindVisibilityOrdering()
 {
-  const int num_domains = static_cast<int>(m_input->GetNumberOfDomains());
-  const int num_cameras = static_cast<int>(m_renders.size());
+  const int num_domains = static_cast<int>(this->m_input->GetNumberOfPartitions());
+  const int num_cameras = static_cast<int>(this->m_renders.size());
   m_visibility_orders.resize(num_cameras);
 
   for(int i = 0; i < num_cameras; ++i)
@@ -877,7 +875,7 @@ VolumeRenderer::FindVisibilityOrdering()
     const vtkm::rendering::Camera &camera = m_renders[i].GetCamera();
     for(int dom = 0; dom < num_domains; ++dom)
     {
-      vtkm::Bounds bounds = this->m_input->GetDomainBounds(dom);
+      vtkm::Bounds bounds = this->m_input->GetPartition(dom).GetCoordinateSystem().GetBounds();
       min_depths[dom] = FindMinDepth(camera, bounds);
     }
 
@@ -885,18 +883,16 @@ VolumeRenderer::FindVisibilityOrdering()
 
   } // for each camera
 }
-void VolumeRenderer::SetInput(DataSet *input)
+void VolumeRenderer::SetInput(vtkm::cont::PartitionedDataSet *input)
 {
   Filter::SetInput(input);
   ClearWrappers();
 
-  int num_domains = static_cast<int>(m_input->GetNumberOfDomains());
-  m_has_unstructured = false;
+  int num_domains = static_cast<int>(this->m_input->GetNumberOfPartitions());
+  this->m_has_unstructured = false;
   for(int dom = 0; dom < num_domains; ++dom)
   {
-    vtkm::cont::DataSet data_set;
-    vtkm::Id domain_id;
-    m_input->GetDomain(dom, data_set, domain_id);
+    vtkm::cont::DataSet data_set = this->m_input->GetPartition(dom);
 
     const vtkm::cont::UnknownCellSet &cellset = data_set.GetCellSet();
     if(cellset.GetNumberOfCells() == 0)

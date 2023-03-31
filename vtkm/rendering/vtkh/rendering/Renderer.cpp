@@ -9,10 +9,12 @@
 //============================================================================
 
 #include <vtkm/cont/EnvironmentTracker.h>
+#include <vtkm/cont/FieldRangeGlobalCompute.h>
 
 #include <vtkm/cont/ErrorBadValue.h>
 #include "Renderer.hpp"
 #include <vtkm/rendering/vtkh/compositing/Compositor.hpp>
+#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
 
 //#include <vtkm/rendering/vtkh/Logger.hpp>
 #include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
@@ -153,7 +155,7 @@ Renderer::PreExecute()
   if(!range_set)
   {
     // we have not been given a range, so ask the data set
-    vtkm::cont::ArrayHandle<vtkm::Range> ranges = m_input->GetGlobalRange(m_field_name);
+    vtkm::cont::ArrayHandle<vtkm::Range> ranges = vtkm::cont::FieldRangeGlobalCompute(*this->m_input, this->m_field_name);
     int num_components = ranges.GetNumberOfValues();
     //
     // current vtkm renderers only supports single component scalar fields
@@ -220,12 +222,14 @@ Renderer::DoExecute()
 
   int total_renders = static_cast<int>(m_renders.size());
 
-  int num_domains = static_cast<int>(m_input->GetNumberOfDomains());
-  for(int dom = 0; dom < num_domains; ++dom)
+
+//  int num_domains = static_cast<int>(this->m_input->GetGlobalNumberOfPartitions());
+//  for(int dom = 0; dom < num_domains; ++dom)
+  for (const auto& data_set : this->m_input->GetPartitions())
   {
-    vtkm::cont::DataSet data_set;
-    vtkm::Id domain_id;
-    m_input->GetDomain(dom, data_set, domain_id);
+//    vtkm::cont::DataSet data_set;
+//    vtkm::Id domain_id;
+//    m_input->GetDomain(dom, data_set, domain_id);
     if(!data_set.HasField(m_field_name))
     {
       continue;
@@ -293,12 +297,6 @@ std::vector<Render>
 Renderer::GetRenders() const
 {
   return m_renders;
-}
-
-vtkh::DataSet *
-Renderer::GetInput()
-{
-  return m_input;
 }
 
 vtkm::Range

@@ -11,7 +11,7 @@
 #ifndef VTK_H_RENDERER_HPP
 #define VTK_H_RENDERER_HPP
 
-#include <vector>
+#include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering/vtkh/filters/Filter.hpp>
 #include <vtkm/rendering/vtkh/rendering/Render.hpp>
@@ -21,7 +21,10 @@
 #include <vtkm/rendering/Canvas.h>
 #include <vtkm/rendering/Mapper.h>
 
-namespace vtkh {
+//#include <vector>
+
+namespace vtkh
+{
 
 class Compositor;
 
@@ -51,7 +54,7 @@ public:
   std::string                 GetFieldName() const;
   int                         GetNumberOfRenders() const;
   std::vector<Render>         GetRenders() const;
-  vtkh::DataSet              *GetInput();
+  vtkm::cont::PartitionedDataSet*  GetInput() { return this->m_input; }
   vtkm::Range                 GetRange() const;
   bool                        GetHasColorTable() const;
 protected:

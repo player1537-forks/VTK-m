@@ -35,7 +35,8 @@ void RayTrace(bool doStructured)
   const int blocks_per_rank = 1;
   const int num_blocks = comm.size() * blocks_per_rank;
 
-  vtkh::DataSet data_set;
+  vtkm::cont::PartitionedDataSet pds;
+  //vtkh::DataSet data_set;
   for (int i = 0; i < blocks_per_rank; ++i)
   {
     int domain_id = rank * blocks_per_rank + i;
@@ -45,10 +46,11 @@ void RayTrace(bool doStructured)
       vtkm::filter::clean_grid::CleanGrid cleanGrid;
       ds = cleanGrid.Execute(ds);
     }
-    data_set.AddDomain(ds, domain_id);
+    //data_set.AddDomain(ds, domain_id);
+    pds.AppendPartition(ds);
   }
 
-  vtkm::Bounds bounds = data_set.GetGlobalBounds();
+  vtkm::Bounds bounds = pds.GetGlobalBounds();
 
   vtkm::rendering::Camera camera;
   camera.SetPosition(vtkm::Vec<vtkm::Float64, 3>(-16, -16, -16));
@@ -60,11 +62,11 @@ void RayTrace(bool doStructured)
   else
     imgName += "_unstructured";
 
-  vtkh::Render render = vtkh::MakeRender(512, 512, camera, data_set, imgName);
+  vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, imgName);
 
   vtkh::RayTracer tracer;
 
-  tracer.SetInput(&data_set);
+  tracer.SetInput(&pds);
   tracer.SetField("point_data_Float64");
 
   vtkh::Scene scene;
@@ -93,7 +95,8 @@ void VolumeRender(bool doStructured)
   const int blocks_per_rank = 1;
   const int num_blocks = comm.size() * blocks_per_rank;
 
-  vtkh::DataSet data_set;
+  //vtkh::DataSet data_set;
+  vtkm::cont::PartitionedDataSet pds;
   for (int i = 0; i < blocks_per_rank; ++i)
   {
     int domain_id = rank * blocks_per_rank + i;
@@ -103,10 +106,11 @@ void VolumeRender(bool doStructured)
       vtkm::filter::clean_grid::CleanGrid cleanGrid;
       ds = cleanGrid.Execute(ds);
     }
-    data_set.AddDomain(ds, domain_id);
+    pds.AppendPartition(ds);
+    //data_set.AddDomain(ds, domain_id);
   }
 
-  vtkm::Bounds bounds = data_set.GetGlobalBounds();
+  vtkm::Bounds bounds = pds.GetGlobalBounds();
 
   vtkm::rendering::Camera camera;
   camera.SetPosition(vtkm::Vec<vtkm::Float64, 3>(-16, -16, -16));
@@ -117,7 +121,7 @@ void VolumeRender(bool doStructured)
   else
     imgName += "_unstructured";
 
-  vtkh::Render render = vtkh::MakeRender(512, 512, camera, data_set, imgName);
+  vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, imgName);
 
   vtkm::cont::ColorTable color_map("cool to warm");
   color_map.AddPointAlpha(0.0, .05);
@@ -125,7 +129,7 @@ void VolumeRender(bool doStructured)
 
   vtkh::VolumeRenderer tracer;
   tracer.SetColorTable(color_map);
-  tracer.SetInput(&data_set);
+  tracer.SetInput(&pds);
   tracer.SetField("point_data_Float64");
 
   vtkh::Scene scene;

@@ -9,34 +9,12 @@
 //============================================================================
 
 #include <vtkm/rendering/vtkh/filters/Filter.hpp>
-//#include <vtkh/Logger.hpp>
+#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
 
 namespace vtkh
 {
 
-Filter::Filter()
-{
-  m_input = nullptr;
-  m_output = nullptr;
-}
-
-Filter::~Filter()
-{
-};
-
-void
-Filter::SetInput(vtkh::DataSet *input)
-{
-  m_input = input;
-}
-
-vtkh::DataSet*
-Filter::GetOutput()
-{
-  return m_output;
-}
-
-vtkh::DataSet*
+vtkm::cont::PartitionedDataSet*
 Filter::Update()
 {
   //DRP: Logger
@@ -89,21 +67,9 @@ Filter::Update()
 }
 
 void
-Filter::AddMapField(const std::string &field_name)
-{
-  m_map_fields.push_back(field_name);
-}
-
-void
-Filter::ClearMapFields()
-{
-  m_map_fields.clear();
-}
-
-void
 Filter::PreExecute()
 {
-  if(m_input == nullptr)
+  if(this->m_input == nullptr)
   {
     std::stringstream msg;
     msg<<"Input for vtkh filter '"<<this->GetName()<<"' is null.";
@@ -126,9 +92,9 @@ Filter::PostExecute()
 void
 Filter::MapAllFields()
 {
-  if(m_input->GetNumberOfDomains() > 0)
+  if (this->m_input->GetNumberOfPartitions() > 0)
   {
-    vtkm::cont::DataSet dom = m_input->GetDomain(0);
+    vtkm::cont::DataSet dom = this->m_input->GetPartition(0);
     vtkm::IdComponent num_fields = dom.GetNumberOfFields();
     for(vtkm::IdComponent i = 0; i < num_fields; ++i)
     {
@@ -141,7 +107,7 @@ Filter::MapAllFields()
 void
 Filter::CheckForRequiredField(const std::string &field_name)
 {
-  if(m_input == nullptr)
+  if(this->m_input == nullptr)
   {
     std::stringstream msg;
     msg<<"Cannot verify required field '"<<field_name;
@@ -149,7 +115,7 @@ Filter::CheckForRequiredField(const std::string &field_name)
     throw vtkm::cont::ErrorBadValue(msg.str());
   }
 
-  if(!m_input->GlobalFieldExists(field_name))
+  if (!vtkh::GlobalHasField(*this->m_input, field_name))
   {
     std::stringstream msg;
     msg<<"Required field '"<<field_name;
@@ -161,7 +127,9 @@ Filter::CheckForRequiredField(const std::string &field_name)
 void
 Filter::PropagateMetadata()
 {
-  m_output->SetCycle(m_input->GetCycle());
+  vtkm::Id numFields = this->m_input->GetNumberOfFields();
+  for (vtkm::Id i = 0; i < numFields; i++)
+    this->m_output->AddField(this->m_input->GetField(i));
 }
 
 vtkm::filter::FieldSelection

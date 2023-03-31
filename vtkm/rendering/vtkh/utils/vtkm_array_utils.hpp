@@ -12,8 +12,10 @@
 #define VTKH_VTKM_ARRAY_UTILS_HPP
 
 #include <vtkm/cont/ArrayHandle.h>
+#include <vtkm/cont/PartitionedDataSet.h>
 
-namespace vtkh {
+namespace vtkh
+{
 
 template<typename T>
 T *
@@ -21,6 +23,22 @@ GetVTKMPointer(vtkm::cont::ArrayHandle<T> &handle)
 {
   return handle.WritePortal().GetArray();
 }
+
+bool
+GlobalHasOnePartition(const vtkm::cont::PartitionedDataSet& pds);
+
+bool
+IsEmpty(const vtkm::cont::PartitionedDataSet& pds);
+
+bool
+GlobalIsEmpty(const vtkm::cont::PartitionedDataSet& pds);
+
+
+bool
+GlobalHasField(const vtkm::cont::PartitionedDataSet& pds, const std::string& fieldName);
+
+bool
+IsPointMesh(const vtkm::cont::PartitionedDataSet& pds);
 
 }//namespace vtkh
 #endif
