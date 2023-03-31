@@ -25,18 +25,18 @@ Filter::~Filter()
 };
 
 void
-Filter::SetInput(DataSet *input)
+Filter::SetInput(vtkh::DataSet *input)
 {
   m_input = input;
 }
 
-DataSet*
+vtkh::DataSet*
 Filter::GetOutput()
 {
   return m_output;
 }
 
-DataSet*
+vtkh::DataSet*
 Filter::Update()
 {
   //DRP: Logger

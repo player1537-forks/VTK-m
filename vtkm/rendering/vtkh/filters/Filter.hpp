@@ -24,11 +24,11 @@ class VTKM_RENDERING_EXPORT Filter
 public:
   Filter();
   virtual ~Filter();
-  virtual void SetInput(DataSet *input);
+  virtual void SetInput(vtkh::DataSet *input);
   virtual std::string GetName() const = 0;
 
-  DataSet* GetOutput();
-  DataSet* Update();
+  vtkh::DataSet* GetOutput();
+  vtkh::DataSet* Update();
 
   void AddMapField(const std::string &field_name);
 
@@ -48,8 +48,8 @@ protected:
 
   std::vector<std::string> m_map_fields;
 
-  DataSet *m_input;
-  DataSet *m_output;
+  vtkh::DataSet *m_input;
+  vtkh::DataSet *m_output;
 
   void MapAllFields();
 

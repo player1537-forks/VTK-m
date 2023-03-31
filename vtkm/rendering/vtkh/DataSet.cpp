@@ -665,21 +665,6 @@ DataSet::GetCycle() const
   return m_cycle;
 }
 
-void
-DataSet::AddConstantPointField(const vtkm::Float32 value, const std::string fieldname)
-{
-  const size_t size = m_domain_ids.size();
-
-  for(size_t i = 0; i < size; ++i)
-  {
-    vtkm::Id num_points = m_domains[i].GetCoordinateSystem().GetData().GetNumberOfValues();
-    vtkm::cont::ArrayHandle<vtkm::Float32> array;
-    detail::MemSet(array, value, num_points);
-    vtkm::cont::Field field(fieldname, vtkm::cont::Field::Association::Points, array);
-    m_domains[i].AddField(field);
-  }
-}
-
 bool
 DataSet::FieldExists(const std::string &field_name) const
 {
