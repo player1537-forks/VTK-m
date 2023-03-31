@@ -671,7 +671,7 @@ VolumeRenderer::FindMinDepth(const vtkm::rendering::Camera &camera,
 void
 VolumeRenderer::Composite(const int &num_images)
 {
-  const int num_domains = static_cast<int>(m_input->GetNumberOfDomains());
+//  const int num_domains = static_cast<int>(m_input->GetNumberOfDomains());
 
   m_compositor->SetCompositeMode(Compositor::VIS_ORDER_BLEND);
 
@@ -711,11 +711,11 @@ VolumeRenderer::DepthSort(int num_domains,
                           std::vector<float> &min_depths,
                           std::vector<int> &local_vis_order)
 {
-  if(min_depths.size() != num_domains)
+  if(min_depths.size() != static_cast<std::size_t>(num_domains))
   {
     throw vtkm::cont::ErrorBadValue("min depths size does not equal the number of domains");
   }
-  if(local_vis_order.size() != num_domains)
+  if(local_vis_order.size() != static_cast<std::size_t>(num_domains))
   {
     throw vtkm::cont::ErrorBadValue("local vis order not equal to number of domains");
   }

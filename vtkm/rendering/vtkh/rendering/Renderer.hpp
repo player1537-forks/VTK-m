@@ -57,16 +57,17 @@ public:
 protected:
 
   // image related data with cinema support
-  std::vector<vtkh::Render>                m_renders;
-  int                                      m_field_index;
-  Compositor                              *m_compositor;
-  std::string                              m_field_name;
-  bool                                     m_do_composite;
-  vtkmMapperPtr                            m_mapper;
   vtkm::Bounds                             m_bounds;
-  vtkm::Range                              m_range;
   vtkm::cont::ColorTable                   m_color_table;
+  Compositor                              *m_compositor;
+  bool                                     m_do_composite;
+  int                                      m_field_index;
+  std::string                              m_field_name;
   bool                                     m_has_color_table;
+  vtkmMapperPtr                            m_mapper;
+  std::vector<vtkh::Render>                m_renders;
+  vtkm::Range                              m_range;
+
   // methods
   virtual void PreExecute() override;
   virtual void PostExecute() override;

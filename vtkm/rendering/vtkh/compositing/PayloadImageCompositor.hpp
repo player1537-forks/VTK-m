@@ -37,7 +37,7 @@ void ZBufferComposite(vtkh::PayloadImage &front, const vtkh::PayloadImage &image
   assert(front.m_bounds.Y.Max == image.m_bounds.Y.Max);
 
   const int size = static_cast<int>(front.m_depths.size());
-  const bool nan_check = image.m_default_value != image.m_default_value;
+  //const bool nan_check = image.m_default_value != image.m_default_value;
 #ifdef VTKH_OPENMP_ENABLED
   #pragma omp parallel for
 #endif
@@ -50,7 +50,7 @@ void ZBufferComposite(vtkh::PayloadImage &front, const vtkh::PayloadImage &image
 
     if(take_back)
     {
-      const int offset = i * 4;
+      //const int offset = i * 4;
       front.m_depths[i] = depth;
       const size_t p_offset = i * front.m_payload_bytes;
       std::copy(&image.m_payloads[p_offset],

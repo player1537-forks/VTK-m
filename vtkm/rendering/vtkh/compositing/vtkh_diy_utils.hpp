@@ -11,7 +11,7 @@
 #ifndef VTKH_DIY_UTILS_HPP
 #define VTKH_DIY_UTILS_HPP
 
-#include <vtkmdiy/decomposition.hpp>
+//#include <vtkmdiy/decomposition.hpp>
 #include <vtkm/Bounds.h>
 
 namespace vtkh

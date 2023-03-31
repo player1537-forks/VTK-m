@@ -13,7 +13,6 @@
 
 #include <vtkm/rendering/vtkh/compositing/Image.hpp>
 #include <vtkm/rendering/vtkh/compositing/PayloadImage.hpp>
-#include <vtkmdiy/master.hpp>
 
 namespace vtkh
 {
@@ -67,14 +66,14 @@ struct AddImageBlock
 struct AddMultiImageBlock
 {
   std::vector<Image> &m_images;
-  Image              &m_output;
   const vtkmdiy::Master  &m_master;
+  Image              &m_output;
 
   AddMultiImageBlock(vtkmdiy::Master &master,
                      std::vector<Image> &images,
                      Image &output)
-    : m_master(master),
-      m_images(images),
+    : m_images(images),
+      m_master(master),
       m_output(output)
   {}
   template<typename BoundsType, typename LinkType>
@@ -87,7 +86,7 @@ struct AddMultiImageBlock
     MultiImageBlock *block = new MultiImageBlock(m_images, m_output);
     LinkType *linked = new LinkType(link);
     vtkmdiy::Master& master = const_cast<vtkmdiy::Master&>(m_master);
-    int lid = master.add(gid, block, linked);
+    master.add(gid, block, linked);
   }
 };
 

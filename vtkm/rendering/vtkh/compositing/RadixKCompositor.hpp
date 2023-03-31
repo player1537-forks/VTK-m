@@ -15,11 +15,6 @@
 #include <vtkm/rendering/vtkh/compositing/PayloadImage.hpp>
 #include <vtkm/thirdparty/diy/diy.h>
 
-/*
-#include <diy/mpi.hpp>
-#include <sstream>
-*/
-
 namespace vtkh
 {
 

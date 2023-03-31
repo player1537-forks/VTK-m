@@ -9,6 +9,7 @@
 //============================================================================
 
 #include <vtkm/cont/EnvironmentTracker.h>
+#include <vtkm/cont/ErrorBadValue.h>
 #include <vtkm/rendering/vtkh/compositing/Compositor.hpp>
 #include <vtkm/rendering/vtkh/compositing/ImageCompositor.hpp>
 
@@ -223,7 +224,7 @@ Compositor::CompositeZBufferSurface()
 void
 Compositor::CompositeZBufferBlend()
 {
-  assert("this is not implemented yet" == "error");
+  throw vtkm::cont::ErrorBadValue("Compoistor::CompositeZBufferBlend not implemented");
 }
 
 void

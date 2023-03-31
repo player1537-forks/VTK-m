@@ -66,7 +66,6 @@ set(headers
   vtkh/compositing/EmissionPartial.hpp
   vtkh/compositing/ImageCompositor.hpp
   vtkh/compositing/Image.hpp
-  vtkh/compositing/MPICollect.hpp
   vtkh/compositing/PartialCompositor.hpp
   vtkh/compositing/PayloadCompositor.hpp
   vtkh/compositing/PayloadImageCompositor.hpp

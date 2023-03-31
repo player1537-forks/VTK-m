@@ -23,10 +23,10 @@
 namespace vtkh {
 
 Renderer::Renderer()
-  : m_do_composite(true),
-    m_color_table("Cool to Warm"),
-    m_field_index(0),
-    m_has_color_table(true)
+  :m_color_table("Cool to Warm"),
+   m_do_composite(true),
+   m_field_index(0),
+   m_has_color_table(true)
 {
   m_compositor  = new Compositor();
 }
@@ -37,7 +37,7 @@ Renderer::~Renderer()
 }
 
 void
-Renderer::SetShadingOn(bool on)
+Renderer::SetShadingOn(bool)
 
 {
   // do nothing by default;

@@ -65,8 +65,8 @@ struct AddBlock
 {
   typedef typename BlockType::PartialType PartialType;
   typedef BlockType                       Block;
-  std::vector<PartialType> &m_partials;
   const vtkmdiy::Master &m_master;
+  std::vector<PartialType> &m_partials;
 
   AddBlock(vtkmdiy::Master &master,std::vector<PartialType> &partials)
     : m_master(master), m_partials(partials)

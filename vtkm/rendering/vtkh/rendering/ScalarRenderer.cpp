@@ -153,7 +153,6 @@ ScalarRenderer::DoExecute()
   // basic sanity checking
   int min_p = std::numeric_limits<int>::max();
   int max_p = std::numeric_limits<int>::min();
-  bool do_once = true;
 
   std::vector<std::string> field_names;
   PayloadCompositor compositor;
@@ -197,7 +196,6 @@ ScalarRenderer::DoExecute()
   //MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   int comm_size = comm.size();
-  int rank = comm.rank();
   std::vector<int> votes;
 
   if(!no_data && num_cells == 0)
@@ -305,7 +303,7 @@ ScalarRenderer::Convert(PayloadImage &image, std::vector<std::string> &names)
 
   const int dx  = image.m_bounds.X.Max - image.m_bounds.X.Min + 1;
   const int dy  = image.m_bounds.Y.Max - image.m_bounds.Y.Min + 1;
-  const int size = dx * dy;
+  const std::size_t size = dx * dy;
 
   result.Width = dx;
   result.Height = dy;
@@ -323,7 +321,7 @@ ScalarRenderer::Convert(PayloadImage &image, std::vector<std::string> &names)
   const unsigned char *loads = &image.m_payloads[0];
   const size_t payload_size = image.m_payload_bytes;
 
-  for(size_t x = 0; x < size; ++x)
+  for(std::size_t x = 0; x < size; ++x)
   {
     for(int i = 0; i < num_fields; ++i)
     {

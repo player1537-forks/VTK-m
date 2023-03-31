@@ -152,7 +152,7 @@ DataSet::GetField(const std::string &field_name, const vtkm::Id domain_index)
 vtkm::cont::DataSet&
 DataSet::GetDomain(const vtkm::Id index)
 {
-  const size_t num_domains = m_domains.size();
+  const vtkm::Id num_domains = static_cast<vtkm::Id>(m_domains.size());
 
   if(index >= num_domains || index < 0)
   {
@@ -177,7 +177,7 @@ DataSet::GetDomain(const vtkm::Id index,
                    vtkm::cont::DataSet &data_set,
                    vtkm::Id &domain_id)
 {
-  const size_t num_domains = m_domains.size();
+  const vtkm::Id num_domains = static_cast<vtkm::Id>(m_domains.size());
 
   if(index >= num_domains || index < 0)
   {

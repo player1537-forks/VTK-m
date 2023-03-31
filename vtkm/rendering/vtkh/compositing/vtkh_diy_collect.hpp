@@ -11,15 +11,6 @@
 #ifndef VTKH_DIY_COLLECT_HPP
 #define VTKH_DIY_COLLECT_HPP
 
-//#include <diy/master.hpp>
-//#include <diy/partners/swap.hpp>
-
-#include <vtkmdiy/master.hpp>
-#include <vtkmdiy/partners/swap.hpp>
-#include <vtkmdiy/reduce-operations.hpp>
-#include <vtkmdiy/reduce.hpp>
-//#include <diy/reduce.hpp>
-//#include <diy/reduce-operations.hpp>
 #include <vtkm/rendering/vtkh/compositing/Image.hpp>
 #include <vtkm/rendering/vtkh/compositing/vtkh_diy_image_block.hpp>
 

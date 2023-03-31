@@ -97,8 +97,8 @@ struct EmissionPartial
     }
   }
 
-  static void composite_background(std::vector<EmissionPartial> &partials,
-                                   const std::vector<FloatType> &background)
+  static void composite_background(std::vector<EmissionPartial>& /*partials*/,
+                                   const std::vector<FloatType>& /*background*/)
   {
     //for(
   }

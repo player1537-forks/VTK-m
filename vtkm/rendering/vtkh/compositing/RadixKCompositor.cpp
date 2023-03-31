@@ -18,7 +18,6 @@
 
 #include <vtkm/thirdparty/diy/diy.h>
 #include <vtkm/thirdparty/diy/master.h>
-//#include <vtkm/thirdparty/diy/mpi.h>
 #include <vtkm/thirdparty/diy/reduce-operations.h>
 #include <vtkm/thirdparty/diy/reduce.h>
 #include <vtkm/thirdparty/diy/swap.h>

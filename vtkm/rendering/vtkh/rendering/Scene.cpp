@@ -242,7 +242,7 @@ Scene::Render()
     }
 
     // render screen annotations last and save
-    for(int i = 0; i < current_batch.size(); ++i)
+    for(std::size_t i = 0; i < current_batch.size(); ++i)
     {
       current_batch[i].RenderWorldAnnotations();
       current_batch[i].RenderScreenAnnotations(field_names, ranges, color_tables);
@@ -257,13 +257,12 @@ Scene::Render()
 void Scene::SynchDepths(std::vector<vtkh::Render> &renders)
 {
 #ifdef VTKM_ENABLE_MPI
-  int root = 0; // full images in rank 0
+  //int root = 0; // full images in rank 0
 
   auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   //MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm);
   MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
-  int num_ranks = diy_comm.size();
-  int rank = diy_comm.rank();
+
   for(auto render : renders)
   {
     vtkm::rendering::Canvas &canvas = render.GetCanvas();

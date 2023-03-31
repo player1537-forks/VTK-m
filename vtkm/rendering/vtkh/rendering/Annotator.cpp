@@ -82,9 +82,9 @@ void Annotator::RenderWorldAnnotations(vtkm::Vec<float,3> axis_scale)
     //ytest = !ytest;
   }
 
-  vtkm::Float64 xrel = vtkm::Abs(dx) / size;
-  vtkm::Float64 yrel = vtkm::Abs(dy) / size;
-  vtkm::Float64 zrel = vtkm::Abs(dz) / size;
+  //vtkm::Float64 xrel = vtkm::Abs(dx) / size;
+  //vtkm::Float64 yrel = vtkm::Abs(dy) / size;
+  //vtkm::Float64 zrel = vtkm::Abs(dz) / size;
   float major_tick_size = size / 40.f;
   float minor_tick_size = size / 80.f;
 

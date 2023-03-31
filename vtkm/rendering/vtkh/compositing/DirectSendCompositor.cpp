@@ -10,15 +10,8 @@
 
 #include <vtkm/rendering/vtkh/compositing/ImageCompositor.hpp>
 #include <vtkm/rendering/vtkh/compositing/DirectSendCompositor.hpp>
-//#include <vtkm/rendering/vtkh/compositing/MPICollect.hpp>
 #include <vtkm/rendering/vtkh/compositing/vtkh_diy_collect.hpp>
 #include <vtkm/rendering/vtkh/compositing/vtkh_diy_utils.hpp>
-
-#include <vtkmdiy/master.hpp>
-#include <vtkmdiy/mpi.hpp>
-#include <vtkmdiy/partners/swap.hpp>
-#include <vtkmdiy/reduce.hpp>
-#include <vtkmdiy/reduce-operations.hpp>
 
 namespace vtkh
 {
