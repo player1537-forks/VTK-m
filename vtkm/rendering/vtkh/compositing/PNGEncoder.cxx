@@ -8,6 +8,7 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
+#include <vtkm/cont/ErrorBadValue.h>
 #include <vtkm/internal/Configure.h>
 #include <vtkm/rendering/vtkh/compositing/PNGEncoder.h>
 #include <vtkm/thirdparty/lodepng/vtkmlodepng/lodepng.h>
@@ -22,23 +23,20 @@ namespace rendering
 namespace compositing
 {
 
-PNGEncoder::PNGEncoder()
-  : m_buffer(NULL)
-  , m_buffer_size(0)
-{
-}
+PNGEncoder::PNGEncoder() {}
 
 PNGEncoder::~PNGEncoder()
 {
-  Cleanup();
+  this->Cleanup();
 }
 
 void PNGEncoder::Encode(const unsigned char* rgba_in, const int width, const int height)
 {
-  Cleanup();
+  this->Cleanup();
 
   // upside down relative to what lodepng wants
-  unsigned char* rgba_flip = new unsigned char[static_cast<std::size_t>(width * height * 4)];
+  std::vector<unsigned char> rgba_flip(static_cast<std::size_t>(width * height * 4));
+  //unsigned char* rgba_flip = new unsigned char[static_cast<std::size_t>(width * height * 4)];
 
   for (int y = 0; y < height; ++y)
   {
@@ -53,27 +51,22 @@ void PNGEncoder::Encode(const unsigned char* rgba_in, const int width, const int
   state.encoder.zlibsettings.btype = 2;
   state.encoder.zlibsettings.use_lz77 = 0;
 
-  unsigned error = lodepng_encode(&m_buffer,
-                                  &m_buffer_size,
-                                  &rgba_flip[0],
-                                  static_cast<unsigned>(width),
-                                  static_cast<unsigned>(height),
-                                  &state);
-  delete[] rgba_flip;
-
+  unsigned error = vtkm::png::lodepng_encode(&this->Buffer,
+                                             &this->BufferSize,
+                                             rgba_flip.data(),
+                                             static_cast<unsigned>(width),
+                                             static_cast<unsigned>(height),
+                                             &state);
   if (error)
-  {
-    std::cerr << "lodepng_encode_memory failed\n";
-  }
+    throw vtkm::cont::ErrorBadValue("lodepng_encode failed");
 }
 
 void PNGEncoder::Encode(const float* rgba_in, const int width, const int height)
 {
-  Cleanup();
+  this->Cleanup();
 
   // upside down relative to what lodepng wants
-  unsigned char* rgba_flip = new unsigned char[static_cast<std::size_t>(width * height * 4)];
-
+  std::vector<unsigned char> rgba_flip(static_cast<std::size_t>(width * height * 4));
 
   for (int x = 0; x < width; ++x)
 
@@ -96,18 +89,14 @@ void PNGEncoder::Encode(const float* rgba_in, const int width, const int height)
   state.encoder.zlibsettings.btype = 2;
   state.encoder.zlibsettings.use_lz77 = 0;
 
-  unsigned error = lodepng_encode(&m_buffer,
-                                  &m_buffer_size,
-                                  &rgba_flip[0],
-                                  static_cast<unsigned>(width),
-                                  static_cast<unsigned>(height),
-                                  &state);
-  delete[] rgba_flip;
-
+  unsigned error = vtkm::png::lodepng_encode(&this->Buffer,
+                                             &this->BufferSize,
+                                             rgba_flip.data(),
+                                             static_cast<unsigned>(width),
+                                             static_cast<unsigned>(height),
+                                             &state);
   if (error)
-  {
-    std::cerr << "lodepng_encode_memory failed\n";
-  }
+    throw vtkm::cont::ErrorBadValue("lodepng_encode failed");
 }
 
 void PNGEncoder::Encode(const unsigned char* rgba_in,
@@ -115,10 +104,10 @@ void PNGEncoder::Encode(const unsigned char* rgba_in,
                         const int height,
                         const std::vector<std::string>& comments)
 {
-  Cleanup();
+  this->Cleanup();
 
   // upside down relative to what lodepng wants
-  unsigned char* rgba_flip = new unsigned char[static_cast<std::size_t>(width * height * 4)];
+  std::vector<unsigned char> rgba_flip(static_cast<std::size_t>(width * height * 4));
 
   for (int y = 0; y < height; ++y)
   {
@@ -147,18 +136,15 @@ void PNGEncoder::Encode(const unsigned char* rgba_in,
       vtkm::png::lodepng_add_text(&state.info_png, comments[i].c_str(), comments[i + 1].c_str());
   }
 
-  unsigned error = vtkm::png::lodepng_encode(&m_buffer,
-                                             &m_buffer_size,
+  unsigned error = vtkm::png::lodepng_encode(&this->Buffer,
+                                             &this->BufferSize,
                                              &rgba_flip[0],
                                              static_cast<unsigned>(width),
                                              static_cast<unsigned>(height),
                                              &state);
-  delete[] rgba_flip;
 
   if (error)
-  {
-    std::cerr << "lodepng_encode_memory failed\n";
-  }
+    throw vtkm::cont::ErrorBadValue("lodepng_encode failed");
 }
 
 void PNGEncoder::Encode(const float* rgba_in,
@@ -166,10 +152,10 @@ void PNGEncoder::Encode(const float* rgba_in,
                         const int height,
                         const std::vector<std::string>& comments)
 {
-  Cleanup();
+  this->Cleanup();
 
   // upside down relative to what lodepng wants
-  unsigned char* rgba_flip = new unsigned char[static_cast<std::size_t>(width * height * 4)];
+  std::vector<unsigned char> rgba_flip(static_cast<std::size_t>(width * height * 4));
 
   for (int x = 0; x < width; ++x)
 
@@ -206,57 +192,31 @@ void PNGEncoder::Encode(const float* rgba_in,
       vtkm::png::lodepng_add_text(&state.info_png, comments[i].c_str(), comments[i + 1].c_str());
   }
 
-  unsigned error = vtkm::png::lodepng_encode(&m_buffer,
-                                             &m_buffer_size,
-                                             &rgba_flip[0],
+  unsigned error = vtkm::png::lodepng_encode(&this->Buffer,
+                                             &this->BufferSize,
+                                             rgba_flip.data(),
                                              static_cast<unsigned>(width),
                                              static_cast<unsigned>(height),
                                              &state);
-  delete[] rgba_flip;
-
   if (error)
-  {
-    std::cerr << "lodepng_encode_memory failed\n";
-  }
+    throw vtkm::cont::ErrorBadValue("lodepng_encode failed");
 }
 
 void PNGEncoder::Save(const std::string& filename)
 {
-  if (m_buffer == NULL)
-  {
-    std::cerr << "Save must be called after encode()\n";
-    /// we have a problem ...!
-    return;
-  }
+  if (!this->Buffer)
+    throw vtkm::cont::ErrorBadValue("Save must be called AFTER Encode");
 
-  unsigned error = vtkm::png::lodepng_save_file(m_buffer, m_buffer_size, filename.c_str());
+  unsigned error = vtkm::png::lodepng_save_file(this->Buffer, this->BufferSize, filename.c_str());
   if (error)
-  {
-    std::cerr << "Error saving PNG buffer to file: " << filename << "\n";
-  }
-}
-
-void* PNGEncoder::PngBuffer()
-{
-  return (void*)m_buffer;
-}
-
-size_t PNGEncoder::PngBufferSize()
-{
-  return m_buffer_size;
+    throw vtkm::cont::ErrorBadValue("lodepng_encode failed");
 }
 
 void PNGEncoder::Cleanup()
 {
-  if (m_buffer != NULL)
-  {
-    //lodepng_free(m_buffer);
-    // ^-- Not found even if LODEPNG_COMPILE_ALLOCATORS is defined?
-    // simply use "free"
-    free(m_buffer);
-    m_buffer = NULL;
-    m_buffer_size = 0;
-  }
+  if (this->Buffer)
+    delete[] this->Buffer;
+  this->BufferSize = 0;
 }
 
 }
