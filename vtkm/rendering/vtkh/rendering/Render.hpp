@@ -14,7 +14,7 @@
 #include <vtkm/cont/PartitionedDataSet.h>
 #include <vector>
 #include <vtkm/rendering/vtkm_rendering_export.h>
-#include <vtkm/rendering/vtkh/DataSet.hpp>
+//#include <vtkm/rendering/vtkh/DataSet.hpp>
 
 #include <vtkm/rendering/Camera.h>
 #include <vtkm/rendering/CanvasRayTracer.h>

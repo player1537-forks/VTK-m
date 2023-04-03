@@ -150,7 +150,7 @@ void
 Renderer::PreExecute()
 {
   bool range_set = m_range.IsNonEmpty();
-  Filter::CheckForRequiredField(m_field_name);
+  CheckForRequiredField(m_field_name);
 
   if(!range_set)
   {
@@ -310,5 +310,26 @@ Renderer::SetRange(const vtkm::Range &range)
 {
   m_range = range;
 }
+
+void
+Renderer::CheckForRequiredField(const std::string &field_name)
+{
+  if(this->m_input == nullptr)
+  {
+    std::stringstream msg;
+    msg<<"Cannot verify required field '"<<field_name;
+    msg<<"' for vkth filter '"<<this->GetName()<<"' because input is null.";
+    throw vtkm::cont::ErrorBadValue(msg.str());
+  }
+
+  if (!vtkh::GlobalHasField(*this->m_input, field_name))
+  {
+    std::stringstream msg;
+    msg<<"Required field '"<<field_name;
+    msg<<"' for vkth filter '"<<this->GetName()<<"' does not exist";
+    throw vtkm::cont::ErrorBadValue(msg.str());
+  }
+}
+
 
 } // namespace vtkh

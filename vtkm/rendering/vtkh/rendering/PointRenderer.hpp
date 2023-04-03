@@ -22,7 +22,7 @@ class VTKM_RENDERING_EXPORT PointRenderer : public Renderer
 public:
   PointRenderer();
   virtual ~PointRenderer();
-  std::string GetName() const override;
+  std::string GetName() const override {   return "vtkh::PointRenderer"; }
   static Renderer::vtkmCanvasPtr GetNewCanvas(int width = 1024, int height = 1024);
   void PreExecute() override;
   void PostExecute() override;

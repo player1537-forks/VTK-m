@@ -112,7 +112,7 @@ ScalarRenderer::Update()
 void
 ScalarRenderer::PostExecute()
 {
-  Filter::PostExecute();
+  Renderer::PostExecute();
 }
 
 void

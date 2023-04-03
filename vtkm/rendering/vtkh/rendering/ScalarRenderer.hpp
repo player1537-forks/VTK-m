@@ -13,7 +13,7 @@
 
 #include <vector>
 #include <vtkm/rendering/vtkm_rendering_export.h>
-#include <vtkm/rendering/vtkh/filters/Filter.hpp>
+#include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
 #include <vtkm/rendering/vtkh/rendering/Render.hpp>
 #include <vtkm/rendering/vtkh/compositing/PayloadImage.hpp>
 
@@ -22,7 +22,7 @@
 
 namespace vtkh {
 
-class VTKM_RENDERING_EXPORT ScalarRenderer : public Filter
+class VTKM_RENDERING_EXPORT ScalarRenderer : public vtkh::Renderer
 {
 public:
   typedef vtkm::rendering::Camera vtkmCamera;
@@ -30,7 +30,7 @@ public:
 
   ScalarRenderer();
   virtual ~ScalarRenderer();
-  virtual void Update();
+  virtual void Update() override;
   virtual std::string GetName() const override;
 
   void SetCamera(vtkmCamera &camera);

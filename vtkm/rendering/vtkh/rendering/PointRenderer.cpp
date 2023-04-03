@@ -44,12 +44,6 @@ PointRenderer::GetNewCanvas(int width, int height)
   return std::make_shared<vtkm::rendering::CanvasRayTracer>(width, height);
 }
 
-std::string
-PointRenderer::GetName() const
-{
-  return "vtkh::PointRenderer";
-}
-
 void
 PointRenderer::UseCells()
 {

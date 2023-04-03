@@ -49,6 +49,8 @@ ParticleMerging::SetRadius(const vtkm::Float64 radius)
 
 void ParticleMerging::PreExecute()
 {
+  vtkm::cont::ErrorBadValue("FIX ME:: No support for ParticleMerging filter");
+  /*
   Filter::PreExecute();
   Filter::CheckForRequiredField(m_field_name);
 //  if(!this->m_input->IsPointMesh())
@@ -60,11 +62,13 @@ void ParticleMerging::PreExecute()
   {
     throw vtkm::cont::ErrorBadValue("Particle merging: radius never set");
   }
+  */
 }
 
 void ParticleMerging::PostExecute()
 {
-  Filter::PostExecute();
+  vtkm::cont::ErrorBadValue("FIX ME:: No support for ParticleMerging filter");
+  //Filter::PostExecute();
 }
 
 void ParticleMerging::DoExecute()
@@ -113,12 +117,6 @@ void ParticleMerging::DoExecute()
     m_output->AddDomain(out, domain_id);
   }
 */
-}
-
-std::string
-ParticleMerging::GetName() const
-{
-  return "vtkh::ParticleMerging";
 }
 
 } //  namespace vtkh

@@ -91,7 +91,6 @@ set(headers
   vtkh/rendering/Scene.hpp
   vtkh/rendering/VolumeRenderer.hpp
 
-  vtkh/filters/Filter.hpp
   vtkh/filters/ParticleMerging.hpp
   )
 
@@ -146,8 +145,6 @@ set(sources
   vtkh/rendering/Renderer.cpp
   vtkh/rendering/ScalarRenderer.cpp
   vtkh/rendering/Scene.cpp
-
-  vtkh/filters/Filter.cpp
   )
 
 # This list of sources has code that uses devices and so might need to be

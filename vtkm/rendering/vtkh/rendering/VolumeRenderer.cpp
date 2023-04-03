@@ -885,7 +885,7 @@ VolumeRenderer::FindVisibilityOrdering()
 }
 void VolumeRenderer::SetInput(vtkm::cont::PartitionedDataSet *input)
 {
-  Filter::SetInput(input);
+  Renderer::SetInput(input);
   ClearWrappers();
 
   int num_domains = static_cast<int>(this->m_input->GetNumberOfPartitions());

@@ -36,12 +36,6 @@ LineRenderer::GetNewCanvas(int width, int height)
   return std::make_shared<vtkm::rendering::CanvasRayTracer>(width, height);
 }
 
-std::string
-LineRenderer::GetName() const
-{
-  return "vtkh::LineRenderer";
-}
-
 void
 LineRenderer::SetRadius(vtkm::Float32 radius)
 {

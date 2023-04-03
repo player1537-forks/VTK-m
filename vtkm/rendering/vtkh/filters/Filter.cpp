@@ -42,6 +42,7 @@ Filter::Update()
   PreExecute();
   DoExecute();
   PostExecute();
+
 #ifdef VTKH_ENABLE_LOGGING
   long long int out_cells = this->m_output->GetNumberOfCells();
   //DRP: Logger

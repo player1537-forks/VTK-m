@@ -36,7 +36,7 @@ if (VTKm_ENABLE_MPI)
   vtkm_unit_tests(
     MPI
     DEVICE_SOURCES ${mpi_unit_tests}
-    LIBRARIES vtkm_source
+    LIBRARIES vtkm_source vtkm_filter_contour
     USE_VTKM_JOB_POOL
   )
 endif()
