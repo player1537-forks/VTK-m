@@ -8,15 +8,14 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-
 #ifndef VTKH_DIY_IMAGE_HPP
 #define VTKH_DIY_IMAGE_HPP
 
+#include <vtkm/Bounds.h>
+#include <vtkm/rendering/vtkm_rendering_export.h>
+
 #include <sstream>
 #include <vector>
-#include <vtkm/Bounds.h>
-
-#include <vtkm/rendering/vtkm_rendering_export.h>
 
 namespace vtkh
 {
@@ -329,8 +328,6 @@ struct VTKM_RENDERING_EXPORT Image
 
     void Save(const std::string &name,
               const std::vector<std::string> &comments) const;
-    void Save(const std::string &name,
-              const std::vector<std::string> &comments);
 };
 
 struct CompositeOrderSort

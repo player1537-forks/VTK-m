@@ -10,13 +10,10 @@
 
 #include <vtkm/internal/Configure.h>
 #include <vtkm/rendering/vtkh/compositing/PNGEncoder.h>
+#include <vtkm/thirdparty/lodepng/vtkmlodepng/lodepng.h>
 
 #include <iostream>
 #include <stdlib.h>
-
-VTKM_THIRDPARTY_PRE_INCLUDE
-#include <vtkm/thirdparty/lodepng/vtkmlodepng/lodepng.h>
-VTKM_THIRDPARTY_POST_INCLUDE
 
 namespace vtkm
 {
@@ -41,11 +38,13 @@ void PNGEncoder::Encode(const unsigned char* rgba_in, const int width, const int
   Cleanup();
 
   // upside down relative to what lodepng wants
-  unsigned char* rgba_flip = new unsigned char[width * height * 4];
+  unsigned char* rgba_flip = new unsigned char[static_cast<std::size_t>(width * height * 4)];
 
   for (int y = 0; y < height; ++y)
   {
-    memcpy(&(rgba_flip[y * width * 4]), &(rgba_in[(height - y - 1) * width * 4]), width * 4);
+    memcpy(&(rgba_flip[y * width * 4]),
+           &(rgba_in[(height - y - 1) * width * 4]),
+           static_cast<std::size_t>(width * 4));
   }
 
   vtkm::png::LodePNGState state;
@@ -54,7 +53,12 @@ void PNGEncoder::Encode(const unsigned char* rgba_in, const int width, const int
   state.encoder.zlibsettings.btype = 2;
   state.encoder.zlibsettings.use_lz77 = 0;
 
-  unsigned error = lodepng_encode(&m_buffer, &m_buffer_size, &rgba_flip[0], width, height, &state);
+  unsigned error = lodepng_encode(&m_buffer,
+                                  &m_buffer_size,
+                                  &rgba_flip[0],
+                                  static_cast<unsigned>(width),
+                                  static_cast<unsigned>(height),
+                                  &state);
   delete[] rgba_flip;
 
   if (error)
@@ -68,7 +72,7 @@ void PNGEncoder::Encode(const float* rgba_in, const int width, const int height)
   Cleanup();
 
   // upside down relative to what lodepng wants
-  unsigned char* rgba_flip = new unsigned char[width * height * 4];
+  unsigned char* rgba_flip = new unsigned char[static_cast<std::size_t>(width * height * 4)];
 
 
   for (int x = 0; x < width; ++x)
@@ -92,7 +96,12 @@ void PNGEncoder::Encode(const float* rgba_in, const int width, const int height)
   state.encoder.zlibsettings.btype = 2;
   state.encoder.zlibsettings.use_lz77 = 0;
 
-  unsigned error = lodepng_encode(&m_buffer, &m_buffer_size, &rgba_flip[0], width, height, &state);
+  unsigned error = lodepng_encode(&m_buffer,
+                                  &m_buffer_size,
+                                  &rgba_flip[0],
+                                  static_cast<unsigned>(width),
+                                  static_cast<unsigned>(height),
+                                  &state);
   delete[] rgba_flip;
 
   if (error)
@@ -109,11 +118,13 @@ void PNGEncoder::Encode(const unsigned char* rgba_in,
   Cleanup();
 
   // upside down relative to what lodepng wants
-  unsigned char* rgba_flip = new unsigned char[width * height * 4];
+  unsigned char* rgba_flip = new unsigned char[static_cast<std::size_t>(width * height * 4)];
 
   for (int y = 0; y < height; ++y)
   {
-    memcpy(&(rgba_flip[y * width * 4]), &(rgba_in[(height - y - 1) * width * 4]), width * 4);
+    memcpy(&(rgba_flip[y * width * 4]),
+           &(rgba_in[(height - y - 1) * width * 4]),
+           static_cast<std::size_t>(width * 4));
   }
 
   vtkm::png::LodePNGState state;
@@ -132,12 +143,16 @@ void PNGEncoder::Encode(const unsigned char* rgba_in,
     // Comments are in pairs with a key and a value, using
     // comments.size()-1 ensures that we don't use the last
     // comment if the length of the vector isn't a multiple of 2.
-    for (int i = 0; i < comments.size() - 1; i += 2)
+    for (std::size_t i = 0; i < comments.size() - 1; i += 2)
       vtkm::png::lodepng_add_text(&state.info_png, comments[i].c_str(), comments[i + 1].c_str());
   }
 
-  unsigned error =
-    vtkm::png::lodepng_encode(&m_buffer, &m_buffer_size, &rgba_flip[0], width, height, &state);
+  unsigned error = vtkm::png::lodepng_encode(&m_buffer,
+                                             &m_buffer_size,
+                                             &rgba_flip[0],
+                                             static_cast<unsigned>(width),
+                                             static_cast<unsigned>(height),
+                                             &state);
   delete[] rgba_flip;
 
   if (error)
@@ -154,8 +169,7 @@ void PNGEncoder::Encode(const float* rgba_in,
   Cleanup();
 
   // upside down relative to what lodepng wants
-  unsigned char* rgba_flip = new unsigned char[width * height * 4];
-
+  unsigned char* rgba_flip = new unsigned char[static_cast<std::size_t>(width * height * 4)];
 
   for (int x = 0; x < width; ++x)
 
@@ -188,12 +202,16 @@ void PNGEncoder::Encode(const float* rgba_in,
     // Comments are in pairs with a key and a value, using
     // comments.size()-1 ensures that we don't use the last
     // comment if the length of the vector isn't a multiple of 2.
-    for (int i = 0; i < comments.size() - 1; i += 2)
+    for (std::size_t i = 0; i < comments.size() - 1; i += 2)
       vtkm::png::lodepng_add_text(&state.info_png, comments[i].c_str(), comments[i + 1].c_str());
   }
 
-  unsigned error =
-    vtkm::png::lodepng_encode(&m_buffer, &m_buffer_size, &rgba_flip[0], width, height, &state);
+  unsigned error = vtkm::png::lodepng_encode(&m_buffer,
+                                             &m_buffer_size,
+                                             &rgba_flip[0],
+                                             static_cast<unsigned>(width),
+                                             static_cast<unsigned>(height),
+                                             &state);
   delete[] rgba_flip;
 
   if (error)

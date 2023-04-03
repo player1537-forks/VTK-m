@@ -393,13 +393,12 @@ void RenderTests()
   //MultiRender(true);
   //MultiRender(false);
 
-  /*
   RayTrace(true);
   RayTrace(false);
 
   VolumeRender(true);
   VolumeRender(false);
-  */
+
   VolumeRenderBlank();
 }
 
