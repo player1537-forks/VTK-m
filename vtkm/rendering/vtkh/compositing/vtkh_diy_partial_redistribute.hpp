@@ -30,10 +30,10 @@ namespace vtkh {
 template<typename BlockType>
 struct Redistribute
 {
-  const vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> &m_decomposer;
+  const vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> &Decomposer;
 
   Redistribute(const vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> &decomposer)
-    : m_decomposer(decomposer)
+    : Decomposer(decomposer)
   {}
 
   void operator()(void *v_block, const vtkmdiy::ReduceProxy &proxy) const
@@ -45,19 +45,19 @@ struct Redistribute
     //
     if(proxy.in_link().size() == 0)
     {
-      const int size = block->m_partials.size();
+      const int size = block->Partials.size();
       std::map<vtkmdiy::BlockID,std::vector<typename BlockType::PartialType>> outgoing;
 
       for(int i = 0; i < size; ++i)
       {
         vtkmdiy::Point<int, VTKMDIY_MAX_DIM> point;
-        point[0] = block->m_partials[i].m_pixel_id;
-        int dest_gid = m_decomposer.point_to_gid(point);
+        point[0] = block->Partials[i].PixelId;
+        int dest_gid = this->Decomposer.point_to_gid(point);
         vtkmdiy::BlockID dest = proxy.out_link().target(dest_gid);
-        outgoing[dest].push_back(block->m_partials[i]);
+        outgoing[dest].push_back(block->Partials[i]);
       } //for
 
-      block->m_partials.clear();
+      block->Partials.clear();
 
 
       for(int i = 0; i < proxy.out_link().size(); ++i)
@@ -80,7 +80,7 @@ struct Redistribute
         // TODO: make this a std::copy
         for(int j = 0; j < incoming_size; ++j)
         {
-          block->m_partials.push_back(incoming_partials[j]);
+          block->Partials.push_back(incoming_partials[j]);
         }
       } // for
 

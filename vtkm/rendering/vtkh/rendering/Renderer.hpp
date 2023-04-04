@@ -37,7 +37,7 @@ public:
   Renderer();
   virtual ~Renderer();
   virtual std::string GetName() const = 0;
-  virtual void SetInput(vtkm::cont::PartitionedDataSet *input) {this->m_input = input;}
+  virtual void SetInput(vtkm::cont::PartitionedDataSet *input) {this->Input = input;}
   virtual void SetShadingOn(bool on);
   virtual void Update();
 
@@ -55,25 +55,25 @@ public:
   std::string                 GetFieldName() const;
   int                         GetNumberOfRenders() const;
   std::vector<Render>         GetRenders() const;
-  vtkm::cont::PartitionedDataSet*  GetInput() { return this->m_input; }
-  vtkm::cont::PartitionedDataSet*  GetOutput() { return this->m_output; }
+  vtkm::cont::PartitionedDataSet*  GetInput() { return this->Input; }
+  vtkm::cont::PartitionedDataSet*  GetOutput() { return this->Output; }
   vtkm::Range                 GetRange() const;
   bool                        GetHasColorTable() const;
 protected:
 
   // image related data with cinema support
-  vtkm::Bounds                             m_bounds;
-  vtkm::cont::ColorTable                   m_color_table;
-  Compositor                              *m_compositor;
-  bool                                     m_do_composite;
-  int                                      m_field_index;
-  std::string                              m_field_name;
-  bool                                     m_has_color_table;
-  vtkm::cont::PartitionedDataSet *m_input = nullptr;
-  vtkm::cont::PartitionedDataSet *m_output = nullptr;
-  vtkmMapperPtr                            m_mapper;
-  std::vector<vtkh::Render>                m_renders;
-  vtkm::Range                              m_range;
+  vtkm::Bounds                             Bounds;
+  vtkm::cont::ColorTable                   ColorTable;
+  Compositor                              *Compositor;
+  bool                                     DoComposite;
+  int                                      FieldIndex;
+  std::string                              FieldName;
+  bool                                     HasColorTable;
+  vtkm::cont::PartitionedDataSet *Input = nullptr;
+  vtkm::cont::PartitionedDataSet *Output = nullptr;
+  vtkmMapperPtr                            Mapper;
+  std::vector<vtkh::Render>                Renders;
+  vtkm::Range                              Range;
 
   // methods
 virtual void PreExecute(); // override;

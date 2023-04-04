@@ -37,14 +37,14 @@ public:
 
   int GetNumberOfCameras() const;
   vtkm::cont::PartitionedDataSet *GetInput();
-  void SetHeight(const int height);
-  void SetWidth(const int width);
+  void SetHeight(const int height) { this->Height = height; }
+  void SetWidth(const int width) {this->Width = width; }
 protected:
 
-  int m_width;
-  int m_height;
+  int Width = 1024;
+  int Height = 1024;
   // image related data with cinema support
-  vtkmCamera  m_camera;
+  vtkmCamera  Camera;
   // methods
   virtual void PreExecute() override;
   virtual void PostExecute() override;

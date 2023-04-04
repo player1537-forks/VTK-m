@@ -22,14 +22,8 @@ namespace vtkh
 
 class VTKM_RENDERING_EXPORT Scene
 {
-private:
-  std::list<vtkh::Renderer*>   m_renderers;
-  std::vector<vtkh::Render>    m_renders;
-  bool                         m_has_volume;
-  int                          m_batch_size;
 public:
- Scene();
- ~Scene();
+  Scene();
 
   void AddRender(vtkh::Render &render);
   void SetRenders(const std::vector<vtkh::Render> &renders);
@@ -42,6 +36,13 @@ protected:
   bool IsMesh(vtkh::Renderer *renderer);
   bool IsVolume(vtkh::Renderer *renderer);
   void SynchDepths(std::vector<vtkh::Render> &renders);
+
+private:
+  int                          BatchSize;
+  bool                         HasVolume;
+  std::list<vtkh::Renderer*>   Renderers;
+  std::vector<vtkh::Render>    Renders;
+
 }; // class scene
 
 } //namespace  vtkh

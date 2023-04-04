@@ -38,20 +38,18 @@ public:
 
 protected:
   Annotator();
-  bool                                    m_is_3d;
-  vtkm::rendering::Canvas                &m_canvas;
-  vtkm::rendering::Camera                &m_camera;
-  vtkm::Bounds                            m_bounds;
-  vtkm::rendering::BoundingBoxAnnotation  m_box_annotation;
-  vtkm::rendering::AxisAnnotation3D       m_x_axis_annotation;
-  vtkm::rendering::AxisAnnotation3D       m_y_axis_annotation;
-  vtkm::rendering::AxisAnnotation3D       m_z_axis_annotation;
-  vtkm::rendering::ColorBarAnnotation     m_color_bar_annotation;
-  vtkm::rendering::WorldAnnotator        *m_world_annotator;
-  std::vector<vtkm::Bounds>               m_color_bar_pos;
-  //std::vector<vtkm::rendering::TextAnnotation*> m_text_annotations;
-  //void RenderScreen2DAnnotations(vtkm::Range range, const  std::string &field_name);
-  //void RenderScreen3DAnnotations(vtkm::Range range, const std::string &field_name);
+
+  bool                                    Is3d;
+  vtkm::rendering::Canvas                &Canvas;
+  vtkm::rendering::Camera                &Camera;
+  vtkm::Bounds                            Bounds;
+  vtkm::rendering::BoundingBoxAnnotation  BoxAnnotation;
+  vtkm::rendering::AxisAnnotation3D       XAxisAnnotation;
+  vtkm::rendering::AxisAnnotation3D       YAxisAnnotation;
+  vtkm::rendering::AxisAnnotation3D       ZAxisAnnotation;
+  vtkm::rendering::ColorBarAnnotation     ColorBarAnnotation;
+  vtkm::rendering::WorldAnnotator        *WorldAnnotator;
+  std::vector<vtkm::Bounds>               ColorBarPos;
 };
 
 }// namespace vtkh

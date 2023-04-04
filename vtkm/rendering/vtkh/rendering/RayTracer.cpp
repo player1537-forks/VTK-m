@@ -21,7 +21,7 @@ RayTracer::RayTracer()
   typedef vtkm::rendering::MapperRayTracer TracerType;
   auto mapper = std::make_shared<TracerType>();
   mapper->SetCompositeBackground(false);
-  this->m_mapper = mapper;
+  this->Mapper = mapper;
 }
 
 RayTracer::~RayTracer()
@@ -45,7 +45,7 @@ RayTracer::SetShadingOn(bool on)
 {
   // do nothing by default;
   typedef vtkm::rendering::MapperRayTracer TracerType;
-  std::static_pointer_cast<TracerType>(this->m_mapper)->SetShadingOn(on);
+  std::static_pointer_cast<TracerType>(this->Mapper)->SetShadingOn(on);
 }
 
 } // namespace vtkh

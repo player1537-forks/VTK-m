@@ -25,9 +25,9 @@ struct VolumeBlock
 {
   typedef vtkmdiy::DiscreteBounds            Bounds;
   typedef VolumePartial<FloatType>       PartialType;
-  std::vector<VolumePartial<FloatType>> &m_partials;
+  std::vector<VolumePartial<FloatType>> &Partials;
   VolumeBlock(std::vector<VolumePartial<FloatType>> &partials)
-    : m_partials(partials)
+    : Partials(partials)
   {}
 };
 
@@ -38,10 +38,10 @@ struct AbsorptionBlock
 {
   typedef vtkmdiy::DiscreteBounds Bounds;
   typedef AbsorptionPartial<FloatType> PartialType;
-  std::vector<AbsorptionPartial<FloatType>>   &m_partials;
+  std::vector<AbsorptionPartial<FloatType>>   &Partials;
 
   AbsorptionBlock(std::vector<AbsorptionPartial<FloatType>> &partials)
-    : m_partials(partials)
+    : Partials(partials)
   {
   }
 };
@@ -52,10 +52,10 @@ struct EmissionBlock
 {
   typedef vtkmdiy::DiscreteBounds Bounds;
   typedef EmissionPartial<FloatType> PartialType;
-  std::vector<EmissionPartial<FloatType>>   &m_partials;
+  std::vector<EmissionPartial<FloatType>>   &Partials;
 
   EmissionBlock(std::vector<EmissionPartial<FloatType>> &partials)
-    : m_partials(partials)
+    : Partials(partials)
   {}
 };
 
@@ -65,11 +65,11 @@ struct AddBlock
 {
   typedef typename BlockType::PartialType PartialType;
   typedef BlockType                       Block;
-  const vtkmdiy::Master &m_master;
-  std::vector<PartialType> &m_partials;
+  const vtkmdiy::Master &Master;
+  std::vector<PartialType> &Partials;
 
   AddBlock(vtkmdiy::Master &master,std::vector<PartialType> &partials)
-    : m_master(master), m_partials(partials)
+    : Master(master), Partials(partials)
   {
   }
   template<typename BoundsType, typename LinkType>
@@ -82,9 +82,9 @@ struct AddBlock
     (void) local_bounds;
     (void) domain_bounds;
     (void) local_with_ghost_bounds;
-    Block *block = new Block(m_partials);
+    Block *block = new Block(this->Partials);
     LinkType *rg_link = new LinkType(link);
-    vtkmdiy::Master& master = const_cast<vtkmdiy::Master&>(m_master);
+    vtkmdiy::Master& master = const_cast<vtkmdiy::Master&>(this->Master);
     int lid = master.add(gid, block, rg_link);
     (void) lid;
   }
@@ -101,16 +101,16 @@ struct Serialization<vtkh::AbsorptionPartial<double>>
 
   static void save(BinaryBuffer& bb, const vtkh::AbsorptionPartial<double> &partial)
   {
-    vtkmdiy::save(bb, partial.m_bins);
-    vtkmdiy::save(bb, partial.m_pixel_id);
-    vtkmdiy::save(bb, partial.m_depth);
+    vtkmdiy::save(bb, partial.Bins);
+    vtkmdiy::save(bb, partial.PixelId);
+    vtkmdiy::save(bb, partial.Depth);
   }
 
   static void load(BinaryBuffer& bb, vtkh::AbsorptionPartial<double> &partial)
   {
-    vtkmdiy::load(bb, partial.m_bins);
-    vtkmdiy::load(bb, partial.m_pixel_id);
-    vtkmdiy::load(bb, partial.m_depth);
+    vtkmdiy::load(bb, partial.Bins);
+    vtkmdiy::load(bb, partial.PixelId);
+    vtkmdiy::load(bb, partial.Depth);
   }
 };
 
@@ -120,16 +120,16 @@ struct Serialization<vtkh::AbsorptionPartial<float>>
 
   static void save(BinaryBuffer& bb, const vtkh::AbsorptionPartial<float> &partial)
   {
-    vtkmdiy::save(bb, partial.m_bins);
-    vtkmdiy::save(bb, partial.m_pixel_id);
-    vtkmdiy::save(bb, partial.m_depth);
+    vtkmdiy::save(bb, partial.Bins);
+    vtkmdiy::save(bb, partial.PixelId);
+    vtkmdiy::save(bb, partial.Depth);
   }
 
   static void load(BinaryBuffer& bb, vtkh::AbsorptionPartial<float> &partial)
   {
-    vtkmdiy::load(bb, partial.m_bins);
-    vtkmdiy::load(bb, partial.m_pixel_id);
-    vtkmdiy::load(bb, partial.m_depth);
+    vtkmdiy::load(bb, partial.Bins);
+    vtkmdiy::load(bb, partial.PixelId);
+    vtkmdiy::load(bb, partial.Depth);
   }
 };
 
@@ -139,18 +139,18 @@ struct Serialization<vtkh::EmissionPartial<double>>
 
   static void save(BinaryBuffer& bb, const vtkh::EmissionPartial<double> &partial)
   {
-    vtkmdiy::save(bb, partial.m_bins);
-    vtkmdiy::save(bb, partial.m_emission_bins);
-    vtkmdiy::save(bb, partial.m_pixel_id);
-    vtkmdiy::save(bb, partial.m_depth);
+    vtkmdiy::save(bb, partial.Bins);
+    vtkmdiy::save(bb, partial.EmissionBins);
+    vtkmdiy::save(bb, partial.PixelId);
+    vtkmdiy::save(bb, partial.Depth);
   }
 
   static void load(BinaryBuffer& bb, vtkh::EmissionPartial<double> &partial)
   {
-    vtkmdiy::load(bb, partial.m_bins);
-    vtkmdiy::load(bb, partial.m_emission_bins);
-    vtkmdiy::load(bb, partial.m_pixel_id);
-    vtkmdiy::load(bb, partial.m_depth);
+    vtkmdiy::load(bb, partial.Bins);
+    vtkmdiy::load(bb, partial.EmissionBins);
+    vtkmdiy::load(bb, partial.PixelId);
+    vtkmdiy::load(bb, partial.Depth);
   }
 };
 
@@ -160,18 +160,18 @@ struct Serialization<vtkh::EmissionPartial<float>>
 
   static void save(BinaryBuffer& bb, const vtkh::EmissionPartial<float> &partial)
   {
-    vtkmdiy::save(bb, partial.m_bins);
-    vtkmdiy::save(bb, partial.m_emission_bins);
-    vtkmdiy::save(bb, partial.m_pixel_id);
-    vtkmdiy::save(bb, partial.m_depth);
+    vtkmdiy::save(bb, partial.Bins);
+    vtkmdiy::save(bb, partial.EmissionBins);
+    vtkmdiy::save(bb, partial.PixelId);
+    vtkmdiy::save(bb, partial.Depth);
   }
 
   static void load(BinaryBuffer& bb, vtkh::EmissionPartial<float> &partial)
   {
-    vtkmdiy::load(bb, partial.m_bins);
-    vtkmdiy::load(bb, partial.m_emission_bins);
-    vtkmdiy::load(bb, partial.m_pixel_id);
-    vtkmdiy::load(bb, partial.m_depth);
+    vtkmdiy::load(bb, partial.Bins);
+    vtkmdiy::load(bb, partial.EmissionBins);
+    vtkmdiy::load(bb, partial.PixelId);
+    vtkmdiy::load(bb, partial.Depth);
   }
 };
 

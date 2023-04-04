@@ -20,9 +20,9 @@ void Image::Save(const std::string &name,
 {
 
   vtkm::rendering::compositing::PNGEncoder encoder;
-  encoder.Encode(&m_pixels[0],
-                 m_bounds.X.Max - m_bounds.X.Min + 1,
-                 m_bounds.Y.Max - m_bounds.Y.Min + 1,
+  encoder.Encode(&this->Pixels[0],
+                 this->Bounds.X.Max - this->Bounds.X.Min + 1,
+                 this->Bounds.Y.Max - this->Bounds.Y.Min + 1,
                  comments);
   encoder.Save(name);
 }

@@ -66,8 +66,6 @@ filter_scalar_fields(vtkm::cont::DataSet &dataset)
 } // namespace detail
 
 ScalarRenderer::ScalarRenderer()
-  : m_width(1024),
-    m_height(1024)
 {
 }
 
@@ -84,7 +82,7 @@ ScalarRenderer::GetName() const
 void
 ScalarRenderer::SetCamera(vtkmCamera &camera)
 {
-  m_camera = camera;
+  this->Camera = camera;
 }
 
 void
@@ -98,7 +96,7 @@ ScalarRenderer::Update()
   //DRP: Logger
   //VTKH_DATA_OPEN(this->GetName());
 #ifdef VTKH_ENABLE_LOGGING
-  long long int in_cells = this->m_input->GetNumberOfCells();
+  long long int in_cells = this->Input->GetNumberOfCells();
   //DRP: Logger
   //VTKH_DATA_ADD("input_cells", in_cells);
 #endif
@@ -118,8 +116,8 @@ ScalarRenderer::PostExecute()
 void
 ScalarRenderer::DoExecute()
 {
-  vtkm::Id num_domains = this->m_input->GetGlobalNumberOfPartitions();
-  this->m_output = new vtkm::cont::PartitionedDataSet();
+  vtkm::Id num_domains = this->Input->GetGlobalNumberOfPartitions();
+  this->Output = new vtkm::cont::PartitionedDataSet();
 
   //
   // There external faces + bvh construction happens
@@ -137,11 +135,11 @@ ScalarRenderer::DoExecute()
   cell_counts.resize(num_domains);
   for(vtkm::Id dom = 0; dom < num_domains; ++dom)
   {
-    auto data_set = this->m_input->GetPartition(dom);
+    auto data_set = this->Input->GetPartition(dom);
     vtkm::cont::DataSet filtered = detail::filter_scalar_fields(data_set);
     renderers[dom].SetInput(filtered);
-    renderers[dom].SetWidth(m_width);
-    renderers[dom].SetHeight(m_height);
+    renderers[dom].SetWidth(this->Width);
+    renderers[dom].SetHeight(this->Height);
 
     // all the data sets better be the same
     cell_counts.push_back(data_set.GetCellSet().GetNumberOfCells());
@@ -163,26 +161,26 @@ ScalarRenderer::DoExecute()
   float bounds[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};;
   for(vtkm::Id dom = 0; dom < num_domains; ++dom)
   {
-    auto data_set = this->m_input->GetPartition(dom);
+    auto data_set = this->Input->GetPartition(dom);
     num_cells = data_set.GetCellSet().GetNumberOfCells();
 
     if(data_set.GetCellSet().GetNumberOfCells())
     {
       no_data = num_cells == 0;
 
-      Result res = renderers[dom].Render(m_camera);
+      Result res = renderers[dom].Render(this->Camera);
 
       field_names = res.ScalarNames;
       PayloadImage *pimage = Convert(res);
-      min_p = std::min(min_p, pimage->m_payload_bytes);
-      max_p = std::max(max_p, pimage->m_payload_bytes);
+      min_p = std::min(min_p, pimage->PayloadBytes);
+      max_p = std::max(max_p, pimage->PayloadBytes);
       compositor.AddImage(*pimage);
-      bounds[0] = pimage->m_bounds.X.Min;
-      bounds[1] = pimage->m_bounds.X.Max;
-      bounds[2] = pimage->m_bounds.Y.Min;
-      bounds[3] = pimage->m_bounds.Y.Max;
-      bounds[4] = pimage->m_bounds.Z.Min;
-      bounds[5] = pimage->m_bounds.Z.Max;
+      bounds[0] = pimage->Bounds.X.Min;
+      bounds[1] = pimage->Bounds.X.Max;
+      bounds[2] = pimage->Bounds.Y.Min;
+      bounds[3] = pimage->Bounds.Y.Max;
+      bounds[4] = pimage->Bounds.Z.Min;
+      bounds[5] = pimage->Bounds.Z.Max;
       delete pimage;
     }
   }
@@ -260,11 +258,11 @@ ScalarRenderer::DoExecute()
     {
       vtkm::Bounds b(bounds);
       PayloadImage p(b, max_p);
-      int size = p.m_depths.size();
+      int size = p.Depths.size();
       std::vector<float> depths(size);
       for(int i = 0; i < size; i++)
         depths[i] = std::numeric_limits<int>::max();
-      std::copy(&depths[0], &depths[0] + size, &p.m_depths[0]);
+      std::copy(&depths[0], &depths[0] + size, &p.Depths[0]);
       compositor.AddImage(p);
     }
 
@@ -283,8 +281,8 @@ ScalarRenderer::DoExecute()
         vtkm::cont::DataSet dset = final_result.ToDataSet();
         //const int domain_id = 0;
         throw vtkm::cont::ErrorBadValue("add domain_id to partitions");
-        //this->m_output->AddDomain(dset, domain_id);
-        this->m_output->AppendPartition(dset);
+        //this->Output->AddDomain(dset, domain_id);
+        this->Output->AppendPartition(dset);
       }
     }
   }
@@ -298,8 +296,8 @@ ScalarRenderer::Convert(PayloadImage &image, std::vector<std::string> &names)
   result.ScalarNames = names;
   const int num_fields = names.size();
 
-  const int dx  = image.m_bounds.X.Max - image.m_bounds.X.Min + 1;
-  const int dy  = image.m_bounds.Y.Max - image.m_bounds.Y.Min + 1;
+  const int dx  = image.Bounds.X.Max - image.Bounds.X.Min + 1;
+  const int dy  = image.Bounds.Y.Max - image.Bounds.Y.Min + 1;
   const std::size_t size = dx * dy;
 
   result.Width = dx;
@@ -315,8 +313,8 @@ ScalarRenderer::Convert(PayloadImage &image, std::vector<std::string> &names)
     buffers.push_back(buffer);
   }
 
-  const unsigned char *loads = &image.m_payloads[0];
-  const size_t payload_size = image.m_payload_bytes;
+  const unsigned char *loads = &image.Payloads[0];
+  const size_t payload_size = image.PayloadBytes;
 
   for(std::size_t x = 0; x < size; ++x)
   {
@@ -330,7 +328,7 @@ ScalarRenderer::Convert(PayloadImage &image, std::vector<std::string> &names)
   //
   result.Depths.Allocate(size);
   float* dbuffer = GetVTKMPointer(result.Depths);
-  memcpy(dbuffer, &image.m_depths[0], sizeof(float) * size);
+  memcpy(dbuffer, &image.Depths[0], sizeof(float) * size);
 
   return result;
 }
@@ -348,10 +346,10 @@ PayloadImage * ScalarRenderer::Convert(Result &result)
   const size_t size = result.Width * result.Height;
 
   PayloadImage *image = new PayloadImage(bounds, payload_size);
-  unsigned char *loads = &image->m_payloads[0];
+  unsigned char *loads = &image->Payloads[0];
 
   float* dbuffer = GetVTKMPointer(result.Depths);
-  memcpy(&image->m_depths[0], dbuffer, sizeof(float) * size);
+  memcpy(&image->Depths[0], dbuffer, sizeof(float) * size);
   // copy scalars into payload
   std::vector<float*> buffers;
   for(int i = 0; i < num_fields; ++i)
@@ -374,22 +372,10 @@ PayloadImage * ScalarRenderer::Convert(Result &result)
   return image;
 }
 
-void
-ScalarRenderer::SetHeight(const int height)
-{
-  m_height = height;
-}
-
-void
-ScalarRenderer::SetWidth(const int width)
-{
-  m_width = width;
-}
-
 vtkm::cont::PartitionedDataSet *
 ScalarRenderer::GetInput()
 {
-  return m_input;
+  return this->Input;
 }
 
 } // namespace vtkh

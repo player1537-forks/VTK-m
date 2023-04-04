@@ -41,7 +41,7 @@ public:
   void set_background(std::vector<vtkm::Float64> &background_values);
 #ifdef VTKM_ENABLE_MPI
 //  void set_comm_handle(int mpi_comm_id);
-  void set_comm_handle(MPI_Comm mpiComm) {this->m_mpi_comm = mpiComm;}
+  void set_comm_handle(MPI_Comm mpi_comm) {this->mpiComm = mpi_comm;}
 #endif
 protected:
   void merge(const std::vector<std::vector<PartialType>> &in_partials,
@@ -52,10 +52,9 @@ protected:
   void composite_partials(std::vector<PartialType> &partials,
                           std::vector<PartialType> &output_partials);
 
-  std::vector<typename PartialType::ValueType> m_background_values;
+  std::vector<typename PartialType::ValueType> BackgroundValues;
 #ifdef VTKM_ENABLE_MPI
-//  int m_mpi_comm_id;
-  MPI_Comm m_mpi_comm;
+  MPI_Comm mpiComm;
 #endif
 };
 

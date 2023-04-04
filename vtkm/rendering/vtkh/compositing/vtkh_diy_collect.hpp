@@ -20,10 +20,10 @@ namespace vtkh
 template<typename ImageType>
 struct CollectImages
 {
-  const vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> &m_decomposer;
+  const vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> &Decomposer;
 
   CollectImages(const vtkmdiy::RegularDecomposer<vtkmdiy::DiscreteBounds> &decomposer)
-    : m_decomposer(decomposer)
+    : Decomposer(decomposer)
   {}
 
   void operator()(void *b, const vtkmdiy::ReduceProxy &proxy) const
@@ -42,15 +42,15 @@ struct CollectImages
         int dest_gid = collection_rank;
         vtkmdiy::BlockID dest = proxy.out_link().target(dest_gid);
 
-        proxy.enqueue(dest, block->m_image);
-        block->m_image.Clear();
+        proxy.enqueue(dest, block->Image);
+        block->Image.Clear();
       }
     } // if
     else if(proxy.gid() == collection_rank)
     {
       ImageType final_image;
-      final_image.InitOriginal(block->m_image);
-      block->m_image.SubsetTo(final_image);
+      final_image.InitOriginal(block->Image);
+      block->Image.SubsetTo(final_image);
 
       for(int i = 0; i < proxy.in_link().size(); ++i)
       {
@@ -64,7 +64,7 @@ struct CollectImages
         proxy.dequeue(gid, incoming);
         incoming.SubsetTo(final_image);
       } // for
-      block->m_image.Swap(final_image);
+      block->Image.Swap(final_image);
     } // else
 
   } // operator

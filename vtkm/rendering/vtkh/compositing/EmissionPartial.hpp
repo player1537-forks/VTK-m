@@ -20,80 +20,80 @@ struct EmissionPartial
 {
   typedef FloatType ValueType;
 
-  int                    m_pixel_id;
-  double                 m_depth;
-  std::vector<FloatType> m_bins;
-  std::vector<FloatType> m_emission_bins;
+  int                    PixelId;
+  double                 Depth;
+  std::vector<FloatType> Bins;
+  std::vector<FloatType> EmissionBins;
 
   EmissionPartial()
-    : m_pixel_id(0),
-      m_depth(0.f)
+    : PixelId(0),
+      Depth(0.f)
   {
 
   }
 
   void alter_bin(int bin, FloatType value)
   {
-    m_bins[bin] = value;
-    m_emission_bins[bin] = value;
+    this->Bins[bin] = value;
+    this->EmissionBins[bin] = value;
   }
 
   void print()
   {
-    std::cout<<"Partial id "<<m_pixel_id<<"\n";
+    std::cout<<"Partial id "<<this->PixelId<<"\n";
     std::cout<<"Absorption : ";
-    for(int i = 0; i < m_bins.size(); ++i)
+    for(int i = 0; i < this->Bins.size(); ++i)
     {
-      std::cout<<m_bins[i]<<" ";
+      std::cout<<this->Bins[i]<<" ";
     }
     std::cout<<"\n";
     std::cout<<"Emission: ";
-    for(int i = 0; i < m_bins.size(); ++i)
+    for(int i = 0; i < this->Bins.size(); ++i)
     {
-      std::cout<<m_emission_bins[i]<<" ";
+      std::cout<<this->EmissionBins[i]<<" ";
     }
     std::cout<<"\n";
   }
 
   bool operator < (const EmissionPartial<FloatType> &other) const
   {
-    if(m_pixel_id != other.m_pixel_id)
+    if(this->PixelId != other.PixelId)
     {
-      return m_pixel_id < other.m_pixel_id;
+      return this->PixelId < other.PixelId;
     }
     else
     {
-      return m_depth < other.m_depth;
+      return this->Depth < other.Depth;
     }
   }
 
   inline void blend_absorption(const EmissionPartial<FloatType> &other)
   {
-    const int num_bins = static_cast<int>(m_bins.size());
-    assert(num_bins == (int)other.m_bins.size());
+    const int num_bins = static_cast<int>(this->Bins.size());
+    assert(num_bins == (int)other.Bins.size());
     for(int i = 0; i < num_bins; ++i)
     {
-      m_bins[i] *= other.m_bins[i];
+      this->Bins[i] *= other.Bins[i];
     }
   }
 
   inline void blend_emission(EmissionPartial<FloatType> &other)
   {
-    const int num_bins = static_cast<int>(m_bins.size());
-    assert(num_bins == (int)other.m_bins.size());
+    const int num_bins = static_cast<int>(this->Bins.size());
+    assert(num_bins == (int)other.Bins.size());
     for(int i = 0; i < num_bins; ++i)
     {
-      m_emission_bins[i] *= other.m_bins[i];
+      this->EmissionBins[i] *= other.Bins[i];
     }
   }
 
   inline void add_emission(EmissionPartial<FloatType> &other)
   {
-    const int num_bins = static_cast<int>(m_bins.size());
-    assert(num_bins == (int)other.m_bins.size());
+    const int num_bins = static_cast<int>(this->Bins.size());
+    assert(num_bins == (int)other.Bins.size());
     for(int i = 0; i < num_bins; ++i)
     {
-      m_emission_bins[i] += other.m_emission_bins[i];
+      this->EmissionBins[i] += other.EmissionBins[i];
     }
   }
 

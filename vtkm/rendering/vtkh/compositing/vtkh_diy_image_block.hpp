@@ -20,33 +20,33 @@ namespace vtkh
 template<typename ImageType>
 struct ImageBlock
 {
-  ImageType &m_image;
+  ImageType &Image;
   ImageBlock(ImageType &image)
-    : m_image(image)
+    : Image(image)
   {
   }
 };
 
 struct MultiImageBlock
 {
-  std::vector<Image> &m_images;
-  Image              &m_output;
+  std::vector<Image> &Images;
+  Image              &Output;
   MultiImageBlock(std::vector<Image> &images,
                   Image &output)
-    : m_images(images),
-      m_output(output)
+    : Images(images),
+      Output(output)
   {}
 };
 
 template<typename ImageType>
 struct AddImageBlock
 {
-  ImageType             &m_image;
-  const vtkmdiy::Master &m_master;
+  ImageType             &Image;
+  const vtkmdiy::Master &Master;
 
   AddImageBlock(vtkmdiy::Master &master, ImageType &image)
-    : m_image(image),
-      m_master(master)
+    : Image(image),
+      Master(master)
   {
   }
   template<typename BoundsType, typename LinkType>
@@ -56,25 +56,25 @@ struct AddImageBlock
                   const BoundsType &,  // domain_bounds
                   const LinkType &link) const
   {
-    ImageBlock<ImageType> *block = new ImageBlock<ImageType>(m_image);
+    ImageBlock<ImageType> *block = new ImageBlock<ImageType>(this->Image);
     LinkType *linked = new LinkType(link);
-    vtkmdiy::Master& master = const_cast<vtkmdiy::Master&>(m_master);
+    vtkmdiy::Master& master = const_cast<vtkmdiy::Master&>(this->Master);
     master.add(gid, block, linked);
   }
 };
 
 struct AddMultiImageBlock
 {
-  std::vector<Image> &m_images;
-  const vtkmdiy::Master  &m_master;
-  Image              &m_output;
+  std::vector<Image> &Images;
+  const vtkmdiy::Master  &Master;
+  Image              &Output;
 
   AddMultiImageBlock(vtkmdiy::Master &master,
                      std::vector<Image> &images,
                      Image &output)
-    : m_images(images),
-      m_master(master),
-      m_output(output)
+    : Images(images),
+      Master(master),
+      Output(output)
   {}
   template<typename BoundsType, typename LinkType>
   void operator()(int gid,
@@ -83,9 +83,9 @@ struct AddMultiImageBlock
                   const BoundsType &,  // domain_bounds
                   const LinkType &link) const
   {
-    MultiImageBlock *block = new MultiImageBlock(m_images, m_output);
+    MultiImageBlock *block = new MultiImageBlock(Images, Output);
     LinkType *linked = new LinkType(link);
-    vtkmdiy::Master& master = const_cast<vtkmdiy::Master&>(m_master);
+    vtkmdiy::Master& master = const_cast<vtkmdiy::Master&>(this->Master);
     master.add(gid, block, linked);
   }
 };
@@ -99,46 +99,46 @@ struct Serialization<vtkh::PayloadImage>
 {
   static void save(BinaryBuffer &bb, const vtkh::PayloadImage &image)
   {
-    vtkmdiy::save(bb, image.m_orig_bounds.X.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.Y.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.Z.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.X.Max);
-    vtkmdiy::save(bb, image.m_orig_bounds.Y.Max);
-    vtkmdiy::save(bb, image.m_orig_bounds.Z.Max);
+    vtkmdiy::save(bb, image.OrigBounds.X.Min);
+    vtkmdiy::save(bb, image.OrigBounds.Y.Min);
+    vtkmdiy::save(bb, image.OrigBounds.Z.Min);
+    vtkmdiy::save(bb, image.OrigBounds.X.Max);
+    vtkmdiy::save(bb, image.OrigBounds.Y.Max);
+    vtkmdiy::save(bb, image.OrigBounds.Z.Max);
 
-    vtkmdiy::save(bb, image.m_bounds.X.Min);
-    vtkmdiy::save(bb, image.m_bounds.Y.Min);
-    vtkmdiy::save(bb, image.m_bounds.Z.Min);
-    vtkmdiy::save(bb, image.m_bounds.X.Max);
-    vtkmdiy::save(bb, image.m_bounds.Y.Max);
-    vtkmdiy::save(bb, image.m_bounds.Z.Max);
+    vtkmdiy::save(bb, image.Bounds.X.Min);
+    vtkmdiy::save(bb, image.Bounds.Y.Min);
+    vtkmdiy::save(bb, image.Bounds.Z.Min);
+    vtkmdiy::save(bb, image.Bounds.X.Max);
+    vtkmdiy::save(bb, image.Bounds.Y.Max);
+    vtkmdiy::save(bb, image.Bounds.Z.Max);
 
-    vtkmdiy::save(bb, image.m_payloads);
-    vtkmdiy::save(bb, image.m_payload_bytes);
-    vtkmdiy::save(bb, image.m_depths);
-    vtkmdiy::save(bb, image.m_orig_rank);
+    vtkmdiy::save(bb, image.Payloads);
+    vtkmdiy::save(bb, image.PayloadBytes);
+    vtkmdiy::save(bb, image.Depths);
+    vtkmdiy::save(bb, image.OrigRank);
   }
 
   static void load(BinaryBuffer &bb, vtkh::PayloadImage &image)
   {
-    vtkmdiy::load(bb, image.m_orig_bounds.X.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.Y.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.Z.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.X.Max);
-    vtkmdiy::load(bb, image.m_orig_bounds.Y.Max);
-    vtkmdiy::load(bb, image.m_orig_bounds.Z.Max);
+    vtkmdiy::load(bb, image.OrigBounds.X.Min);
+    vtkmdiy::load(bb, image.OrigBounds.Y.Min);
+    vtkmdiy::load(bb, image.OrigBounds.Z.Min);
+    vtkmdiy::load(bb, image.OrigBounds.X.Max);
+    vtkmdiy::load(bb, image.OrigBounds.Y.Max);
+    vtkmdiy::load(bb, image.OrigBounds.Z.Max);
 
-    vtkmdiy::load(bb, image.m_bounds.X.Min);
-    vtkmdiy::load(bb, image.m_bounds.Y.Min);
-    vtkmdiy::load(bb, image.m_bounds.Z.Min);
-    vtkmdiy::load(bb, image.m_bounds.X.Max);
-    vtkmdiy::load(bb, image.m_bounds.Y.Max);
-    vtkmdiy::load(bb, image.m_bounds.Z.Max);
+    vtkmdiy::load(bb, image.Bounds.X.Min);
+    vtkmdiy::load(bb, image.Bounds.Y.Min);
+    vtkmdiy::load(bb, image.Bounds.Z.Min);
+    vtkmdiy::load(bb, image.Bounds.X.Max);
+    vtkmdiy::load(bb, image.Bounds.Y.Max);
+    vtkmdiy::load(bb, image.Bounds.Z.Max);
 
-    vtkmdiy::load(bb, image.m_payloads);
-    vtkmdiy::load(bb, image.m_payload_bytes);
-    vtkmdiy::load(bb, image.m_depths);
-    vtkmdiy::load(bb, image.m_orig_rank);
+    vtkmdiy::load(bb, image.Payloads);
+    vtkmdiy::load(bb, image.PayloadBytes);
+    vtkmdiy::load(bb, image.Depths);
+    vtkmdiy::load(bb, image.OrigRank);
   }
 };
 
@@ -147,46 +147,46 @@ struct Serialization<vtkh::Image>
 {
   static void save(BinaryBuffer &bb, const vtkh::Image &image)
   {
-    vtkmdiy::save(bb, image.m_orig_bounds.X.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.Y.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.Z.Min);
-    vtkmdiy::save(bb, image.m_orig_bounds.X.Max);
-    vtkmdiy::save(bb, image.m_orig_bounds.Y.Max);
-    vtkmdiy::save(bb, image.m_orig_bounds.Z.Max);
+    vtkmdiy::save(bb, image.OrigBounds.X.Min);
+    vtkmdiy::save(bb, image.OrigBounds.Y.Min);
+    vtkmdiy::save(bb, image.OrigBounds.Z.Min);
+    vtkmdiy::save(bb, image.OrigBounds.X.Max);
+    vtkmdiy::save(bb, image.OrigBounds.Y.Max);
+    vtkmdiy::save(bb, image.OrigBounds.Z.Max);
 
-    vtkmdiy::save(bb, image.m_bounds.X.Min);
-    vtkmdiy::save(bb, image.m_bounds.Y.Min);
-    vtkmdiy::save(bb, image.m_bounds.Z.Min);
-    vtkmdiy::save(bb, image.m_bounds.X.Max);
-    vtkmdiy::save(bb, image.m_bounds.Y.Max);
-    vtkmdiy::save(bb, image.m_bounds.Z.Max);
+    vtkmdiy::save(bb, image.Bounds.X.Min);
+    vtkmdiy::save(bb, image.Bounds.Y.Min);
+    vtkmdiy::save(bb, image.Bounds.Z.Min);
+    vtkmdiy::save(bb, image.Bounds.X.Max);
+    vtkmdiy::save(bb, image.Bounds.Y.Max);
+    vtkmdiy::save(bb, image.Bounds.Z.Max);
 
-    vtkmdiy::save(bb, image.m_pixels);
-    vtkmdiy::save(bb, image.m_depths);
-    vtkmdiy::save(bb, image.m_orig_rank);
-    vtkmdiy::save(bb, image.m_composite_order);
+    vtkmdiy::save(bb, image.Pixels);
+    vtkmdiy::save(bb, image.Depths);
+    vtkmdiy::save(bb, image.OrigRank);
+    vtkmdiy::save(bb, image.CompositeOrder);
   }
 
   static void load(BinaryBuffer &bb, vtkh::Image &image)
   {
-    vtkmdiy::load(bb, image.m_orig_bounds.X.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.Y.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.Z.Min);
-    vtkmdiy::load(bb, image.m_orig_bounds.X.Max);
-    vtkmdiy::load(bb, image.m_orig_bounds.Y.Max);
-    vtkmdiy::load(bb, image.m_orig_bounds.Z.Max);
+    vtkmdiy::load(bb, image.OrigBounds.X.Min);
+    vtkmdiy::load(bb, image.OrigBounds.Y.Min);
+    vtkmdiy::load(bb, image.OrigBounds.Z.Min);
+    vtkmdiy::load(bb, image.OrigBounds.X.Max);
+    vtkmdiy::load(bb, image.OrigBounds.Y.Max);
+    vtkmdiy::load(bb, image.OrigBounds.Z.Max);
 
-    vtkmdiy::load(bb, image.m_bounds.X.Min);
-    vtkmdiy::load(bb, image.m_bounds.Y.Min);
-    vtkmdiy::load(bb, image.m_bounds.Z.Min);
-    vtkmdiy::load(bb, image.m_bounds.X.Max);
-    vtkmdiy::load(bb, image.m_bounds.Y.Max);
-    vtkmdiy::load(bb, image.m_bounds.Z.Max);
+    vtkmdiy::load(bb, image.Bounds.X.Min);
+    vtkmdiy::load(bb, image.Bounds.Y.Min);
+    vtkmdiy::load(bb, image.Bounds.Z.Min);
+    vtkmdiy::load(bb, image.Bounds.X.Max);
+    vtkmdiy::load(bb, image.Bounds.Y.Max);
+    vtkmdiy::load(bb, image.Bounds.Z.Max);
 
-    vtkmdiy::load(bb, image.m_pixels);
-    vtkmdiy::load(bb, image.m_depths);
-    vtkmdiy::load(bb, image.m_orig_rank);
-    vtkmdiy::load(bb, image.m_composite_order);
+    vtkmdiy::load(bb, image.Pixels);
+    vtkmdiy::load(bb, image.Depths);
+    vtkmdiy::load(bb, image.OrigRank);
+    vtkmdiy::load(bb, image.CompositeOrder);
   }
 };
 

@@ -47,7 +47,7 @@ void BlendPartials(const int &total_segments,
     ++current_index;
     PartialType<FloatType> next = partials[current_index];
     // TODO: we could just count the amount of work and make this a for loop(vectorize??)
-    while(result.m_pixel_id == next.m_pixel_id)
+    while(result.PixelId == next.PixelId)
     {
       result.blend(next);
       if(current_index + 1 >= total_partial_comps)
@@ -90,7 +90,7 @@ BlendEmission(const int &total_segments,
     ++current_index;
     EmissionPartial<T> next = partials[current_index];
     // TODO: we could just count the amount of work and make this a for loop(vectorize??)
-    while(result.m_pixel_id == next.m_pixel_id)
+    while(result.PixelId == next.PixelId)
     {
       result.blend_absorption(next);
       if(current_index == total_partial_comps - 1)
@@ -125,7 +125,7 @@ BlendEmission(const int &total_segments,
     //
     //  move forward to the end of the segment
     //
-    while(partials[current_index].m_pixel_id == partials[current_index + 1].m_pixel_id)
+    while(partials[current_index].PixelId == partials[current_index + 1].PixelId)
     {
       ++current_index;
       if(current_index == total_partial_comps - 1)
@@ -136,8 +136,8 @@ BlendEmission(const int &total_segments,
     //
     // set the intensity emerging out of the last segment
     //
-    output_partials[output_offset + i].m_emission_bins
-      = partials[current_index].m_emission_bins;
+    output_partials[output_offset + i].EmissionBins
+      = partials[current_index].EmissionBins;
 
     //
     // now move backwards accumulating absorption for each segment
@@ -254,7 +254,7 @@ PartialCompositor<PartialType>::merge(const std::vector<std::vector<PartialType>
 #endif
   for(int i = 0; i < total_partial_comps; ++i)
   {
-    int val = partials[i].m_pixel_id;
+    int val = partials[i].PixelId;
     if(val > max_pixel)
     {
       max_pixel = val;
@@ -267,7 +267,7 @@ PartialCompositor<PartialType>::merge(const std::vector<std::vector<PartialType>
 #endif
   for(int i = 0; i < total_partial_comps; ++i)
   {
-    int val = partials[i].m_pixel_id;
+    int val = partials[i].PixelId;
     if(val < min_pixel)
     {
       min_pixel = val;
@@ -286,8 +286,8 @@ PartialCompositor<PartialType>::merge(const std::vector<std::vector<PartialType>
   int rank_max = global_max_pixel;
   int mpi_min;
   int mpi_max;
-  MPI_Allreduce(&rank_min, &mpi_min, 1, MPI_INT, MPI_MIN, this->m_mpi_comm);
-  MPI_Allreduce(&rank_max, &mpi_max, 1, MPI_INT, MPI_MAX, this->m_mpi_comm);
+  MPI_Allreduce(&rank_min, &mpi_min, 1, MPI_INT, MPI_MIN, this->mpiComm);
+  MPI_Allreduce(&rank_max, &mpi_max, 1, MPI_INT, MPI_MAX, this->mpiComm);
   global_min_pixel = mpi_min;
   global_max_pixel = mpi_max;
 #endif
@@ -325,7 +325,7 @@ PartialCompositor<PartialType>::composite_partials(std::vector<PartialType> &par
   // just check the first and last entries manualy to reduce the
   // loop complexity
   //
-  if(partials[0].m_pixel_id == partials[1].m_pixel_id)
+  if(partials[0].PixelId == partials[1].PixelId)
   {
     work_flags[0] = 1;
     unique_flags[0] = 0;
@@ -335,7 +335,7 @@ PartialCompositor<PartialType>::composite_partials(std::vector<PartialType> &par
     work_flags[0] = 0;
     unique_flags[0] = 1;
   }
-  if(partials[total_partial_comps-1].m_pixel_id != partials[total_partial_comps-2].m_pixel_id)
+  if(partials[total_partial_comps-1].PixelId != partials[total_partial_comps-2].PixelId)
   {
     unique_flags[total_partial_comps-1] = 1;
   }
@@ -353,13 +353,13 @@ PartialCompositor<PartialType>::composite_partials(std::vector<PartialType> &par
     unsigned char work_flag = 0;
     unsigned char unique_flag = 0;
     bool is_begining = false;
-    if(partials[i].m_pixel_id != partials[i-1].m_pixel_id)
+    if(partials[i].PixelId != partials[i-1].PixelId)
     {
       is_begining = true;
     }
 
     bool has_compositing_work = false;
-    if(partials[i].m_pixel_id == partials[i+1].m_pixel_id)
+    if(partials[i].PixelId == partials[i+1].PixelId)
     {
       has_compositing_work = true;
     }
@@ -471,7 +471,7 @@ PartialCompositor<PartialType>::composite(std::vector<std::vector<PartialType>> 
 #ifdef VTKM_ENABLE_MPI
   //MPI_Comm comm_handle = MPI_Comm_f2c(m_mpi_comm_id);
   int local_partials = global_partial_images;
-  MPI_Allreduce(&local_partials, &global_partial_images, 1, MPI_INT, MPI_SUM, this->m_mpi_comm);
+  MPI_Allreduce(&local_partials, &global_partial_images, 1, MPI_INT, MPI_SUM, this->mpiComm);
 #endif
 
 #ifdef VTKM_ENABLE_MPI
@@ -496,10 +496,10 @@ PartialCompositor<PartialType>::composite(std::vector<std::vector<PartialType>> 
   // Exchange partials with other ranks
   //
   redistribute(partials,
-               this->m_mpi_comm,
+               this->mpiComm,
                global_min_pixel,
                global_max_pixel);
-  MPI_Barrier(this->m_mpi_comm);
+  MPI_Barrier(this->mpiComm);
 #endif
 
   const int  total_partial_comps = partials.size();
@@ -515,8 +515,8 @@ PartialCompositor<PartialType>::composite(std::vector<std::vector<PartialType>> 
   //
   // Collect all of the distibuted pixels
   //
-  collect(output_partials, this->m_mpi_comm);
-  MPI_Barrier(this->m_mpi_comm);
+  collect(output_partials, this->mpiComm);
+  MPI_Barrier(this->mpiComm);
 #endif
 }
 
@@ -525,10 +525,10 @@ void
 PartialCompositor<PartialType>::set_background(std::vector<vtkm::Float32> &background_values)
 {
   const size_t size = background_values.size();
-  m_background_values.resize(size);
+  this->BackgroundValues.resize(size);
   for(size_t i = 0; i < size; ++i)
   {
-    m_background_values[i] = background_values[i];
+    this->BackgroundValues[i] = background_values[i];
   }
 }
 
@@ -537,10 +537,10 @@ void
 PartialCompositor<PartialType>::set_background(std::vector<vtkm::Float64> &background_values)
 {
   const size_t size = background_values.size();
-  m_background_values.resize(size);
+  this->BackgroundValues.resize(size);
   for(size_t i = 0; i < size; ++i)
   {
-    m_background_values[i] = background_values[i];
+    this->BackgroundValues[i] = background_values[i];
   }
 }
 

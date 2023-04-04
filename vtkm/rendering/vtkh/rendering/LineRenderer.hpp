@@ -26,9 +26,8 @@ public:
   void PreExecute() override;
   void SetRadius(vtkm::Float32 radius);
 private:
-  bool m_radius_set;
-  vtkm::Float32 m_radius;
-
+  vtkm::Float32 Radius;
+  bool RadiusSet;
 };
 
 } // namespace vtkh

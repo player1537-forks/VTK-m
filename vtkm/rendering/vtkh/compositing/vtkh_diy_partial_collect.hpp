@@ -45,9 +45,9 @@ struct Collect
     {
       int dest_gid = collection_rank;
       vtkmdiy::BlockID dest = proxy.out_link().target(dest_gid);
-      proxy.enqueue(dest, block->m_partials);
+      proxy.enqueue(dest, block->Partials);
 
-      block->m_partials.clear();
+      block->Partials.clear();
 
     } // if
     else if(proxy.gid() == collection_rank)
@@ -67,7 +67,7 @@ struct Collect
         // TODO: make this a std::copy
         for(int j = 0; j < incoming_size; ++j)
         {
-          block->m_partials.push_back(incoming_partials[j]);
+          block->Partials.push_back(incoming_partials[j]);
         }
       } // for
     } // else

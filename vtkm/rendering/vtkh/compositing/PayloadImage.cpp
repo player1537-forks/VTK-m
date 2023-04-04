@@ -18,9 +18,9 @@ void PayloadImage::Save(const std::string &name,
                  const std::vector<std::string> &comments)
 {
   vtkm::rendering::compositing::PNGEncoder encoder;
-  encoder.Encode(&m_payloads[0],
-                 m_bounds.X.Max - m_bounds.X.Min + 1,
-                 m_bounds.Y.Max - m_bounds.Y.Min + 1,
+  encoder.Encode(&this->Payloads[0],
+                 this->Bounds.X.Max - this->Bounds.X.Min + 1,
+                 this->Bounds.Y.Max - this->Bounds.Y.Min + 1,
                  comments);
   encoder.Save(name);
 }

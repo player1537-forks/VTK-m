@@ -21,59 +21,59 @@ template<typename FloatType>
 struct VolumePartial
 {
   typedef FloatType ValueType;
-  int                    m_pixel_id;
-  float                  m_depth;
-  float                  m_pixel[3];
-  float                  m_alpha;
+  int                    PixelId;
+  float                  Depth;
+  float                  Pixel[3];
+  float                  Alpha;
 
   VolumePartial()
-    : m_pixel_id(0),
-      m_depth(0.f),
-      m_alpha(0.f)
+    : PixelId(0),
+      Depth(0.f),
+      Alpha(0.f)
   {
-    m_pixel[0] = 0;
-    m_pixel[1] = 0;
-    m_pixel[2] = 0;
+    Pixel[0] = 0;
+    Pixel[1] = 0;
+    Pixel[2] = 0;
   }
 
   void print() const
   {
-    std::cout<<"[id : "<<m_pixel_id<<", red : "<<m_pixel[0]<<","
-             <<" green : "<<m_pixel[1]<<", blue : "<<m_pixel[2]
-             <<", alpha "<<m_alpha<<", depth : "<<m_depth<<"]\n";
+    std::cout<<"[id : "<<this->PixelId<<", red : "<<this->Pixel[0]<<","
+             <<" green : "<<this->Pixel[1]<<", blue : "<<this->Pixel[2]
+             <<", alpha "<<this->Alpha<<", depth : "<<this->Depth<<"]\n";
   }
 
   bool operator < (const VolumePartial &other) const
   {
-    if(m_pixel_id != other.m_pixel_id)
+    if(this->PixelId != other.PixelId)
     {
-      return m_pixel_id < other.m_pixel_id;
+      return this->PixelId < other.PixelId;
     }
     else
     {
-      return m_depth < other.m_depth;
+      return this->Depth < other.Depth;
     }
   }
 
   inline void blend(const VolumePartial &other)
   {
-    if(m_alpha >= 1.f || other.m_alpha == 0.f) return;
-    const float opacity = (1.f - m_alpha);
-    m_pixel[0] +=  opacity * other.m_pixel[0];
-    m_pixel[1] +=  opacity * other.m_pixel[1];
-    m_pixel[2] +=  opacity * other.m_pixel[2];
-    m_alpha += opacity * other.m_alpha;
-    m_alpha = m_alpha > 1.f ? 1.f : m_alpha;
+    if(this->Alpha >= 1.f || other.Alpha == 0.f) return;
+    const float opacity = (1.f - this->Alpha);
+    this->Pixel[0] +=  opacity * other.Pixel[0];
+    this->Pixel[1] +=  opacity * other.Pixel[1];
+    this->Pixel[2] +=  opacity * other.Pixel[2];
+    this->Alpha += opacity * other.Alpha;
+    this->Alpha = this->Alpha > 1.f ? 1.f : this->Alpha;
   }
 
   static void composite_background(std::vector<VolumePartial> &partials,
                                    const std::vector<FloatType> &background)
   {
     VolumePartial bg_color;
-    bg_color.m_pixel[0] = static_cast<float>(background[0]);
-    bg_color.m_pixel[1] = static_cast<float>(background[1]);
-    bg_color.m_pixel[2] = static_cast<float>(background[2]);
-    bg_color.m_alpha    = static_cast<float>(background[3]);
+    bg_color.Pixel[0] = static_cast<float>(background[0]);
+    bg_color.Pixel[1] = static_cast<float>(background[1]);
+    bg_color.Pixel[2] = static_cast<float>(background[2]);
+    bg_color.Alpha    = static_cast<float>(background[3]);
     //
     // Gather the unique pixels into the output
     //

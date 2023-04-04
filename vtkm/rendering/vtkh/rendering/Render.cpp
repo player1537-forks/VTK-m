@@ -22,18 +22,18 @@ namespace vtkh
 {
 
 Render::Render()
-  : m_width(1024),
-    m_height(1024),
-    m_render_annotations(true),
-    m_render_world_annotations(true),
-    m_render_screen_annotations(true),
-    m_render_background(true),
-    m_shading(true),
-    m_canvas(m_width, m_height)
+  : Width(1024),
+    Height(1024),
+    DoRenderAnnotations(true),
+    DoRenderWorldAnnotations(true),
+    DoRenderScreenAnnotations(true),
+    DoRenderBackground(true),
+    DoShading(true),
+    Canvas(this->Width, this->Height)
 {
-  m_world_annotation_scale[0] = 1.f;
-  m_world_annotation_scale[1] = 1.f;
-  m_world_annotation_scale[2] = 1.f;
+  this->WorldAnnotationScale[0] = 1.f;
+  this->WorldAnnotationScale[1] = 1.f;
+  this->WorldAnnotationScale[2] = 1.f;
 }
 
 Render::~Render()
@@ -43,170 +43,132 @@ Render::~Render()
 Render::vtkmCanvas&
 Render::GetCanvas()
 {
-  return m_canvas;
+  return this->Canvas;
 }
 
 vtkm::Bounds
 Render::GetSceneBounds() const
 {
-  return m_scene_bounds;
-}
-
-void
-Render::DoRenderAnnotations(bool on)
-{
-  m_render_annotations = on;
-}
-
-void
-Render::DoRenderWorldAnnotations(bool on)
-{
-  m_render_world_annotations = on;
-}
-
-
-void
-Render::DoRenderScreenAnnotations(bool on)
-{
-  m_render_screen_annotations = on;
-}
-
-
-void
-Render::DoRenderBackground(bool on)
-{
-  m_render_background = on;
+  return this->SceneBounds;
 }
 
 void
 Render::ScaleWorldAnnotations(float x, float y, float z)
 {
-  m_world_annotation_scale[0] = x;
-  m_world_annotation_scale[1] = y;
-  m_world_annotation_scale[2] = z;
+  this->WorldAnnotationScale[0] = x;
+  this->WorldAnnotationScale[1] = y;
+  this->WorldAnnotationScale[2] = z;
 }
 
 vtkm::Int32
 Render::GetWidth() const
 {
-  return m_width;
+  return this->Width;
 }
 
 vtkm::Int32
 Render::GetHeight() const
 {
-  return m_height;
+  return this->Height;
 }
 
 void
 Render::SetWidth(const vtkm::Int32 width)
 {
-  if(width == m_width) return;
-  m_width = width;
-  m_canvas.ResizeBuffers(m_width, m_height);
-}
-
-void
-Render::SetShadingOn(bool on)
-{
-  m_shading = on;
-}
-
-bool
-Render::GetShadingOn() const
-{
-  return m_shading;
+  if(width == this->Width) return;
+  this->Width = width;
+  this->Canvas.ResizeBuffers(this->Width, this->Height);
 }
 
 void
 Render::SetHeight(const vtkm::Int32 height)
 {
-  if(height == m_height) return;
-  m_height = height;
-  m_canvas.ResizeBuffers(m_width, m_height);
+  if(height == this->Height) return;
+  this->Height = height;
+  this->Canvas.ResizeBuffers(this->Width, this->Height);
 }
 
 void
 Render::SetSceneBounds(const vtkm::Bounds &bounds)
 {
-  m_scene_bounds = bounds;
+  this->SceneBounds = bounds;
 }
 
 const vtkm::rendering::Camera&
 Render::GetCamera() const
 {
-  return m_camera;
+  return this->Camera;
 }
 
 void
 Render::SetCamera(const vtkm::rendering::Camera &camera)
 {
-   m_camera = camera;
+   this->Camera = camera;
 }
 
 void
 Render::SetImageName(const std::string &name)
 {
-  m_image_name = name;
+  this->ImageName = name;
 }
 
 void
 Render::SetComments(const std::vector<std::string> &comments)
 {
-  m_comments = comments;
+  this->Comments = comments;
 }
 
 void
 Render::SetBackgroundColor(float bg_color[4])
 {
-  m_bg_color.Components[0] = bg_color[0];
-  m_bg_color.Components[1] = bg_color[1];
-  m_bg_color.Components[2] = bg_color[2];
-  m_bg_color.Components[3] = bg_color[3];
+  this->BgColor.Components[0] = bg_color[0];
+  this->BgColor.Components[1] = bg_color[1];
+  this->BgColor.Components[2] = bg_color[2];
+  this->BgColor.Components[3] = bg_color[3];
 }
 
 void
 Render::SetForegroundColor(float fg_color[4])
 {
-  m_fg_color.Components[0] = fg_color[0];
-  m_fg_color.Components[1] = fg_color[1];
-  m_fg_color.Components[2] = fg_color[2];
-  m_fg_color.Components[3] = fg_color[3];
+  this->FgColor.Components[0] = fg_color[0];
+  this->FgColor.Components[1] = fg_color[1];
+  this->FgColor.Components[2] = fg_color[2];
+  this->FgColor.Components[3] = fg_color[3];
 }
 
 std::string
 Render::GetImageName() const
 {
-  return m_image_name;
+  return this->ImageName;
 }
 
 std::vector<std::string>
 Render::GetComments() const
 {
-  return m_comments;
+  return this->Comments;
 }
 
 vtkm::rendering::Color
 Render::GetBackgroundColor() const
 {
-  return m_bg_color;
+  return this->BgColor;
 }
 
 void
 Render::RenderWorldAnnotations()
 {
-  if(!m_render_annotations) return;
-  if(!m_render_world_annotations) return;
+  if(!this->DoRenderAnnotations) return;
+  if(!this->DoRenderWorldAnnotations) return;
 #ifdef VTKM_ENABLE_MPI
   //if(vtkh::GetMPIRank() != 0) return;
   if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
     return;
 #endif
-  m_canvas.SetBackgroundColor(m_bg_color);
-  m_canvas.SetForegroundColor(m_fg_color);
+  this->Canvas.SetBackgroundColor(this->BgColor);
+  this->Canvas.SetForegroundColor(this->FgColor);
 
-  Annotator annotator(m_canvas, m_camera, m_scene_bounds);
-  annotator.RenderWorldAnnotations(m_world_annotation_scale);
+  Annotator annotator(this->Canvas, this->Camera, this->SceneBounds);
+  annotator.RenderWorldAnnotations(this->WorldAnnotationScale);
 
 }
 
@@ -215,19 +177,19 @@ Render::RenderScreenAnnotations(const std::vector<std::string> &field_names,
                                 const std::vector<vtkm::Range> &ranges,
                                 const std::vector<vtkm::cont::ColorTable> &colors)
 {
-  if(!m_render_annotations) return;
-  if(!m_render_screen_annotations) return;
+  if(!this->DoRenderAnnotations) return;
+  if(!this->DoRenderScreenAnnotations) return;
 #ifdef VTKM_ENABLE_MPI
   //if(vtkh::GetMPIRank() != 0) return;
   if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
     return;
 #endif
-  m_canvas.SetBackgroundColor(m_bg_color);
-  m_canvas.SetForegroundColor(m_fg_color);
-  if(m_render_background) m_canvas.BlendBackground();
+  this->Canvas.SetBackgroundColor(this->BgColor);
+  this->Canvas.SetForegroundColor(this->FgColor);
+  if(this->DoRenderBackground) this->Canvas.BlendBackground();
 
-  if(!m_render_annotations) return;
-  Annotator annotator(m_canvas, m_camera, m_scene_bounds);
+  if(!this->DoRenderAnnotations) return;
+  Annotator annotator(this->Canvas, this->Camera, this->SceneBounds);
   annotator.RenderScreenAnnotations(field_names, ranges, colors);
 }
 
@@ -235,61 +197,62 @@ Render
 Render::Copy() const
 {
   Render copy;
-  copy.m_camera = m_camera;
-  copy.m_image_name = m_image_name;
-  copy.m_scene_bounds = m_scene_bounds;
-  copy.m_width = m_width;
-  copy.m_height = m_height;
-  copy.m_bg_color = m_bg_color;
-  copy.m_fg_color = m_fg_color;
-  copy.m_render_annotations = m_render_annotations;
-  copy.m_render_background = m_render_background;
-  copy.m_shading = m_shading;
-  copy.m_canvas = CreateCanvas();
-  copy.m_world_annotation_scale = m_world_annotation_scale;
+  copy.Camera = this->Camera;
+  copy.ImageName = this->ImageName;
+  copy.SceneBounds = this->SceneBounds;
+  copy.Width = this->Width;
+  copy.Height = this->Height;
+  copy.BgColor = this->BgColor;
+  copy.FgColor = this->FgColor;
+  copy.DoRenderAnnotations = this->DoRenderAnnotations;
+  copy.DoRenderBackground = this->DoRenderBackground;
+  copy.DoShading = this->DoShading;
+  copy.Canvas = this->CreateCanvas();
+  copy.WorldAnnotationScale = this->WorldAnnotationScale;
   return copy;
 }
 
 void
 Render::Print() const
 {
-  std::cout<<"=== image name  : "<<m_image_name<<"\n";;
-  std::cout<<"=== bounds .... : "<<m_scene_bounds<<"\n";
-  std::cout<<"=== width ..... : "<<m_width<<"\n";
-  std::cout<<"=== height .... : "<<m_height<<"\n";
+  std::cout<<"=== image name  : "<<this->ImageName<<"\n";;
+  std::cout<<"=== bounds .... : "<<this->SceneBounds<<"\n";
+  std::cout<<"=== width ..... : "<<this->Width<<"\n";
+  std::cout<<"=== height .... : "<<this->Height<<"\n";
   std::cout<<"=== bg_color .. : "
-            <<m_bg_color.Components[0]<<" "
-            <<m_bg_color.Components[1]<<" "
-            <<m_bg_color.Components[2]<<" "
-            <<m_bg_color.Components[3]<<"\n";
+            <<this->BgColor.Components[0]<<" "
+            <<this->BgColor.Components[1]<<" "
+            <<this->BgColor.Components[2]<<" "
+            <<this->BgColor.Components[3]<<"\n";
   std::cout<<"=== fg_color .. : "
-            <<m_fg_color.Components[0]<<" "
-            <<m_fg_color.Components[1]<<" "
-            <<m_fg_color.Components[2]<<" "
-            <<m_fg_color.Components[3]<<"\n";
+            <<this->FgColor.Components[0]<<" "
+            <<this->FgColor.Components[1]<<" "
+            <<this->FgColor.Components[2]<<" "
+            <<this->FgColor.Components[3]<<"\n";
   std::cout<<"=== annotations : "
-           <<(m_render_annotations ? "On" : "Off")
+           <<(this->DoRenderAnnotations ? "On" : "Off")
            <<"\n";
   std::cout<<"=== background  : "
-           <<(m_render_background ? "On" : "Off")
+           <<(this->DoRenderBackground ? "On" : "Off")
            <<"\n";
   std::cout<<"=== shading ... : "
-           <<(m_shading ? "On" : "Off")
+           <<(this->DoShading ? "On" : "Off")
            <<"\n";
 }
 
 void
 Render::RenderBackground()
 {
-  if(m_render_background) m_canvas.BlendBackground();
+  if(this->DoRenderBackground)
+    this->Canvas.BlendBackground();
 }
 
 Render::vtkmCanvas
 Render::CreateCanvas() const
 {
-  Render::vtkmCanvas canvas(m_width, m_height);
-  canvas.SetBackgroundColor(m_bg_color);
-  canvas.SetForegroundColor(m_fg_color);
+  Render::vtkmCanvas canvas(this->Width, this->Height);
+  canvas.SetBackgroundColor(this->BgColor);
+  canvas.SetForegroundColor(this->FgColor);
   canvas.Clear();
   return canvas;
 }
@@ -304,12 +267,12 @@ Render::Save()
   if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
     return;
 #endif
-  float* color_buffer = &GetVTKMPointer(m_canvas.GetColorBuffer())[0][0];
-  int height = m_canvas.GetHeight();
-  int width = m_canvas.GetWidth();
+  float* color_buffer = &GetVTKMPointer(this->Canvas.GetColorBuffer())[0][0];
+  int height = this->Canvas.GetHeight();
+  int width = this->Canvas.GetWidth();
   vtkm::rendering::compositing::PNGEncoder encoder;
-  encoder.Encode(color_buffer, width, height, m_comments);
-  encoder.Save(m_image_name + ".png");
+  encoder.Encode(color_buffer, width, height, this->Comments);
+  encoder.Save(this->ImageName + ".png");
 }
 
 vtkh::Render

@@ -46,13 +46,13 @@ public:
   vtkm::Int32                     GetHeight() const;
   vtkm::Int32                     GetWidth() const;
   vtkm::rendering::Color          GetBackgroundColor() const;
-  bool                            GetShadingOn() const;
+bool                            GetShadingOn() const {   return this->DoShading; }
   void                            Print() const;
 
-  void                            DoRenderAnnotations(bool on);
-  void                            DoRenderWorldAnnotations(bool on);
-  void                            DoRenderScreenAnnotations(bool on);
-  void                            DoRenderBackground(bool on);
+void                            SetRenderAnnotations(bool on) {   this->DoRenderAnnotations = on; }
+void                            SetRenderWorldAnnotations(bool on) {  this->DoRenderWorldAnnotations = on;}
+void                            SetRenderScreenAnnotations(bool on){   this->DoRenderScreenAnnotations = on; }
+void                            SetRenderBackground(bool on) {  this->DoRenderBackground = on; }
   void                            ScaleWorldAnnotations(float x, float y, float z);
   void                            SetWidth(const vtkm::Int32 width);
   void                            SetHeight(const vtkm::Int32 height);
@@ -62,7 +62,7 @@ public:
   void                            SetComments(const std::vector<std::string> &comments);
   void                            SetBackgroundColor(float bg_color[4]);
   void                            SetForegroundColor(float fg_color[4]);
-  void                            SetShadingOn(bool on);
+void                            SetShadingOn(bool on) {   this->DoShading = on; }
   void                            RenderWorldAnnotations();
   void                            RenderBackground();
   void                            RenderScreenAnnotations(const std::vector<std::string> &field_names,
@@ -70,22 +70,22 @@ public:
                                                           const std::vector<vtkm::cont::ColorTable> &colors);
   void                            Save();
 protected:
-  vtkm::rendering::Camera      m_camera;
-  std::string                  m_image_name;
-  std::vector<std::string>     m_comments;
-  vtkm::Bounds                 m_scene_bounds;
-  vtkm::Int32                  m_width;
-  vtkm::Int32                  m_height;
-  vtkm::rendering::Color       m_bg_color;
-  vtkm::rendering::Color       m_fg_color;
+  vtkm::rendering::Camera      Camera;
+  std::string                  ImageName;
+  std::vector<std::string>     Comments;
+  vtkm::Bounds                 SceneBounds;
+  vtkm::Int32                  Width;
+  vtkm::Int32                  Height;
+  vtkm::rendering::Color       BgColor;
+  vtkm::rendering::Color       FgColor;
   vtkmCanvas                   CreateCanvas() const;
-  bool                         m_render_annotations;
-  bool                         m_render_world_annotations;
-  bool                         m_render_screen_annotations;
-  bool                         m_render_background;
-  bool                         m_shading;
-  vtkmCanvas                   m_canvas;
-  vtkm::Vec<float,3>           m_world_annotation_scale;
+  bool                         DoRenderAnnotations;
+  bool                         DoRenderWorldAnnotations;
+  bool                         DoRenderScreenAnnotations;
+  bool                         DoRenderBackground;
+  bool                         DoShading;
+  vtkmCanvas                   Canvas;
+  vtkm::Vec<float,3>           WorldAnnotationScale;
 };
 
 static float vtkh_default_bg_color[4] = {0.f, 0.f, 0.f, 1.f};

@@ -20,21 +20,22 @@ class VTKM_RENDERING_EXPORT MeshRenderer : public Renderer
 {
 public:
   MeshRenderer();
-  virtual ~MeshRenderer();
+  virtual ~MeshRenderer() {}
   std::string GetName() const override { return "vtkh::MeshRenderer";}
   static Renderer::vtkmCanvasPtr GetNewCanvas(int width = 1024, int height = 1024);
 
-  void SetIsOverlay(bool on);
-  void SetShowInternal(bool on);
-  void SetUseForegroundColor(bool on);
-  bool GetIsOverlay() const;
-  bool GetShowInternal() const;
+  void SetIsOverlay(bool on) { this->IsOverlay = on; }
+  void SetShowInternal(bool on) { this->ShowInternal = on; }
+  void SetUseForegroundColor(bool on) { this->UseForegroundColor = on; }
+  bool GetIsOverlay() const { return this->IsOverlay; }
+  bool GetShowInternal() const { return this->ShowInternal; }
+
 protected:
   void PreExecute() override;
 
-  bool m_is_overlay;
-  bool m_show_internal;
-  bool m_use_foreground_color;
+  bool IsOverlay = false;
+  bool ShowInternal = false;
+  bool UseForegroundColor = false;
 };
 
 } // namespace vtkh

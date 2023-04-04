@@ -10,7 +10,6 @@
 
 #include <vtkm/rendering/vtkh/compositing/ImageCompositor.hpp>
 #include <vtkm/rendering/vtkh/compositing/PayloadImageCompositor.hpp>
-//#include <vtkm/rendering/vtkh/compositing/MPICollect.hpp>
 #include <vtkm/rendering/vtkh/compositing/RadixKCompositor.hpp>
 #include <vtkm/rendering/vtkh/compositing/vtkh_diy_collect.hpp>
 #include <vtkm/rendering/vtkh/compositing/vtkh_diy_utils.hpp>
@@ -49,7 +48,7 @@ void reduce_images(void *b,
 {
   ImageBlock<ImageType> *block = reinterpret_cast<ImageBlock<ImageType>*>(b);
   unsigned int round = proxy.round();
-  ImageType &image = block->m_image;
+  ImageType &image = block->Image;
   // count the number of incoming pixels
   if(proxy.in_link().size() > 0)
   {
@@ -76,7 +75,7 @@ void reduce_images(void *b,
   const int current_dim = partners.dim(round);
 
   //create balanced set of ranges for current dim
-  vtkmdiy::DiscreteBounds image_bounds = VTKMBoundsToDIY(image.m_bounds);
+  vtkmdiy::DiscreteBounds image_bounds = VTKMBoundsToDIY(image.Bounds);
   int range_length = image_bounds.max[current_dim] - image_bounds.min[current_dim];
   int base_step = range_length / group_size;
   int rem = range_length % group_size;
@@ -93,7 +92,7 @@ void reduce_images(void *b,
   }
   assert(count == range_length);
 
-  std::vector<vtkmdiy::DiscreteBounds> subset_bounds(group_size, VTKMBoundsToDIY(image.m_bounds));
+  std::vector<vtkmdiy::DiscreteBounds> subset_bounds(group_size, VTKMBoundsToDIY(image.Bounds));
   int min_pixel = image_bounds.min[current_dim];
   for(int i = 0; i < group_size; ++i)
   {
@@ -148,7 +147,7 @@ template<typename ImageType>
 void
 RadixKCompositor::CompositeImpl(vtkmdiy::mpi::communicator &diy_comm, ImageType &image)
 {
-    vtkmdiy::DiscreteBounds global_bounds = VTKMBoundsToDIY(image.m_orig_bounds);
+  vtkmdiy::DiscreteBounds global_bounds = VTKMBoundsToDIY(image.OrigBounds);
 
     // tells diy to use one thread
     const int num_threads = 1;

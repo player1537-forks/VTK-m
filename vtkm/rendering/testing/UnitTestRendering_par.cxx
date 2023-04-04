@@ -100,7 +100,7 @@ void PointRenderer(bool renderVar)
   renderer.SetField("point_data_Float64");
   if (renderVar)
   {
-    renderer.UseVariableRadius(true);
+    renderer.SetUseVariableRadius(true);
     renderer.SetRadiusDelta(1.0f);
   }
 
@@ -387,11 +387,11 @@ void MultiRender(bool doBatch)
 void RenderTests()
 {
   //ScalarRenderer();
-  //PointRenderer(true);
-  //PointRenderer(false);
+  PointRenderer(true);
+  PointRenderer(false);
   //Add PointRenderer no data
-  //MultiRender(true);
-  //MultiRender(false);
+  MultiRender(true);
+  MultiRender(false);
 
   RayTrace(true);
   RayTrace(false);

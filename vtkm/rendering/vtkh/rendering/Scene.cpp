@@ -24,15 +24,9 @@ namespace vtkh
 {
 
 Scene::Scene()
-  : m_has_volume(false),
-    m_batch_size(10)
+  : BatchSize(10),
+  HasVolume(false)
 {
-
-}
-
-Scene::~Scene()
-{
-
 }
 
 void
@@ -42,25 +36,25 @@ Scene::SetRenderBatchSize(int batch_size)
   {
     throw vtkm::cont::ErrorBadValue("Render batch size must be greater than 0");
   }
-  m_batch_size = batch_size;
+  this->BatchSize = batch_size;
 }
 
 int
 Scene::GetRenderBatchSize() const
 {
-  return m_batch_size;
+  return this->BatchSize;
 }
 
 void
 Scene::AddRender(vtkh::Render &render)
 {
-  m_renders.push_back(render);
+  this->Renders.push_back(render);
 }
 
 void
 Scene::SetRenders(const std::vector<vtkh::Render> &renders)
 {
-  m_renders = renders;
+  this->Renders = renders;
 }
 
 bool
@@ -95,41 +89,41 @@ Scene::AddRenderer(vtkh::Renderer *renderer)
 
   if(is_volume)
   {
-    if(m_has_volume)
+    if(this->HasVolume)
     {
       throw vtkm::cont::ErrorBadValue("Scenes only support a single volume plot");
     }
 
-    m_has_volume = true;
+    this->HasVolume = true;
     // make sure that the volume render is last
-    m_renderers.push_back(renderer);
+    this->Renderers.push_back(renderer);
   }
   else if(is_mesh)
   {
     // make sure that the mesh plot is last
     // and before the volume pl0t
-    if(m_has_volume)
+    if(this->HasVolume)
     {
-      if(m_renderers.size() == 1)
+      if(this->Renderers.size() == 1)
       {
-        m_renderers.push_front(renderer);
+        this->Renderers.push_front(renderer);
       }
       else
       {
-        auto it = m_renderers.end();
+        auto it = this->Renderers.end();
         it--;
         it--;
-        m_renderers.insert(it,renderer);
+        this->Renderers.insert(it,renderer);
       }
     }
     else
     {
-      m_renderers.push_back(renderer);
+      this->Renderers.push_back(renderer);
     }
   }
   else
   {
-    m_renderers.push_front(renderer);
+    this->Renderers.push_front(renderer);
   }
 }
 
@@ -150,13 +144,13 @@ Scene::Render()
   // would consume 7GB of space. Not good on the GPU, where resources
   // are limited.
   //
-  const int render_size = m_renders.size();
+  const int render_size = this->Renders.size();
   int batch_start = 0;
   while(batch_start < render_size)
   {
-    int batch_end = std::min(m_batch_size + batch_start, render_size);
-    auto begin = m_renders.begin() + batch_start;
-    auto end = m_renders.begin() + batch_end;
+    int batch_end = std::min(this->BatchSize + batch_start, render_size);
+    auto begin = this->Renders.begin() + batch_start;
+    auto end = this->Renders.begin() + batch_end;
 
     std::vector<vtkh::Render> current_batch(begin, end);
 
@@ -165,8 +159,8 @@ Scene::Render()
       render.GetCanvas().Clear();
     }
 
-    const int plot_size = m_renderers.size();
-    auto renderer = m_renderers.begin();
+    const int plot_size = this->Renderers.size();
+    auto renderer = this->Renderers.begin();
 
     // render order is enforced inside add
     // Order is:
@@ -180,7 +174,7 @@ Scene::Render()
     bool synch_depths = false;
 
     int opaque_plots = plot_size;
-    if(m_has_volume)
+    if(this->HasVolume)
     {
       opaque_plots -= 1;
     }
@@ -211,7 +205,7 @@ Scene::Render()
     //
     // pass 2: volume
     //
-    if(m_has_volume)
+    if(this->HasVolume)
     {
       if(synch_depths)
       {
@@ -229,7 +223,7 @@ Scene::Render()
     {
       // gather color tables and other information for
       // annotations
-      for(auto plot : m_renderers)
+      for(auto plot : this->Renderers)
       {
         if((*plot).GetHasColorTable())
         {

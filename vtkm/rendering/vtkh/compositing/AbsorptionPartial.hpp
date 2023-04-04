@@ -19,13 +19,13 @@ template<typename FloatType>
 struct AbsorptionPartial
 {
   typedef FloatType ValueType;
-  int                    m_pixel_id;
-  double                 m_depth;
-  std::vector<FloatType> m_bins;
+  int                    PixelId;
+  double                 Depth;
+  std::vector<FloatType> Bins;
 
   AbsorptionPartial()
-    : m_pixel_id(0),
-      m_depth(0.f)
+    : PixelId(0),
+      Depth(0.f)
   {}
 
   void print()
@@ -39,16 +39,16 @@ struct AbsorptionPartial
     // In absorption only we can blend the same
     // pixel ids in any order
     //
-    return m_pixel_id < other.m_pixel_id;
+    return this->PixelId < other.PixelId;
   }
 
   inline void blend(const AbsorptionPartial<FloatType> &other)
   {
-    const int num_bins = static_cast<int>(m_bins.size());
-    assert(num_bins == (int)other.m_bins.size());
+    const int num_bins = static_cast<int>(this->Bins.size());
+    assert(num_bins == (int)other.Bins.size());
     for(int i = 0; i < num_bins; ++i)
     {
-      m_bins[i] *= other.m_bins[i];
+      this->Bins[i] *= other.Bins[i];
     }
   }
 
@@ -57,7 +57,7 @@ struct AbsorptionPartial
   {
     const int size = static_cast<int>(partials.size());
     AbsorptionPartial<FloatType> bg;
-    bg.m_bins = background;
+    bg.Bins = background;
 #ifdef VTKH_OPENMP_ENABLED
     #pragma omp parallel for
 #endif

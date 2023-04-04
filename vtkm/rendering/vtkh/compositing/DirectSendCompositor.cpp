@@ -33,7 +33,7 @@ struct Redistribute
     // for that portion
     //
     const int world_size = m_decomposer.nblocks;
-    const int local_images = block->m_images.size();
+    const int local_images = block->Images.size();
     if(proxy.in_link().size() == 0)
     {
       std::map<vtkmdiy::BlockID, std::vector<Image>> outgoing;
@@ -49,7 +49,7 @@ struct Redistribute
 
         for(int img = 0;  img < local_images; ++img)
         {
-          outgoing[dest][img].SubsetFrom(block->m_images[img], vtkm_sub_bounds);
+          outgoing[dest][img].SubsetFrom(block->Images[img], vtkm_sub_bounds);
         }
       } //for
 
@@ -59,7 +59,7 @@ struct Redistribute
         proxy.enqueue(it->first, it->second);
       }
     } // if
-    else if(block->m_images.at(0).m_composite_order != -1)
+    else if(block->Images.at(0).CompositeOrder != -1)
     {
       // blend images according to vis order
       std::vector<Image> images;
@@ -80,10 +80,10 @@ struct Redistribute
       ImageCompositor compositor;
       compositor.OrderedComposite(images);
 
-      block->m_output.Swap(images[0]);
+      block->Output.Swap(images[0]);
     } // else if
-    else if(block->m_images.at(0).m_composite_order == -1 &&
-            block->m_images.at(0).HasTransparency())
+    else if(block->Images.at(0).CompositeOrder == -1 &&
+            block->Images.at(0).GetHasTransparency())
     {
       std::vector<Image> images;
       for(int i = 0; i < proxy.in_link().size(); ++i)
@@ -124,7 +124,7 @@ void
 DirectSendCompositor::CompositeVolume(vtkmdiy::mpi::communicator &diy_comm,
                                       std::vector<Image>     &images)
 {
-  vtkmdiy::DiscreteBounds global_bounds = VTKMBoundsToDIY(images.at(0).m_orig_bounds);
+  vtkmdiy::DiscreteBounds global_bounds = VTKMBoundsToDIY(images.at(0).OrigBounds);
 
   const int num_threads = 1;
   const int num_blocks = diy_comm.size();

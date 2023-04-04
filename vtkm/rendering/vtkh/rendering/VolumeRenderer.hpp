@@ -53,16 +53,15 @@ protected:
   float FindMinDepth(const vtkm::rendering::Camera &camera,
                      const vtkm::Bounds &bounds) const;
 
-  int m_num_samples;
-  float m_sample_dist;
-  bool m_has_unstructured;
-  std::shared_ptr<vtkm::rendering::MapperVolume> m_tracer;
-  vtkm::cont::ColorTable m_corrected_color_table;
-  std::vector<std::vector<int>> m_visibility_orders;
+  int NumSamples;
+  float SampleDist;
+  bool HasUnstructured;
+  std::shared_ptr<vtkm::rendering::MapperVolume> Tracer;
+  vtkm::cont::ColorTable CorrectedColorTable;
+  std::vector<std::vector<int>> VisibilityOrders;
 
   void ClearWrappers();
-  std::vector<detail::VolumeWrapper*> m_wrappers;
-
+  std::vector<detail::VolumeWrapper*> Wrappers;
 };
 
 } // namespace vtkh

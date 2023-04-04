@@ -14,20 +14,14 @@
 #include <vtkm/rendering/MapperWireframer.h>
 #include <memory>
 
-namespace vtkh {
+namespace vtkh
+{
 
 MeshRenderer::MeshRenderer()
-  : m_is_overlay(false),
-    m_show_internal(false),
-    m_use_foreground_color(false)
 {
   typedef vtkm::rendering::MapperWireframer MapperType;
   auto mapper = std::make_shared<MapperType>();
-  this->m_mapper = mapper;
-}
-
-MeshRenderer::~MeshRenderer()
-{
+  this->Mapper = mapper;
 }
 
 void
@@ -37,14 +31,14 @@ MeshRenderer::PreExecute()
 
   typedef vtkm::rendering::MapperWireframer MapperType;
   std::shared_ptr<MapperType> mesh_mapper =
-    std::dynamic_pointer_cast<MapperType>(this->m_mapper);
+    std::dynamic_pointer_cast<MapperType>(this->Mapper);
 
-  mesh_mapper->SetShowInternalZones(m_show_internal);
-  mesh_mapper->SetIsOverlay(m_is_overlay);
+  mesh_mapper->SetShowInternalZones(this->ShowInternal);
+  mesh_mapper->SetIsOverlay(this->IsOverlay);
 
-  if(m_use_foreground_color)
+  if(this->UseForegroundColor)
   {
-    vtkm::rendering::Color fg = m_renders[0].GetCanvas().GetForegroundColor();
+    vtkm::rendering::Color fg = this->Renders[0].GetCanvas().GetForegroundColor();
     vtkm::cont::ColorTable single_color;
     vtkm::Vec<vtkm::Float32,3> fg_vec3_not_4;
     fg_vec3_not_4[0] = fg.Components[0];
@@ -53,39 +47,9 @@ MeshRenderer::PreExecute()
 
     single_color.AddPoint(0.f, fg_vec3_not_4);
     single_color.AddPoint(1.f, fg_vec3_not_4);
-    this->m_color_table = single_color;
-    this->m_has_color_table = false;
+    this->ColorTable = single_color;
+    this->HasColorTable = false;
   }
-}
-
-void
-MeshRenderer::SetIsOverlay(bool on)
-{
-  m_is_overlay = on;
-}
-
-void
-MeshRenderer::SetShowInternal(bool on)
-{
-  m_is_overlay = on;
-}
-
-void
-MeshRenderer::SetUseForegroundColor(bool on)
-{
-  m_use_foreground_color = on;
-}
-
-bool
-MeshRenderer::GetIsOverlay() const
-{
-  return m_is_overlay;
-}
-
-bool
-MeshRenderer::GetShowInternal() const
-{
-  return m_show_internal;
 }
 
 Renderer::vtkmCanvasPtr

@@ -17,13 +17,13 @@
 namespace vtkh {
 
 LineRenderer::LineRenderer()
-  : m_radius_set(false),
-    m_radius(0.5f)
+  : RadiusSet(false),
+    Radius(0.5f)
 {
   typedef vtkm::rendering::MapperCylinder TracerType;
   auto mapper = std::make_shared<TracerType>();
   mapper->SetCompositeBackground(false);
-  this->m_mapper = mapper;
+  Mapper = mapper;
 }
 
 LineRenderer::~LineRenderer()
@@ -39,10 +39,9 @@ LineRenderer::GetNewCanvas(int width, int height)
 void
 LineRenderer::SetRadius(vtkm::Float32 radius)
 {
-  m_radius = radius;
-  m_radius_set = true;
+  this->Radius = radius;
+  this->RadiusSet = true;
 }
-
 
 void
 LineRenderer::PreExecute()
@@ -51,12 +50,12 @@ LineRenderer::PreExecute()
 
   typedef vtkm::rendering::MapperCylinder MapperType;
   std::shared_ptr<MapperType> mapper =
-    std::dynamic_pointer_cast<MapperType>(this->m_mapper);
+    std::dynamic_pointer_cast<MapperType>(this->Mapper);
 
   // allow for the default mapper radius
-  if(m_radius_set)
+  if(this->RadiusSet)
   {
-    mapper->SetRadius(m_radius);
+    mapper->SetRadius(this->Radius);
   }
 }
 
