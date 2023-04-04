@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTK_H_RENDERER_POINTS_HPP
-#define VTK_H_RENDERER_POINTS_HPP
+#ifndef vtkm_rendering_rendering_PointRenderer_h
+#define vtkm_rendering_rendering_PointRenderer_h
 
 #include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
 
@@ -48,4 +48,5 @@ private:
 };
 
 } // namespace vtkh
-#endif
+
+#endif //vtkm_rendering_rendering_PointRenderer_h

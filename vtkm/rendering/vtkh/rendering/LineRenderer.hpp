@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTK_H_RENDERER_LINES_HPP
-#define VTK_H_RENDERER_LINES_HPP
+#ifndef vtkm_rendering_rendering_LineRenderer_h
+#define vtkm_rendering_rendering_LineRenderer_h
 
 #include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
 #include <vtkm/rendering/vtkm_rendering_export.h>
@@ -32,4 +32,5 @@ private:
 };
 
 } // namespace vtkh
-#endif
+
+#endif //vtkm_rendering_rendering_LineRenderer_h

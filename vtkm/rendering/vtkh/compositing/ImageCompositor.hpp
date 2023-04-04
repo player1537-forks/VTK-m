@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_DIY_IMAGE_COMPOSITOR_HPP
-#define VTKH_DIY_IMAGE_COMPOSITOR_HPP
+#ifndef vtkm_rendering_compositing_ImageCompositor_h
+#define vtkm_rendering_compositing_ImageCompositor_h
 
 #include <vtkm/rendering/vtkh/compositing/Image.hpp>
 #include <algorithm>
@@ -214,4 +214,5 @@ void ZBufferBlend(std::vector<vtkh::Image> &images)
 };
 
 } // namespace vtkh
-#endif
+
+#endif //vtkm_rendering_compositing_ImageCompositor_h

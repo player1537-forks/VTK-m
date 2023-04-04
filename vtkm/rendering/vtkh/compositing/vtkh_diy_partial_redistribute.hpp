@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef rover_compositing_redistribute_h
-#define rover_compositing_redistribute_h
+#ifndef vtkm_rendering_compositing_vtkh_diy_partial_redistribute_h
+#define vtkm_rendering_compositing_vtkh_diy_partial_redistribute_h
 
 #include <vtkm/thirdparty/diy/diy.h>
 #include "vtkh_diy_partial_blocks.hpp"
@@ -211,4 +211,4 @@ void redistribute<EmissionPartial<float>>(std::vector<EmissionPartial<float>> &p
 
 } //namespace rover
 
-#endif
+#endif //vtkm_rendering_compositing_vtkh_diy_partial_redistribute_h

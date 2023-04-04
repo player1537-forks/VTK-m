@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKM_DATASET_INFO_HPP
-#define VTKM_DATASET_INFO_HPP
+#ifndef vtkm_rendering_rendering_vtkm_dataset_info_h
+#define vtkm_rendering_rendering_vtkm_dataset_info_h
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/cont/DataSet.h>
@@ -63,7 +63,4 @@ public:
 
 } // namespace vtkh
 
-#endif
-//-----------------------------------------------------------------------------
-// -- end header ifdef guard
-//-----------------------------------------------------------------------------
+#endif //vtkm_rendering_rendering_vtkm_dataset_info_h

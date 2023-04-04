@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef rover_compositor_h
-#define rover_compositor_h
+#ifndef vtkm_rendering_compositing_PartialCompoistor_h
+#define vtkm_rendering_compositing_PartialCompoistor_h
 
 #include <vector>
 #include <iostream>
@@ -60,4 +60,5 @@ protected:
 };
 
 }; // namespace rover
-#endif
+
+#endif //vtkm_rendering_compositing_PartialCompoistor_h

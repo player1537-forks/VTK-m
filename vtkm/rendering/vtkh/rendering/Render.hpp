@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTK_H_RENDER_HPP
-#define VTK_H_RENDER_HPP
+#ifndef vtkm_rendering_rendering_Render_h
+#define vtkm_rendering_rendering_Render_h
 
 #include <vtkm/cont/PartitionedDataSet.h>
 #include <vector>
@@ -121,4 +121,5 @@ MakeRender(int width,
            float fg_color[4] = vtkh_default_fg_color);
 
 } // namespace vtkh
-#endif
+
+#endif //vtkm_rendering_rendering_Render_h

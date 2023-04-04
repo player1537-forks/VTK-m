@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef rover_emission_partial_h
-#define rover_emission_partial_h
+#ifndef vtkm_rendering_compositing_EmissionPartial_h
+#define vtkm_rendering_compositing_EmissionPartial_h
 
 #include <assert.h>
 
@@ -108,4 +108,4 @@ struct EmissionPartial
 } // namespace rover
 
 
-#endif
+#endif //vtkm_rendering_compositing_EmissionPartial_h

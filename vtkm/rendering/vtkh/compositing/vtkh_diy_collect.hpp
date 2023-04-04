@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_DIY_COLLECT_HPP
-#define VTKH_DIY_COLLECT_HPP
+#ifndef vtkm_rendering_compositing_vtkh_diy_collect_h
+#define vtkm_rendering_compositing_vtkh_diy_collect_h
 
 #include <vtkm/rendering/vtkh/compositing/Image.hpp>
 #include <vtkm/rendering/vtkh/compositing/vtkh_diy_image_block.hpp>
@@ -71,4 +71,5 @@ struct CollectImages
 };
 
 } // namespace vtkh
-#endif
+
+#endif //vtkm_rendering_compositing_vtkh_diy_collect_h

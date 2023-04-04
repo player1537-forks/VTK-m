@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_DIY_PAYLOAD_IMAGE_COMPOSITOR_HPP
-#define VTKH_DIY_PAYLOAD_IMAGE_COMPOSITOR_HPP
+#ifndef vtkm_rendering_compositing_PayloadImageCompositor_h
+#define vtkm_rendering_compositing_PayloadImageCompositor_h
 
 #include <vtkm/rendering/vtkh/compositing/PayloadImage.hpp>
 #include <algorithm>
@@ -64,4 +64,5 @@ void ZBufferComposite(vtkh::PayloadImage &front, const vtkh::PayloadImage &image
 };
 
 } // namespace vtkh
-#endif
+
+#endif //vtkm_rendering_compositing_PayloadImageCompositor_h

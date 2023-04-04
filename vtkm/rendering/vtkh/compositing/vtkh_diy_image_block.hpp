@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_DIY_IMAGE_BLOCK_HPP
-#define VTKH_DIY_IMAGE_BLOCK_HPP
+#ifndef vtkm_rendering_compositing_vtkh_diy_image_block_h
+#define vtkm_rendering_compositing_vtkh_diy_image_block_h
 
 #include <vtkm/rendering/vtkh/compositing/Image.hpp>
 #include <vtkm/rendering/vtkh/compositing/PayloadImage.hpp>
@@ -192,4 +192,4 @@ struct Serialization<vtkh::Image>
 
 } // namespace diy
 
-#endif
+#endif //vtkm_rendering_compositing_vtkh_diy_image_block_h

@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_DIY_DIRECT_SEND_HPP
-#define VTKH_DIY_DIRECT_SEND_HPP
+#ifndef vtkm_rendering_compositing_DirectSendCompositor_h
+#define vtkm_rendering_compositing_DirectSendCompositor_h
 
 #include <vtkm/rendering/vtkh/compositing/Image.hpp>
 #include <vtkm/thirdparty/diy/diy.h>
@@ -31,4 +31,6 @@ private:
 };
 
 } // namespace vtkh
-#endif
+
+
+#endif //vtkm_rendering_compositing_DirectSendCompositor_h

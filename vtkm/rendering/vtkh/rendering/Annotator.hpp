@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_ANNOTATOR_HPP
-#define VTKH_ANNOTATOR_HPP
+#ifndef vtkm_rendering_rendering_Annotator_h
+#define vtkm_rendering_rendering_Annotator_h
 
 #include <vtkm/rendering/AxisAnnotation3D.h>
 #include <vtkm/rendering/BoundingBoxAnnotation.h>
@@ -55,4 +55,5 @@ protected:
 };
 
 }// namespace vtkh
-#endif
+
+#endif //vtkm_rendering_rendering_Annotator_h

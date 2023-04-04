@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_DIY_PAYLOAD_IMAGE_HPP
-#define VTKH_DIY_PAYLOAD_IMAGE_HPP
+#ifndef vtkm_rendering_compositing_PayloadImage_h
+#define vtkm_rendering_compositing_PayloadImage_h
 
 #include <sstream>
 #include <vector>
@@ -218,4 +218,5 @@ struct VTKM_RENDERING_EXPORT PayloadImage
 };
 
 } //namespace  vtkh
-#endif
+
+#endif //vtkm_rendering_compositing_PayloadImage_h

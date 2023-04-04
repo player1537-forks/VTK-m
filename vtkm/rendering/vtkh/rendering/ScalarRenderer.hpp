@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTK_H_SCALAR_RENDERER_HPP
-#define VTK_H_SCALAR_RENDERER_HPP
+#ifndef vtkm_rendering_rendering_ScalarRenderer_h
+#define vtkm_rendering_rendering_ScalarRenderer_h
 
 #include <vector>
 #include <vtkm/rendering/vtkm_rendering_export.h>
@@ -56,4 +56,5 @@ protected:
 };
 
 } // namespace vtkh
-#endif
+
+#endif //vtkm_rendering_rendering_ScalarRenderer_h

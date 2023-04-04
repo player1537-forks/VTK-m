@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTK_H_RENDERER_HPP
-#define VTK_H_RENDERER_HPP
+#ifndef vtkm_rendering_rendering_Renderer_h
+#define vtkm_rendering_rendering_Renderer_h
 
 #include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/rendering/vtkm_rendering_export.h>
@@ -87,4 +87,5 @@ virtual void CheckForRequiredField(const std::string &field_name);
 };
 
 } // namespace vtkh
-#endif
+
+#endif //vtkm_rendering_rendering_Renderer_h

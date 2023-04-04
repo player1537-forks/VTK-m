@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_DIY_IMAGE_HPP
-#define VTKH_DIY_IMAGE_HPP
+#ifndef vtkm_rendering_compositing_Image_h
+#define vtkm_rendering_compositing_Image_h
 
 #include <vtkm/Bounds.h>
 #include <vtkm/rendering/vtkm_rendering_export.h>
@@ -338,4 +338,6 @@ struct CompositeOrderSort
   }
 };
 } //namespace  vtkh
-#endif
+
+
+#endif //vtkm_rendering_compositing_Image_h

@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_DIY_RADIX_K_HPP
-#define VTKH_DIY_RADIX_K_HPP
+#ifndef vtkm_rendering_compositing_RadixKCompositor_h
+#define vtkm_rendering_compositing_RadixKCompositor_h
 
 #include <vtkm/rendering/vtkh/compositing/Image.hpp>
 #include <vtkm/rendering/vtkh/compositing/PayloadImage.hpp>
@@ -36,4 +36,4 @@ private:
 
 } // namspace vtkh
 
-#endif
+#endif //vtkm_rendering_compositing_RadixKCompositor_h

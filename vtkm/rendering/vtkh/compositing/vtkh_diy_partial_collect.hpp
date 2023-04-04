@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef rover_compositing_collect_h
-#define rover_compositing_collect_h
+#ifndef vtkm_rendering_compositing_vtkh_diy_partial_collect_h
+#define vtkm_rendering_compositing_vtkh_diy_partial_collect_h
 
 #include "AbsorptionPartial.hpp"
 #include "EmissionPartial.hpp"
@@ -160,4 +160,4 @@ void collect<EmissionPartial<float>>(std::vector<EmissionPartial<float>> &partia
 
 } // namespace rover
 
-#endif
+#endif //vtkm_rendering_compositing_vtkh_diy_partial_collect_h

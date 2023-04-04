@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTK_H_RENDERER_VOLUME_HPP
-#define VTK_H_RENDERER_VOLUME_HPP
+#ifndef vtkm_rendering_rendering_VolumeRenderer_h
+#define vtkm_rendering_rendering_VolumeRenderer_h
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/cont/PartitionedDataSet.h>
@@ -66,4 +66,5 @@ protected:
 };
 
 } // namespace vtkh
-#endif
+
+#endif //vtkm_rendering_rendering_VolumeRenderer_h

@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_VTKM_ARRAY_UTILS_HPP
-#define VTKH_VTKM_ARRAY_UTILS_HPP
+#ifndef vtkm_rendering_rendering_utils_vtkh_vtkm_array_utils_h
+#define vtkm_rendering_rendering_utils_vtkh_vtkm_array_utils_h
 
 #include <vtkm/cont/ArrayHandle.h>
 #include <vtkm/cont/PartitionedDataSet.h>
@@ -41,4 +41,5 @@ bool
 IsPointMesh(const vtkm::cont::PartitionedDataSet& pds);
 
 }//namespace vtkh
-#endif
+
+#endif //vtkm_rendering_rendering_utils_vtkh_vtkm_array_utils_h

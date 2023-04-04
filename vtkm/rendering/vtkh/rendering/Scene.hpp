@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_SCENE_HPP
-#define VTKH_SCENE_HPP
+#ifndef vtkm_rendering_rendering_Scene_h
+#define vtkm_rendering_rendering_Scene_h
 
 #include <vector>
 #include <list>
@@ -45,4 +45,5 @@ protected:
 }; // class scene
 
 } //namespace  vtkh
-#endif
+
+#endif //vtkm_rendering_rendering_Scene_h

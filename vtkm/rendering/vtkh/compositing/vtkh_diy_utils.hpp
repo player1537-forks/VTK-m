@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_DIY_UTILS_HPP
-#define VTKH_DIY_UTILS_HPP
+#ifndef vtkm_rendering_compositing_vtkh_diy_utils_h
+#define vtkm_rendering_compositing_vtkh_diy_utils_h
 
 //#include <vtkmdiy/decomposition.hpp>
 #include <vtkm/Bounds.h>
@@ -58,4 +58,4 @@ vtkmdiy::DiscreteBounds VTKMBoundsToDIY(const vtkm::Bounds &bounds)
 
 } //namespace vtkh
 
-#endif
+#endif //vtkm_rendering_compositing_vtkh_diy_utils_h

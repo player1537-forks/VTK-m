@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef VTKH_PAYLOAD_COMPOSITOR_HPP
-#define VTKH_PAYLOAD_COMPOSITOR_HPP
+#ifndef vtkm_rendering_compositing_PayloadCompositor_h
+#define vtkm_rendering_compositing_PayloadCompositor_h
 
 #include <sstream>
 #include <vtkm/rendering/vtkm_rendering_export.h>
@@ -34,4 +34,4 @@ protected:
 
 };
 
-#endif
+#endif //vtkm_rendering_compositing_PayloadCompoistor_h

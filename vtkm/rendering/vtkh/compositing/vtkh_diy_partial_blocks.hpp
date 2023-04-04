@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef rover_blocks_h
-#define rover_blocks_h
+#ifndef vtkm_rendering_compositing_vtkh_diy_partial_blocks_h
+#define vtkm_rendering_compositing_vtkh_diy_partial_blocks_h
 
 #include <vtkm/thirdparty/diy/master.h>
 
@@ -177,4 +177,4 @@ struct Serialization<vtkh::EmissionPartial<float>>
 
 } // namespace diy
 
-#endif
+#endif //vtkm_rendering_compositing_vtkh_diy_partial_blocks_h

@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef rover_volume_block_h
-#define rover_volume_block_h
+#ifndef vtkm_rendering_compositing_VolumePartial_h
+#define vtkm_rendering_compositing_VolumePartial_h
 
 #include <limits>
 #include <iostream>
@@ -91,4 +91,5 @@ struct VolumePartial
 };
 
 } // namespace
-#endif
+
+#endif //vtkm_rendering_compositing_VolumePartial_h
