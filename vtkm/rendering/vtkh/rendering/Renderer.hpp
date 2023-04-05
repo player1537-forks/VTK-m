@@ -64,7 +64,7 @@ protected:
   // image related data with cinema support
   vtkm::Bounds                             Bounds;
   vtkm::cont::ColorTable                   ColorTable;
-  Compositor                              *Compositor;
+  vtkh::Compositor                        *Compositor;
   bool                                     DoComposite;
   int                                      FieldIndex;
   std::string                              FieldName;

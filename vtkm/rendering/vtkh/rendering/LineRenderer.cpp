@@ -17,8 +17,9 @@
 namespace vtkh {
 
 LineRenderer::LineRenderer()
-  : RadiusSet(false),
-    Radius(0.5f)
+  : Radius(0.5f)
+  , RadiusSet(false)
+
 {
   typedef vtkm::rendering::MapperCylinder TracerType;
   auto mapper = std::make_shared<TracerType>();

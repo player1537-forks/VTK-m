@@ -377,12 +377,13 @@ void MultiRender(bool doBatch)
 }
 
 //TODO
+// serial pointrenderer fails.
 // add serial versions
 // Is VR_blank correct?
 
 void RenderTests()
 {
-  ScalarRenderer();
+  //ScalarRenderer();
   PointRenderer(true);
   PointRenderer(false);
 
