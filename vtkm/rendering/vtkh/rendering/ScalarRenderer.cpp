@@ -116,7 +116,7 @@ ScalarRenderer::PostExecute()
 void
 ScalarRenderer::DoExecute()
 {
-  vtkm::Id num_domains = this->Input->GetGlobalNumberOfPartitions();
+  vtkm::Id num_domains = this->Input->GetNumberOfPartitions();
   this->Output = new vtkm::cont::PartitionedDataSet();
 
   //
@@ -280,7 +280,7 @@ ScalarRenderer::DoExecute()
       {
         vtkm::cont::DataSet dset = final_result.ToDataSet();
         //const int domain_id = 0;
-        throw vtkm::cont::ErrorBadValue("add domain_id to partitions");
+        //throw vtkm::cont::ErrorBadValue("add domain_id to partitions");
         //this->Output->AddDomain(dset, domain_id);
         this->Output->AppendPartition(dset);
       }

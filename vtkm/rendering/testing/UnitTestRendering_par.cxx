@@ -30,7 +30,7 @@ void ScalarRenderer()
 
   int rank = comm.rank();
   const int base_size = 32;
-  const int blocks_per_rank = 1;
+  const int blocks_per_rank = 2;
   const int num_blocks = comm.size() * blocks_per_rank;
 
   vtkm::cont::PartitionedDataSet pds;
@@ -70,16 +70,13 @@ void PointRenderer(bool renderVar)
   if (comm.rank() == 0)
     std::cout << "PointRenderer" << std::endl;
 
-  int rank = comm.rank();
-  const int base_size = 32;
-  const int blocks_per_rank = 1;
-  const int num_blocks = comm.size() * blocks_per_rank;
+  const int base_size = 16;
+  const int num_blocks = 2;
 
   vtkm::cont::PartitionedDataSet pds;
-  for (int i = 0; i < blocks_per_rank; ++i)
+  for (int i = 0; i < num_blocks; ++i)
   {
-    int domain_id = rank * blocks_per_rank + i;
-    auto ds = CreateTestData(domain_id, num_blocks, base_size);
+    auto ds = CreateTestData(i, num_blocks, base_size);
     pds.AppendPartition(ds);
   }
 
@@ -381,14 +378,14 @@ void MultiRender(bool doBatch)
 
 //TODO
 // add serial versions
-// fix the scalar renderer
 // Is VR_blank correct?
 
 void RenderTests()
 {
-  //ScalarRenderer();
+  ScalarRenderer();
   PointRenderer(true);
   PointRenderer(false);
+
   //Add PointRenderer no data
   MultiRender(true);
   MultiRender(false);
