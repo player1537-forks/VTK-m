@@ -44,6 +44,9 @@ public:
   {
   }
 
+  VTKM_CONT vtkm::Vec3f GetOrigin() const { return this->Origin; }
+  VTKM_CONT void SetOrigin(const vtkm::Vec3f& pt) { this->Origin = pt; }
+
   VTKM_CONT vtkm::Id3 GetPointDimensions() const { return this->PointDimensions; }
   VTKM_CONT void SetPointDimensions(vtkm::Id3 dims) { this->PointDimensions = dims; }
 
@@ -54,6 +57,7 @@ private:
   vtkm::cont::DataSet DoExecute() const override;
 
   vtkm::Id3 PointDimensions = { 16, 16, 16 };
+  vtkm::Vec3f Origin = { 0.f, 0.f, 0.f };
 };
 } //namespace source
 } //namespace vtkm

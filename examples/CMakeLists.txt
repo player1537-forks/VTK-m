@@ -52,6 +52,8 @@ if(VTKm_ENABLE_EXAMPLES)
   add_subdirectory(temporal_advection)
   add_subdirectory(tetrahedra)
   add_subdirectory(smoke_test)
+
+  add_subdirectory(frontier_benchmark)
 endif()
 
 if (VTKm_ENABLE_TESTING)
