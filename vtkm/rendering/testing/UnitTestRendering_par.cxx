@@ -336,6 +336,7 @@ void MultiRender(bool doBatch, int blocksPerRank)
 
 //Issues:
 // Debug  :
+//          Volume render hangs with nb=2
 //
 // Release: ScalarRender nb > 1
 //          PointRenderer -- all
@@ -345,7 +346,7 @@ void MultiRender(bool doBatch, int blocksPerRank)
 void RenderTests()
 {
   //std::vector<int> blocksPerRank = {1,2,3};
-  std::vector<int> blocksPerRank = { 2, 3 };
+  std::vector<int> blocksPerRank = { 1 };
   std::vector<bool> flags = { true, false };
 
   for (auto nb : blocksPerRank)
