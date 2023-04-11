@@ -22,24 +22,64 @@
 #include <vtkm/filter/clean_grid/CleanGrid.h>
 #include <vtkm/rendering/testing/t_vtkm_test_utils.hpp>
 
-void ScalarRenderer()
+void PrintDescription(const std::string& testName, int blocksPerRank)
 {
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   if (comm.rank() == 0)
-    std::cout << "ScalarRenderer" << std::endl;
+  {
+    std::cout << testName << " #ranks= " << comm.size() << " blocksPerRank= " << blocksPerRank
+              << " ";
+    std::cout << std::endl;
+  }
+}
+
+void PrintDescription(const std::string& testName, int blocksPerRank, bool structured)
+{
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  if (comm.rank() == 0)
+  {
+    std::cout << testName << " #ranks= " << comm.size() << " blocksPerRank= " << blocksPerRank
+              << " ";
+    if (structured)
+      std::cout << "Structured";
+    else
+      std::cout << "Unstructured";
+
+    std::cout << std::endl;
+  }
+}
+
+vtkm::cont::PartitionedDataSet GenerateData(int baseSize,
+                                            int blocksPerRank,
+                                            bool doStructured = true)
+{
+  vtkm::cont::PartitionedDataSet result;
+
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
 
   int rank = comm.rank();
-  const int base_size = 32;
-  const int blocks_per_rank = 2;
-  const int num_blocks = comm.size() * blocks_per_rank;
-
-  vtkm::cont::PartitionedDataSet pds;
-  for (int i = 0; i < blocks_per_rank; ++i)
+  int totNumBlocks = blocksPerRank * comm.size();
+  for (int i = 0; i < blocksPerRank; ++i)
   {
-    int domain_id = rank * blocks_per_rank + i;
-    auto ds = CreateTestData(domain_id, num_blocks, base_size);
-    pds.AppendPartition(ds);
+    int ID = rank * blocksPerRank + i;
+    auto ds = CreateTestData(ID, totNumBlocks, baseSize);
+    if (!doStructured)
+    {
+      vtkm::filter::clean_grid::CleanGrid cleanGrid;
+      ds = cleanGrid.Execute(ds);
+    }
+    result.AppendPartition(ds);
   }
+
+  return result;
+}
+
+void ScalarRenderer(int blocksPerRank)
+{
+  PrintDescription("ScalarRenderer", blocksPerRank);
+
+  const int baseSize = 32;
+  auto pds = GenerateData(baseSize, blocksPerRank);
 
   vtkm::Bounds bounds = pds.GetGlobalBounds();
 
@@ -55,7 +95,7 @@ void ScalarRenderer()
   tracer.Update();
 
   vtkm::cont::PartitionedDataSet* output = tracer.GetOutput();
-
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   if (comm.rank() == 0)
   {
     auto result = output->GetPartition(0);
@@ -64,21 +104,12 @@ void ScalarRenderer()
   }
 }
 
-void PointRenderer(bool renderVar)
+void PointRenderer(bool renderVar, int blocksPerRank)
 {
-  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
-  if (comm.rank() == 0)
-    std::cout << "PointRenderer" << std::endl;
+  PrintDescription("PointRenderer", blocksPerRank);
 
-  const int base_size = 16;
-  const int num_blocks = 2;
-
-  vtkm::cont::PartitionedDataSet pds;
-  for (int i = 0; i < num_blocks; ++i)
-  {
-    auto ds = CreateTestData(i, num_blocks, base_size);
-    pds.AppendPartition(ds);
-  }
+  const int baseSize = 16;
+  auto pds = GenerateData(baseSize, blocksPerRank);
 
   vtkm::Bounds bounds = pds.GetGlobalBounds();
 
@@ -107,12 +138,14 @@ void PointRenderer(bool renderVar)
   scene.Render();
 }
 
-void RayTrace(bool doStructured)
+void RayTrace(bool doStructured, int blocksPerRank)
 {
+  PrintDescription("RayTrace", blocksPerRank, doStructured);
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   if (comm.rank() == 0)
   {
-    std::cout << "RayTrace with: ";
+    std::cout << "RayTrace "
+              << " blocksPerRank= " << blocksPerRank << " with: ";
     if (doStructured)
       std::cout << "structured data ";
     else
@@ -120,25 +153,8 @@ void RayTrace(bool doStructured)
     std::cout << "NumRanks= " << comm.size() << std::endl;
   }
 
-  int rank = comm.rank();
-  const int base_size = 32;
-  const int blocks_per_rank = 1;
-  const int num_blocks = comm.size() * blocks_per_rank;
-
-  vtkm::cont::PartitionedDataSet pds;
-  //vtkh::DataSet data_set;
-  for (int i = 0; i < blocks_per_rank; ++i)
-  {
-    int domain_id = rank * blocks_per_rank + i;
-    auto ds = CreateTestData(domain_id, num_blocks, base_size);
-    if (!doStructured)
-    {
-      vtkm::filter::clean_grid::CleanGrid cleanGrid;
-      ds = cleanGrid.Execute(ds);
-    }
-    //data_set.AddDomain(ds, domain_id);
-    pds.AppendPartition(ds);
-  }
+  const int baseSize = 32;
+  auto pds = GenerateData(baseSize, blocksPerRank, doStructured);
 
   vtkm::Bounds bounds = pds.GetGlobalBounds();
 
@@ -165,40 +181,12 @@ void RayTrace(bool doStructured)
   scene.Render();
 }
 
-void VolumeRender(bool doStructured)
+void VolumeRender(bool doStructured, int blocksPerRank)
 {
-  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  PrintDescription("VolumeRender", blocksPerRank, doStructured);
 
-  if (comm.rank() == 0)
-  {
-    std::cout << "VolumeRender with: ";
-    if (doStructured)
-      std::cout << "structured data ";
-    else
-      std::cout << "unstructured data ";
-    std::cout << "NumRanks= " << comm.size() << std::endl;
-  }
-
-  int rank = comm.rank();
-
-  const int base_size = 32;
-  const int blocks_per_rank = 1;
-  const int num_blocks = comm.size() * blocks_per_rank;
-
-  //vtkh::DataSet data_set;
-  vtkm::cont::PartitionedDataSet pds;
-  for (int i = 0; i < blocks_per_rank; ++i)
-  {
-    int domain_id = rank * blocks_per_rank + i;
-    auto ds = CreateTestData(domain_id, num_blocks, base_size);
-    if (!doStructured)
-    {
-      vtkm::filter::clean_grid::CleanGrid cleanGrid;
-      ds = cleanGrid.Execute(ds);
-    }
-    pds.AppendPartition(ds);
-    //data_set.AddDomain(ds, domain_id);
-  }
+  const int baseSize = 32;
+  auto pds = GenerateData(baseSize, blocksPerRank, doStructured);
 
   vtkm::Bounds bounds = pds.GetGlobalBounds();
 
@@ -228,31 +216,12 @@ void VolumeRender(bool doStructured)
   scene.Render();
 }
 
-void VolumeRenderBlank()
+void VolumeRenderBlank(int blocksPerRank)
 {
-  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  PrintDescription("VolumeRenderBlank", blocksPerRank);
 
-  if (comm.rank() == 0)
-  {
-    std::cout << "VolumeRender blank ";
-    std::cout << "NumRanks= " << comm.size() << std::endl;
-  }
-
-  int rank = comm.rank();
-
-  const int base_size = 32;
-  const int blocks_per_rank = 1;
-  const int num_blocks = comm.size() * blocks_per_rank;
-
-  vtkm::cont::PartitionedDataSet pds;
-  for (int i = 0; i < blocks_per_rank; ++i)
-  {
-    int domain_id = rank * blocks_per_rank + i;
-    auto ds = CreateTestData(domain_id, num_blocks, base_size);
-    pds.AppendPartition(ds);
-  }
-
-
+  const int baseSize = 32;
+  auto pds = GenerateData(baseSize, blocksPerRank);
 
   vtkm::filter::contour::ClipWithField min_clipper, max_clipper;
   max_clipper.SetActiveField("point_data_Float64");
@@ -295,37 +264,20 @@ void VolumeRenderBlank()
   scene.Render();
 }
 
-void MultiRender(bool doBatch)
+void MultiRender(bool doBatch, int blocksPerRank)
 {
+  PrintDescription("MultiRender", blocksPerRank);
+
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
-
-  if (comm.rank() == 0)
-  {
-    std::cout << "MultiRender ";
-    if (doBatch)
-      std::cout << " Batch";
-    std::cout << std::endl;
-  }
-
-  int rank = comm.rank();
-
-  const int base_size = 32;
-  const int blocks_per_rank = 1;
-  const int num_blocks = comm.size() * blocks_per_rank;
-
-  vtkm::cont::PartitionedDataSet pds;
-  for (int i = 0; i < blocks_per_rank; ++i)
-  {
-    int domain_id = rank * blocks_per_rank + i;
-    auto ds = CreateTestData(domain_id, num_blocks, base_size);
-    pds.AppendPartition(ds);
-  }
+  const int baseSize = 32;
+  const int numBlocks = blocksPerRank * comm.size();
+  auto pds = GenerateData(baseSize, blocksPerRank);
 
   vtkm::filter::contour::Contour contour;
   contour.SetActiveField("point_data_Float64");
   contour.SetFieldsToPass("cell_data_Float64");
   contour.SetIsoValue(0, -1); //ask for something that doesn't exist.
-  contour.SetIsoValue(1, (float)base_size * (float)num_blocks * 0.5f);
+  contour.SetIsoValue(1, (float)baseSize * (float)numBlocks * 0.5f);
 
   auto iso_output = contour.Execute(pds);
   vtkm::Bounds bounds = pds.GetGlobalBounds();
@@ -381,23 +333,36 @@ void MultiRender(bool doBatch)
 // add serial versions
 // Is VR_blank correct?
 
+
+//Issues:
+// Debug  :
+//
+// Release: ScalarRender nb > 1
+//          PointRenderer -- all
+//          MultiRender nb > 1
+//          VolumeRender hangs? with nb=2
+//
 void RenderTests()
 {
-  //ScalarRenderer();
-  PointRenderer(true);
-  PointRenderer(false);
+  //std::vector<int> blocksPerRank = {1,2,3};
+  std::vector<int> blocksPerRank = { 2, 3 };
+  std::vector<bool> flags = { true, false };
 
-  //Add PointRenderer no data
-  MultiRender(true);
-  MultiRender(false);
+  for (auto nb : blocksPerRank)
+  {
+    ScalarRenderer(nb);
 
-  RayTrace(true);
-  RayTrace(false);
+    for (auto v : flags)
+    {
+      PointRenderer(v, nb);
 
-  VolumeRender(true);
-  VolumeRender(false);
-
-  VolumeRenderBlank();
+      //Add PointRenderer no data
+      MultiRender(v, nb);
+      RayTrace(v, nb);
+      VolumeRender(v, nb);
+      VolumeRenderBlank(nb);
+    }
+  }
 }
 
 int UnitTestRendering_par(int argc, char* argv[])
