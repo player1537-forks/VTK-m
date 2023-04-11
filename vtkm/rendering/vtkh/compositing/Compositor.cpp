@@ -26,7 +26,7 @@ namespace vtkh
 {
 
 Compositor::Compositor()
-  : m_composite_mode(Z_BUFFER_SURFACE)
+  : CompositeMode(Z_BUFFER_SURFACE)
 {
 
 }
@@ -37,17 +37,17 @@ Compositor::~Compositor()
 }
 
 void
-Compositor::SetCompositeMode(CompositeMode composite_mode)
+Compositor::SetCompositeMode(enum CompositeMode composite_mode)
 {
   // assure we don't have mixed image types
-  assert(m_images.size() == 0);
-  m_composite_mode = composite_mode;
+  assert(this->Images.size() == 0);
+  this->CompositeMode = composite_mode;
 }
 
 void
 Compositor::ClearImages()
 {
-  m_images.clear();
+  this->Images.clear();
 }
 
 void
@@ -56,19 +56,19 @@ Compositor::AddImage(const unsigned char *color_buffer,
                      const int            width,
                      const int            height)
 {
-  assert(m_composite_mode != VIS_ORDER_BLEND);
+  assert(this->CompositeMode != VIS_ORDER_BLEND);
   assert(depth_buffer != NULL);
   Image image;
-  if(m_images.size() == 0)
+  if (this->Images.size() == 0)
   {
-    m_images.push_back(image);
-    m_images[0].Init(color_buffer,
+    this->Images.push_back(image);
+    this->Images[0].Init(color_buffer,
                      depth_buffer,
                      width,
                      height);
     //m_images[0].Save("first.png");
   }
-  else if(m_composite_mode == Z_BUFFER_SURFACE)
+  else if(this->CompositeMode == Z_BUFFER_SURFACE)
   {
     //
     // Do local composite and keep a single image
@@ -78,13 +78,13 @@ Compositor::AddImage(const unsigned char *color_buffer,
                width,
                height);
     vtkh::ImageCompositor compositor;
-    compositor.ZBufferComposite(m_images[0],image);
+    compositor.ZBufferComposite(this->Images[0], image);
   }
   else
   {
-    const size_t image_index = m_images.size();
-    m_images.push_back(image);
-    m_images[image_index].Init(color_buffer,
+    const size_t image_index = this->Images.size();
+    this->Images.push_back(image);
+    this->Images[image_index].Init(color_buffer,
                                depth_buffer,
                                width,
                                height);
@@ -98,18 +98,18 @@ Compositor::AddImage(const float *color_buffer,
                      const int    width,
                      const int    height)
 {
-  assert(m_composite_mode != VIS_ORDER_BLEND);
+  assert(this->CompositeMode != VIS_ORDER_BLEND);
   assert(depth_buffer != NULL);
   Image image;
-  if(m_images.size() == 0)
+  if (this->Images.size() == 0)
   {
-    m_images.push_back(image);
-    m_images[0].Init(color_buffer,
+    this->Images.push_back(image);
+    this->Images[0].Init(color_buffer,
                      depth_buffer,
                      width,
                      height);
   }
-  else if(m_composite_mode == Z_BUFFER_SURFACE)
+  else if(this->CompositeMode == Z_BUFFER_SURFACE)
   {
     //
     // Do local composite and keep a single image
@@ -120,13 +120,13 @@ Compositor::AddImage(const float *color_buffer,
                height);
 
     vtkh::ImageCompositor compositor;
-    compositor.ZBufferComposite(m_images[0],image);
+    compositor.ZBufferComposite(this->Images[0],image);
   }
   else
   {
-    const size_t image_index = m_images.size();
-    m_images.push_back(image);
-    m_images[image_index].Init(color_buffer,
+    const size_t image_index = this->Images.size();
+    this->Images.push_back(image);
+    this->Images[image_index].Init(color_buffer,
                                depth_buffer,
                                width,
                                height);
@@ -141,11 +141,11 @@ Compositor::AddImage(const unsigned char *color_buffer,
                      const int            height,
                      const int            vis_order)
 {
-  assert(m_composite_mode == VIS_ORDER_BLEND);
+  assert(this->CompositeMode == VIS_ORDER_BLEND);
   Image image;
-  const size_t image_index = m_images.size();
-  m_images.push_back(image);
-  m_images[image_index].Init(color_buffer,
+  const size_t image_index = this->Images.size();
+  this->Images.push_back(image);
+  this->Images[image_index].Init(color_buffer,
                              depth_buffer,
                              width,
                              height,
@@ -159,12 +159,12 @@ Compositor::AddImage(const float *color_buffer,
                      const int    height,
                      const int    vis_order)
 {
-  assert(m_composite_mode == VIS_ORDER_BLEND);
+  assert(this->CompositeMode == VIS_ORDER_BLEND);
   Image image;
-  const size_t image_index = m_images.size();
-  m_images.push_back(image);
+  const size_t image_index = this->Images.size();
+  this->Images.push_back(image);
 
-  m_images[image_index].Init(color_buffer,
+  this->Images[image_index].Init(color_buffer,
                              depth_buffer,
                              width,
                              height,
@@ -174,22 +174,22 @@ Compositor::AddImage(const float *color_buffer,
 Image
 Compositor::Composite()
 {
-  assert(m_images.size() != 0);
+  assert(this->Images.size() != 0);
 
-  if(m_composite_mode == Z_BUFFER_SURFACE)
+  if(this->CompositeMode == Z_BUFFER_SURFACE)
   {
     CompositeZBufferSurface();
   }
-  else if(m_composite_mode == Z_BUFFER_BLEND)
+  else if(this->CompositeMode == Z_BUFFER_BLEND)
   {
     CompositeZBufferBlend();
   }
-  else if(m_composite_mode == VIS_ORDER_BLEND)
+  else if(this->CompositeMode == VIS_ORDER_BLEND)
   {
     CompositeVisOrder();
   }
   // Make this a param to avoid the copy?
-  return m_images[0];
+  return this->Images[0];
 }
 
 void
@@ -214,10 +214,13 @@ Compositor::CompositeZBufferSurface()
 #ifdef VTKM_ENABLE_MPI
   auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
 
-  assert(m_images.size() == 1);
-  RadixKCompositor compositor;
-  compositor.CompositeSurface(diy_comm, this->m_images[0]);
-  m_log_stream<<compositor.GetTimingString();
+  assert(this->Images.size() == 1);
+  if (diy_comm.size() > 1)
+  {
+    RadixKCompositor compositor;
+    compositor.CompositeSurface(diy_comm, this->Images[0]);
+    m_log_stream<<compositor.GetTimingString();
+  }
 #endif
 }
 
@@ -234,12 +237,12 @@ Compositor::CompositeVisOrder()
 #ifdef VTKM_ENABLE_MPI
   auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
 
-  assert(m_images.size() != 0);
+  assert(this->Images.size() != 0);
   DirectSendCompositor compositor;
-  compositor.CompositeVolume(diy_comm, this->m_images);
+  compositor.CompositeVolume(diy_comm, this->Images);
 #else
   vtkh::ImageCompositor compositor;
-  compositor.OrderedComposite(m_images);
+  compositor.OrderedComposite(this->Images);
 #endif
 }
 

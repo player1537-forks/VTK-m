@@ -30,7 +30,7 @@ public:
 
     virtual ~Compositor();
 
-    void SetCompositeMode(CompositeMode composite_mode);
+    void SetCompositeMode(enum CompositeMode composite_mode);
 
     void ClearImages();
 
@@ -83,8 +83,8 @@ protected:
     virtual void CompositeVisOrder();
 
     std::stringstream   m_log_stream;
-    CompositeMode       m_composite_mode;
-    std::vector<Image>  m_images;
+    CompositeMode       CompositeMode;
+    std::vector<Image>  Images;
 };
 
 };

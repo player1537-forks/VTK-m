@@ -56,6 +56,13 @@ if(TARGET vtkm_rendering)
     BenchmarkRayTracing
     BenchmarkInSitu
     )
+
+    #if MPI is enabled.
+    if(VTKm_ENABLE_MPI)
+      list(APPEND benchmarks
+        BenchmarkRayTracingMPI
+        )
+    endif()
 endif()
 
 set(VTKm_BENCHS_RANGE_LOWER_BOUNDARY 4096 CACHE STRING "Smallest sample for input size bench for BenchmarkDeviceAdapter")

@@ -16,4 +16,5 @@ DEPENDS
   vtkm_source
 OPTIONAL_DEPENDS
   vtkm_rendering
+  MPI::MPI_CXX
 NO_TESTING
