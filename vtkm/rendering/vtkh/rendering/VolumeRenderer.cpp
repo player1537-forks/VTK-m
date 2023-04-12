@@ -106,7 +106,7 @@ convert_table(const vtkm::cont::ColorTable& colorTable)
 class VolumeWrapper
 {
 protected:
-  vtkm::cont::DataSet DataSet;
+  const vtkm::cont::DataSet& DataSet;
   vtkm::Range ScalarRange;
   std::string FieldName;
   vtkm::Float32 SampleDist;
@@ -114,7 +114,7 @@ protected:
 public:
   VolumeWrapper() = delete;
 
-  VolumeWrapper(vtkm::cont::DataSet &data_set)
+  VolumeWrapper(const vtkm::cont::DataSet &data_set)
    : DataSet(data_set)
   {
   }
@@ -134,7 +134,7 @@ public:
     this->FieldName = field_name;
   }
 
-  void scalar_range(vtkm::Range &range)
+  void scalar_range(const vtkm::Range &range)
   {
     this->ScalarRange = range;
   }
@@ -196,7 +196,7 @@ class UnstructuredWrapper : public VolumeWrapper
 {
   vtkm::rendering::ConnectivityProxy m_tracer;
 public:
-  UnstructuredWrapper(vtkm::cont::DataSet &data_set)
+  UnstructuredWrapper(const vtkm::cont::DataSet &data_set)
     : VolumeWrapper(data_set),
       m_tracer(data_set, "") //DRP: Fix me!!  fieldname required in ConnectivityTracer
   {
@@ -236,7 +236,7 @@ public:
 class StructuredWrapper : public VolumeWrapper
 {
 public:
-  StructuredWrapper(vtkm::cont::DataSet &data_set)
+  StructuredWrapper(const vtkm::cont::DataSet &data_set)
     : VolumeWrapper(data_set)
   {
   }
@@ -413,8 +413,10 @@ VolumeRenderer::VolumeRenderer()
   //
   // add some default opacity to the color table
   //
-  this->ColorTable.AddPointAlpha(0.0f, .02);
-  this->ColorTable.AddPointAlpha(.0f, .5);
+
+  std::cout<<__FILE__<<" "<<__LINE__<<"  Do we need this????"<<std::endl;
+  //this->ColorTable.AddPointAlpha(0.0f, .02);
+  //this->ColorTable.AddPointAlpha(.0f, .5);
   this->NumSamples = 100.f;
   this->HasUnstructured = false;
 }
@@ -455,11 +457,6 @@ VolumeRenderer::Update()
   //VTKH_DATA_CLOSE();
 }
 
-void VolumeRenderer::SetColorTable(const vtkm::cont::ColorTable &color_table)
-{
-  this->ColorTable = color_table;
-}
-
 void VolumeRenderer::CorrectOpacity()
 {
   const float correction_scalar = VTKH_OPACITY_CORRECTION;
@@ -467,7 +464,7 @@ void VolumeRenderer::CorrectOpacity()
 
   float ratio = correction_scalar / samples;
   vtkm::cont::ColorTable corrected;
-  corrected = this->ColorTable.MakeDeepCopy();
+  corrected = this->GetColorTable().MakeDeepCopy();
   int num_points = corrected.GetNumberOfPointsAlpha();
   for(int i = 0; i < num_points; i++)
   {
@@ -483,7 +480,7 @@ void VolumeRenderer::CorrectOpacity()
 void
 VolumeRenderer::DoExecute()
 {
-  if(vtkh::GlobalHasOnePartition(*this->Input) && !this->HasUnstructured)
+  if(vtkh::GlobalHasOnePartition(this->Actor.GetDataSet()) && !this->HasUnstructured)
   {
     // Danger: this logic only works if there is exactly one per rank
     RenderOneDomainPerRank();
@@ -506,7 +503,7 @@ VolumeRenderer::RenderOneDomainPerRank()
   this->Tracer->SetSampleDistance(this->SampleDist);
 
   int total_renders = static_cast<int>(this->Renders.size());
-  int num_domains = static_cast<int>(this->Input->GetNumberOfPartitions());
+  int num_domains = static_cast<int>(this->Actor.GetDataSet().GetNumberOfPartitions());
   if(num_domains > 1)
   {
     throw vtkm::cont::ErrorBadValue("RenderOneDomainPerRank: this should never happend.");
@@ -514,15 +511,15 @@ VolumeRenderer::RenderOneDomainPerRank()
 
   for(int dom = 0; dom < num_domains; ++dom)
   {
-    vtkm::cont::DataSet data_set = this->Input->GetPartition(dom);
+    vtkm::cont::DataSet data_set = this->Actor.GetDataSet().GetPartition(dom);
 
-    if(!data_set.HasField(this->FieldName))
+    if(!data_set.HasField(this->GetFieldName()))
     {
       continue;
     }
 
     const vtkm::cont::UnknownCellSet &cellset = data_set.GetCellSet();
-    const vtkm::cont::Field &field = data_set.GetField(this->FieldName);
+    const vtkm::cont::Field &field = data_set.GetField(this->GetFieldName());
     const vtkm::cont::CoordinateSystem &coords = data_set.GetCoordinateSystem();
 
     if(cellset.GetNumberOfCells() == 0) continue;
@@ -539,14 +536,12 @@ VolumeRenderer::RenderOneDomainPerRank()
                             field,
                             this->CorrectedColorTable,
                             camera,
-                            this->Range);
+                                this->Actor.GetScalarRange());
     }
   }
 
   if(this->DoComposite)
-  {
-    this->Composite(total_renders);
-  }
+    this->Composite();
 }
 
 void
@@ -565,7 +560,7 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
   vtkm::cont::ArrayHandle<vtkm::Vec4f_32> color_map
     = detail::convert_table(this->CorrectedColorTable);
   vtkm::cont::ArrayHandle<vtkm::Vec4f_32> color_map2
-    = detail::convert_table(this->ColorTable);
+    = detail::convert_table(this->GetColorTable());
 
   // render/domain/result
   std::vector<std::vector<std::vector<VolumePartial<float>>>> render_partials;
@@ -580,8 +575,8 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
     detail::VolumeWrapper *wrapper = this->Wrappers[i];
     wrapper->sample_distance(this->SampleDist);
     wrapper->color_map(color_map);
-    wrapper->field(this->FieldName);
-    wrapper->scalar_range(this->Range);
+    wrapper->field(this->GetFieldName());
+    wrapper->scalar_range(this->GetScalarRange());
 
     for(int r = 0; r < total_renders; ++r)
     {
@@ -620,9 +615,9 @@ VolumeRenderer::PreExecute()
   CorrectOpacity();
 
   vtkm::Vec<vtkm::Float32,3> extent;
-  extent[0] = static_cast<vtkm::Float32>(this->Bounds.X.Length());
-  extent[1] = static_cast<vtkm::Float32>(this->Bounds.Y.Length());
-  extent[2] = static_cast<vtkm::Float32>(this->Bounds.Z.Length());
+  extent[0] = static_cast<vtkm::Float32>(this->Actor.GetSpatialBounds().X.Length());
+  extent[1] = static_cast<vtkm::Float32>(this->Actor.GetSpatialBounds().Y.Length());
+  extent[2] = static_cast<vtkm::Float32>(this->Actor.GetSpatialBounds().Z.Length());
   vtkm::Float32 dist = vtkm::Magnitude(extent) / this->NumSamples;
   this->SampleDist = dist;
 }
@@ -666,15 +661,13 @@ VolumeRenderer::FindMinDepth(const vtkm::rendering::Camera &camera,
 }
 
 void
-VolumeRenderer::Composite(const int &num_images)
+VolumeRenderer::Composite()
 {
-//  const int num_domains = static_cast<int>(this->Input->GetNumberOfDomains());
-
   this->Compositor->SetCompositeMode(Compositor::VIS_ORDER_BLEND);
-
   FindVisibilityOrdering();
 
-  for(int i = 0; i < num_images; ++i)
+  std::size_t numImages = this->Renders.size();
+  for (std::size_t i = 0; i < numImages; ++i)
   {
     float* color_buffer =
       &GetVTKMPointer(this->Renders[i].GetCanvas().GetColorBuffer())[0][0];
@@ -690,7 +683,6 @@ VolumeRenderer::Composite(const int &num_images)
                            this->VisibilityOrders[i][0]);
 
     Image result = this->Compositor->Composite();
-    const std::string image_name = this->Renders[i].GetImageName() + ".png";
 #ifdef VTKM_ENABLE_MPI
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
@@ -850,7 +842,7 @@ VolumeRenderer::DepthSort(int num_domains,
 void
 VolumeRenderer::FindVisibilityOrdering()
 {
-  const int num_domains = static_cast<int>(this->Input->GetNumberOfPartitions());
+  const int num_domains = static_cast<int>(this->Actor.GetDataSet().GetNumberOfPartitions());
   const int num_cameras = static_cast<int>(this->Renders.size());
   this->VisibilityOrders.resize(num_cameras);
 
@@ -874,7 +866,7 @@ VolumeRenderer::FindVisibilityOrdering()
     const vtkm::rendering::Camera &camera = this->Renders[i].GetCamera();
     for(int dom = 0; dom < num_domains; ++dom)
     {
-      vtkm::Bounds bounds = this->Input->GetPartition(dom).GetCoordinateSystem().GetBounds();
+      vtkm::Bounds bounds = this->Actor.GetDataSet().GetPartition(dom).GetCoordinateSystem().GetBounds();
       min_depths[dom] = FindMinDepth(camera, bounds);
     }
 
@@ -882,24 +874,21 @@ VolumeRenderer::FindVisibilityOrdering()
 
   } // for each camera
 }
-void VolumeRenderer::SetInput(vtkm::cont::PartitionedDataSet *input)
+void VolumeRenderer::SetInput(const vtkm::rendering::Actor& actor)
 {
-  Renderer::SetInput(input);
+  Renderer::SetInput(actor);
   ClearWrappers();
 
-  int num_domains = static_cast<int>(this->Input->GetNumberOfPartitions());
   this->HasUnstructured = false;
-  for(int dom = 0; dom < num_domains; ++dom)
+  for (const auto& ds : this->Actor.GetDataSet().GetPartitions())
   {
-    vtkm::cont::DataSet data_set = this->Input->GetPartition(dom);
-
-    const vtkm::cont::UnknownCellSet &cellset = data_set.GetCellSet();
+    const vtkm::cont::UnknownCellSet &cellset = ds.GetCellSet();
     if(cellset.GetNumberOfCells() == 0)
     {
       continue;
     }
 
-    const vtkm::cont::CoordinateSystem &coords = data_set.GetCoordinateSystem();
+    const vtkm::cont::CoordinateSystem &coords = ds.GetCoordinateSystem();
     using Uniform = vtkm::cont::ArrayHandleUniformPointCoordinates;
     using DefaultHandle = vtkm::cont::ArrayHandle<vtkm::FloatDefault>;
     using Rectilinear
@@ -911,12 +900,12 @@ void VolumeRenderer::SetInput(vtkm::cont::PartitionedDataSet *input)
 
     if(structured)
     {
-      this->Wrappers.push_back(new detail::StructuredWrapper(data_set));
+      this->Wrappers.push_back(new detail::StructuredWrapper(ds));
     }
     else
     {
       this->HasUnstructured = true;
-      this->Wrappers.push_back(new detail::UnstructuredWrapper(data_set));
+      this->Wrappers.push_back(new detail::UnstructuredWrapper(ds));
     }
   }
 }

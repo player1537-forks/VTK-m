@@ -23,12 +23,6 @@ bool VTKMDataSetInfo::IsStructured(const vtkm::cont::DataSet &data_set,
 }
 
 bool
-VTKMDataSetInfo::IsStructured(const vtkm::rendering::Actor &actor, int &topo_dims)
-{
-  return IsStructured(actor.GetCells(), topo_dims);
-}
-
-bool
 VTKMDataSetInfo::IsStructured(const vtkm::cont::UnknownCellSet &cell_set, int &topo_dims)
 {
   bool is_structured = false;
@@ -61,12 +55,6 @@ VTKMDataSetInfo::IsRectilinear(const vtkm::cont::DataSet &data_set)
 }
 
 bool
-VTKMDataSetInfo::IsRectilinear(const vtkm::rendering::Actor &actor)
-{
-  return IsRectilinear(actor.GetCoordinates());
-}
-
-bool
 VTKMDataSetInfo::IsRectilinear(const vtkm::cont::CoordinateSystem &coords)
 {
 
@@ -87,12 +75,6 @@ VTKMDataSetInfo:: IsUniform(const vtkm::cont::DataSet &data_set)
 }
 
 bool
-VTKMDataSetInfo::IsUniform(const vtkm::rendering::Actor &actor)
-{
-  return IsUniform(actor.GetCoordinates());
-}
-
-bool
 VTKMDataSetInfo::IsUniform(const vtkm::cont::CoordinateSystem &coords)
 {
   bool is_uniform= false;
@@ -108,12 +90,6 @@ VTKMDataSetInfo::GetPointDims(const vtkm::cont::DataSet &data_set, int *dims)
 {
   const vtkm::cont::UnknownCellSet cell_set = data_set.GetCellSet();
   return GetPointDims(cell_set, dims);
-}
-
-bool
-VTKMDataSetInfo::GetPointDims(const vtkm::rendering::Actor &actor, int *dims)
-{
-  return GetPointDims(actor.GetCells(), dims);
 }
 
 bool
@@ -165,12 +141,6 @@ VTKMDataSetInfo::GetCellDims(const vtkm::cont::DataSet &data_set, int *dims)
 {
   const vtkm::cont::UnknownCellSet cell_set = data_set.GetCellSet();
   return GetCellDims(cell_set, dims);
-}
-
-bool
-VTKMDataSetInfo::GetCellDims(const vtkm::rendering::Actor &actor, int *dims)
-{
-  return GetCellDims(actor.GetCells(), dims);
 }
 
 bool

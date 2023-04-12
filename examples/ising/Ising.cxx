@@ -100,10 +100,7 @@ int main(int argc, char** argv)
   dataSet.GetCellField("spins").GetData().AsArrayHandle(spins);
 
   vtkm::rendering::Scene scene;
-  vtkm::rendering::Actor actor(dataSet.GetCellSet(),
-                               dataSet.GetCoordinateSystem(),
-                               dataSet.GetCellField("spins"),
-                               vtkm::cont::ColorTable("Cool To Warm"));
+  vtkm::rendering::Actor actor(dataSet, "spins", vtkm::cont::ColorTable("Cool To Warm"));
   scene.AddActor(actor);
   vtkm::rendering::CanvasRayTracer canvas(1024, 1024);
   vtkm::rendering::MapperRayTracer mapper;

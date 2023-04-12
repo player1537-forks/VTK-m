@@ -382,8 +382,8 @@ void RunBenchmark(const BenchmarkOptions& options)
   camera.Elevation(20.0f);
 
   vtkh::RayTracer rayTracer;
-  rayTracer.SetInput(&pds);
-  rayTracer.SetField(fieldName);
+  vtkm::rendering::Actor actor(pds, fieldName, vtkm::cont::ColorTable("Cool to Warm"));
+  rayTracer.SetInput(actor);
 
   if (options.CameraMode == CAMERA_MODE_STATIC)
   {

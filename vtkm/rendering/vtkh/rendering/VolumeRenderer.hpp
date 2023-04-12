@@ -33,11 +33,10 @@ public:
   static Renderer::vtkmCanvasPtr GetNewCanvas(int width = 1024, int height = 1024);
 
   void Update() override;
-  virtual void SetInput(vtkm::cont::PartitionedDataSet *input) override;
+  virtual void SetInput(const vtkm::rendering::Actor& actor) override;
 
-  virtual void SetColorTable(const vtkm::cont::ColorTable &color_table) override;
 protected:
-  virtual void Composite(const int &num_images) override;
+  virtual void Composite() override;
   virtual void PreExecute() override;
   virtual void DoExecute() override;
   virtual void PostExecute() override;

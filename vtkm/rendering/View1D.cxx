@@ -113,7 +113,7 @@ void View1D::RenderColorLegendAnnotations()
       vtkm::rendering::Color color{ static_cast<vtkm::Float32>(colorData[1]),
                                     static_cast<vtkm::Float32>(colorData[2]),
                                     static_cast<vtkm::Float32>(colorData[3]) };
-      this->Legend.AddItem(act.GetScalarField().GetName(), color);
+      this->Legend.AddItem(act.GetScalarFieldName(), color);
     }
     this->Legend.SetLabelColor(this->GetCanvas().GetForegroundColor());
     this->Legend.Render(this->GetCamera(), this->GetWorldAnnotator(), this->GetCanvas());

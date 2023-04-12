@@ -190,9 +190,10 @@ void BenchRayTracingMPI(::benchmark::State& state)
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(globalBounds);
 
+  vtkm::rendering::Color color(1, 1, 1);
+  vtkm::rendering::Actor actor(dataSet, fieldName, color);
   vtkh::RayTracer rayTracer;
-  rayTracer.SetInput(&dataSet);
-  rayTracer.SetField(fieldName);
+  rayTracer.SetInput(actor);
 
   vtkh::Render render =
     vtkh::MakeRender(options.CanvasWidth, options.CanvasHeight, camera, dataSet, "tmp");

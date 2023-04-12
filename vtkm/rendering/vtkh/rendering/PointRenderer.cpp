@@ -64,7 +64,7 @@ PointRenderer::PreExecute()
   }
   else
   {
-    vtkm::Bounds coordBounds = this->Input->GetGlobalBounds();
+    vtkm::Bounds coordBounds = this->Actor.GetDataSet().GetGlobalBounds();
     // set a default radius
     vtkm::Float64 lx = coordBounds.X.Length();
     vtkm::Float64 ly = coordBounds.Y.Length();
@@ -81,8 +81,10 @@ PointRenderer::PreExecute()
     mesh_mapper->SetRadius(radius);
   }
 
-  if(!this->UseNodes && vtkh::IsPointMesh(*this->Input) && this->UsePointMerging)
+  if(!this->UseNodes && vtkh::IsPointMesh(this->Actor.GetDataSet()) && this->UsePointMerging)
   {
+    throw vtkm::cont::ErrorBadValue("Need to implement this.");
+    /*
     vtkm::Float32 max_radius = radius;
     if(this->UseVariableRadius)
     {
@@ -96,6 +98,7 @@ PointRenderer::PreExecute()
     merger.Update();
     this->Input = merger.GetOutput();
     this->DeleteInput = true;
+    */
   }
 
   mesh_mapper->UseVariableRadius(this->UseVariableRadius);
@@ -105,11 +108,12 @@ PointRenderer::PreExecute()
 
 void PointRenderer::PostExecute()
 {
+  throw vtkm::cont::ErrorBadValue("Need to implement this.");
   Renderer::PostExecute();
   if(this->DeleteInput)
   {
-    delete this->Input;
-    this->Input = nullptr;
+//    delete this->Input;
+//    this->Input = nullptr;
   }
 }
 

@@ -185,17 +185,19 @@ vtkm::Bounds PartitionedDataSet::GetGlobalBounds(vtkm::Id coordinateIndex) const
 
 #ifdef VTKM_ENABLE_MPI
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  if (comm.size() == 1)
+    return localBounds;
 
-  std::vector<vtkm::Float64> vals(3), globalMinVals(3), globalMaxVals(3);
+  std::vector<vtkm::Float64> vals(3), globalMinVals(3, 0), globalMaxVals(3, 0);
   vals[0] = localBounds.X.Min;
   vals[1] = localBounds.Y.Min;
   vals[2] = localBounds.Z.Min;
-  vtkmdiy::mpi::all_reduce(comm, vals, globalMinVals, vtkmdiy::mpi::minimum<vtkm::Id>{});
+  vtkmdiy::mpi::all_reduce(comm, vals, globalMinVals, vtkmdiy::mpi::minimum<vtkm::Float64>{});
 
   vals[0] = localBounds.X.Max;
   vals[1] = localBounds.Y.Max;
   vals[2] = localBounds.Z.Max;
-  vtkmdiy::mpi::all_reduce(comm, vals, globalMaxVals, vtkmdiy::mpi::maximum<vtkm::Id>{});
+  vtkmdiy::mpi::all_reduce(comm, vals, globalMaxVals, vtkmdiy::mpi::maximum<vtkm::Float64>{});
 
   return vtkm::Bounds(globalMinVals[0],
                       globalMaxVals[0],
@@ -208,6 +210,47 @@ vtkm::Bounds PartitionedDataSet::GetGlobalBounds(vtkm::Id coordinateIndex) const
   return localBounds;
 #endif
 }
+
+VTKM_CONT
+vtkm::Range PartitionedDataSet::GetScalarFieldRange(const std::string& fieldName) const
+{
+  vtkm::Range range;
+  for (const auto& ds : this->Partitions)
+  {
+    if (ds.HasField(fieldName))
+    {
+      auto rangeArray = ds.GetField(fieldName).GetRange();
+      auto portal = rangeArray.ReadPortal();
+      if (portal.GetNumberOfValues() != 1)
+        throw vtkm::cont::ErrorBadValue("Error in range computation: Field is not a scalar");
+
+      range.Include(portal.Get(0));
+    }
+  }
+
+  return range;
+}
+
+VTKM_CONT
+vtkm::Range PartitionedDataSet::GetGlobalScalarFieldRange(const std::string& fieldName) const
+{
+  vtkm::Range localRange = this->GetScalarFieldRange(fieldName);
+#ifdef VTKM_ENABLE_MPI
+  vtkm::Float64 globalMin, globalMax;
+
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  if (comm.size() == 0)
+    return localRange;
+
+  vtkmdiy::mpi::all_reduce(comm, localRange.Min, globalMin, vtkmdiy::mpi::minimum<vtkm::Float64>{});
+  vtkmdiy::mpi::all_reduce(comm, localRange.Max, globalMax, vtkmdiy::mpi::maximum<vtkm::Float64>{});
+
+  return vtkm::Range(globalMin, globalMax);
+#else
+  return localRange;
+#endif
+}
+
 
 }
 } // namespace vtkm::cont

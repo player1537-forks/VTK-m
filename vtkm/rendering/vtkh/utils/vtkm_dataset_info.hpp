@@ -29,31 +29,21 @@ public:
   static bool IsStructured(const vtkm::cont::DataSet &data_set,
                            int &topo_dims);
 
-  static bool IsStructured(const vtkm::rendering::Actor &actor, int &topo_dims);
-
   static bool IsStructured(const vtkm::cont::UnknownCellSet &cell_set, int &topo_dims);
 
   static bool IsRectilinear(const vtkm::cont::DataSet &data_set);
-
-  static bool IsRectilinear(const vtkm::rendering::Actor &actor);
 
   static bool IsRectilinear(const vtkm::cont::CoordinateSystem &coords);
 
   static bool IsUniform(const vtkm::cont::DataSet &data_set);
 
-  static bool IsUniform(const vtkm::rendering::Actor &actor);
-
   static bool IsUniform(const vtkm::cont::CoordinateSystem &coords);
 
   static bool GetPointDims(const vtkm::cont::DataSet &data_set, int *dims);
 
-  static bool GetPointDims(const vtkm::rendering::Actor &actor, int *dims);
-
   static bool GetPointDims(const vtkm::cont::UnknownCellSet &cell_set, int *dims);
 
   static bool GetCellDims(const vtkm::cont::DataSet &data_set, int *dims);
-
-  static bool GetCellDims(const vtkm::rendering::Actor &actor, int *dims);
 
   static bool GetCellDims(const vtkm::cont::UnknownCellSet &cell_set, int *dims);
 

@@ -16,11 +16,20 @@
 #include <vtkm/rendering/vtkh/rendering/Render.hpp>
 #include <vtkm/rendering/vtkh/compositing/Image.hpp>
 
+#include <vtkm/rendering/Actor.h>
 #include <vtkm/rendering/Camera.h>
 #include <vtkm/rendering/Canvas.h>
 #include <vtkm/rendering/Mapper.h>
 
-//#include <vector>
+
+/*
+TODO:
+Put Actor in.
+remove Range (it's held in the actor)
+remove Bounds (it's in Actor)
+Finalize the global/local bounds in Actor and renderer.
+
+*/
 
 namespace vtkh
 {
@@ -37,52 +46,46 @@ public:
   Renderer();
   virtual ~Renderer();
   virtual std::string GetName() const = 0;
-  virtual void SetInput(vtkm::cont::PartitionedDataSet *input) {this->Input = input;}
-  virtual void SetShadingOn(bool on);
+
+//Actor stuff beg.
+  virtual void SetInput(const vtkm::rendering::Actor& actor) {this->Actor = actor;}
+  virtual void SetColorTable(const vtkm::cont::ColorTable &ct) {this->Actor.SetColorTable(ct);}
+  vtkm::cont::ColorTable      GetColorTable() const {   return this->Actor.GetColorTable(); }
+  std::string                 GetFieldName() const { return this->Actor.GetScalarFieldName(); }
+  vtkm::Range                 GetScalarRange() const { return this->Actor.GetScalarRange(); }
+  bool                        GetHasColorTable() const {   return this->HasColorTable; }
+//Actor stuff end.
+
+  virtual void SetShadingOn(bool vtkmNotUsed(on)) {}   // do nothing by default;
   virtual void Update();
 
-  void AddRender(vtkh::Render &render);
-  void ClearRenders();
+  void AddRender(vtkh::Render &render) {   this->Renders.push_back(render);}
+  void ClearRenders() { this->Renders.clear(); }
 
-  void SetField(const std::string field_name);
-  virtual void SetColorTable(const vtkm::cont::ColorTable &color_table);
-  void SetDoComposite(bool do_composite);
-  void SetRenders(const std::vector<Render> &renders);
-  void SetRange(const vtkm::Range &range);
-  void DisableColorBar();
+  void SetDoComposite(bool do_composite) {   this->DoComposite = do_composite; }
+  void SetRenders(const std::vector<Render> &renders) {   this->Renders = renders; }
 
-  vtkm::cont::ColorTable      GetColorTable() const;
-  std::string                 GetFieldName() const;
-  int                         GetNumberOfRenders() const;
-  std::vector<Render>         GetRenders() const;
-  vtkm::cont::PartitionedDataSet*  GetInput() { return this->Input; }
-  vtkm::cont::PartitionedDataSet*  GetOutput() { return this->Output; }
-  vtkm::Range                 GetRange() const;
-  bool                        GetHasColorTable() const;
+  int                         GetNumberOfRenders() const { return static_cast<int>(this->Renders.size());}
+  std::vector<Render>         GetRenders() const {   return this->Renders;}
+
+
 protected:
-
   // image related data with cinema support
-  vtkm::Bounds                             Bounds;
-  vtkm::cont::ColorTable                   ColorTable;
-  vtkh::Compositor                        *Compositor;
-  bool                                     DoComposite;
-  int                                      FieldIndex;
-  std::string                              FieldName;
-  bool                                     HasColorTable;
-  vtkm::cont::PartitionedDataSet *Input = nullptr;
-  vtkm::cont::PartitionedDataSet *Output = nullptr;
+  vtkh::Compositor                        *Compositor = nullptr;
+  bool                                     DoComposite = true;
+  bool                                     HasColorTable = true;
   vtkmMapperPtr                            Mapper;
   std::vector<vtkh::Render>                Renders;
-  vtkm::Range                              Range;
+  vtkm::rendering::Actor Actor;
 
   // methods
-virtual void PreExecute(); // override;
-virtual void PostExecute(); // override;
-virtual void DoExecute(); // override;
+  virtual void PreExecute(); // override;
+  virtual void PostExecute(); // override;
+  virtual void DoExecute(); // override;
 
-virtual void CheckForRequiredField(const std::string &field_name);
+  void CheckForRequiredField(const std::string &field_name);
 
-  virtual void Composite(const int &num_images);
+  virtual void Composite();
   void ImageToCanvas(Image &image, vtkm::rendering::Canvas &canvas, bool get_depth);
 };
 

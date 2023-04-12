@@ -205,10 +205,7 @@ vtkm::rendering::Canvas* RenderDataSets(const std::vector<vtkm::cont::DataSet>& 
 
   for (auto& dataSet : dataSets)
   {
-    scene.AddActor(vtkm::rendering::Actor(dataSet.GetCellSet(),
-                                          dataSet.GetCoordinateSystem(),
-                                          dataSet.GetField(fieldName),
-                                          colorTable));
+    scene.AddActor(vtkm::rendering::Actor(dataSet, fieldName, colorTable));
   }
 
   auto bounds = std::accumulate(dataSets.begin(),

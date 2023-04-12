@@ -227,7 +227,7 @@ Scene::Render()
       {
         if((*plot).GetHasColorTable())
         {
-          ranges.push_back((*plot).GetRange());
+          ranges.push_back((*plot).GetScalarRange());
           field_names.push_back((*plot).GetFieldName());
           color_tables.push_back((*plot).GetColorTable());
         }

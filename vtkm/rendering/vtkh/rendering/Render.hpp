@@ -86,6 +86,8 @@ protected:
   bool                         DoShading;
   vtkmCanvas                   Canvas;
   vtkm::Vec<float,3>           WorldAnnotationScale;
+
+  std::shared_ptr<vtkm::rendering::Mapper> Mapper;
 };
 
 static float vtkh_default_bg_color[4] = {0.f, 0.f, 0.f, 1.f};

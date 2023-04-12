@@ -177,17 +177,12 @@ void DoRenderTest(vtkm::rendering::Canvas& canvas,
     std::string fieldName = dataSetsFields[dataFieldId].second;
     if (options.Colors.empty())
     {
-      scene.AddActor(vtkm::rendering::Actor(dataSet.GetCellSet(),
-                                            dataSet.GetCoordinateSystem(),
-                                            dataSet.GetField(fieldName),
-                                            options.ColorTable));
+      scene.AddActor(vtkm::rendering::Actor(dataSet, fieldName, options.ColorTable));
     }
     else
     {
-      scene.AddActor(vtkm::rendering::Actor(dataSet.GetCellSet(),
-                                            dataSet.GetCoordinateSystem(),
-                                            dataSet.GetField(fieldName),
-                                            options.Colors[dataFieldId % options.Colors.size()]));
+      scene.AddActor(vtkm::rendering::Actor(
+        dataSet, fieldName, options.Colors[dataFieldId % options.Colors.size()]));
     }
     bounds.Include(dataSet.GetCoordinateSystem().GetBounds());
     fieldRange.Include(dataSet.GetField(fieldName).GetRange().ReadPortal().Get(0));

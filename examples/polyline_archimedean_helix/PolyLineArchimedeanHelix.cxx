@@ -115,10 +115,7 @@ void TubeThatSpiral(vtkm::FloatDefault radius, vtkm::Id numLineSegments, vtkm::I
   v[v.size() - 1] = v[v.size() - 2];
 
   tubeDataset.AddPointField("Spiral Radius", v);
-  scene.AddActor(vtkm::rendering::Actor(tubeDataset.GetCellSet(),
-                                        tubeDataset.GetCoordinateSystem(),
-                                        tubeDataset.GetField("Spiral Radius"),
-                                        colorTable));
+  scene.AddActor(vtkm::rendering::Actor(tubeDataset, "Spiral Radius", colorTable));
   vtkm::rendering::View3D view(scene, mapper, canvas, camera, bg);
   view.Paint();
   // We can save the file as a .NetBPM:

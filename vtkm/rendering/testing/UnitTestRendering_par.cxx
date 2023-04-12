@@ -90,7 +90,10 @@ void ScalarRenderer(int blocksPerRank)
 
   vtkh::ScalarRenderer tracer;
 
-  tracer.SetInput(&pds);
+  std::cout << __FILE__ << " " << __LINE__ << " fix me" << std::endl;
+  vtkm::rendering::Actor actor(pds, "", vtkm::cont::ColorTable("Cool to Warm"));
+
+  tracer.SetInput(actor);
   tracer.SetCamera(camera);
   tracer.Update();
 
@@ -124,8 +127,9 @@ void PointRenderer(bool renderVar, int blocksPerRank)
   camera.SetPosition(vtkm::Vec<vtkm::Float64, 3>(16, 36, -36));
   vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, imgFile);
   vtkh::PointRenderer renderer;
-  renderer.SetInput(&pds);
-  renderer.SetField("point_data_Float64");
+
+  vtkm::rendering::Actor actor(pds, "point_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
+  renderer.SetInput(actor);
   if (renderVar)
   {
     renderer.SetUseVariableRadius(true);
@@ -172,8 +176,8 @@ void RayTrace(bool doStructured, int blocksPerRank)
 
   vtkh::RayTracer tracer;
 
-  tracer.SetInput(&pds);
-  tracer.SetField("point_data_Float64");
+  vtkm::rendering::Actor actor(pds, "point_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
+  tracer.SetInput(actor);
 
   vtkh::Scene scene;
   scene.AddRender(render);
@@ -207,8 +211,7 @@ void VolumeRender(bool doStructured, int blocksPerRank)
 
   vtkh::VolumeRenderer tracer;
   tracer.SetColorTable(color_map);
-  tracer.SetInput(&pds);
-  tracer.SetField("point_data_Float64");
+  vtkm::rendering::Actor actor(pds, "point_data_Float64", color_map);
 
   vtkh::Scene scene;
   scene.AddRender(render);
@@ -254,9 +257,9 @@ void VolumeRenderBlank(int blocksPerRank)
   color_map.AddPointAlpha(1.0, 0.6);
 
   vtkh::VolumeRenderer tracer;
+  vtkm::rendering::Actor actor(pds, "point_data_Float64", color_map);
   tracer.SetColorTable(color_map);
-  tracer.SetInput(&isoOutput);
-  tracer.SetField("point_data_Float64");
+  tracer.SetInput(actor);
 
   vtkh::Scene scene;
   scene.AddRender(render);
@@ -286,17 +289,18 @@ void MultiRender(bool doBatch, int blocksPerRank)
   camera.ResetToBounds(bounds);
   vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, "multi_par");
   vtkh::RayTracer tracer;
-  tracer.SetInput(&iso_output);
-  tracer.SetField("cell_data_Float64");
+  vtkm::rendering::Actor actor(
+    iso_output, "cell_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
+  tracer.SetInput(actor);
 
   vtkm::cont::ColorTable color_map("Cool to Warm");
   color_map.AddPointAlpha(0.0, .1);
   color_map.AddPointAlpha(1.0, .3);
 
+  vtkm::rendering::Actor actor2(pds, "point_data_Float64", color_map);
   vtkh::VolumeRenderer v_tracer;
   v_tracer.SetColorTable(color_map);
-  v_tracer.SetInput(&pds);
-  v_tracer.SetField("point_data_Float64");
+  v_tracer.SetInput(actor2);
 
   vtkh::Scene scene;
 

@@ -116,7 +116,7 @@ ScalarRenderer::PostExecute()
 void
 ScalarRenderer::DoExecute()
 {
-  vtkm::Id num_domains = this->Input->GetNumberOfPartitions();
+  vtkm::Id num_domains = this->Actor.GetDataSet().GetNumberOfPartitions();
   this->Output = new vtkm::cont::PartitionedDataSet();
 
   //
@@ -135,7 +135,7 @@ ScalarRenderer::DoExecute()
   cell_counts.resize(num_domains);
   for(vtkm::Id dom = 0; dom < num_domains; ++dom)
   {
-    auto data_set = this->Input->GetPartition(dom);
+    auto data_set = this->Actor.GetDataSet().GetPartition(dom);
     vtkm::cont::DataSet filtered = detail::filter_scalar_fields(data_set);
     renderers[dom].SetInput(filtered);
     renderers[dom].SetWidth(this->Width);
@@ -161,7 +161,7 @@ ScalarRenderer::DoExecute()
   float bounds[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};;
   for(vtkm::Id dom = 0; dom < num_domains; ++dom)
   {
-    auto data_set = this->Input->GetPartition(dom);
+    auto data_set = this->Actor.GetDataSet().GetPartition(dom);
     num_cells = data_set.GetCellSet().GetNumberOfCells();
 
     if(data_set.GetCellSet().GetNumberOfCells())
@@ -370,12 +370,6 @@ PayloadImage * ScalarRenderer::Convert(Result &result)
     }
   }
   return image;
-}
-
-vtkm::cont::PartitionedDataSet *
-ScalarRenderer::GetInput()
-{
-  return this->Input;
 }
 
 } // namespace vtkh

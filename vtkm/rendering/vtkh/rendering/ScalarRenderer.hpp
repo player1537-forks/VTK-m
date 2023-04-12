@@ -36,9 +36,11 @@ public:
   void SetCamera(vtkmCamera &camera);
 
   int GetNumberOfCameras() const;
-  vtkm::cont::PartitionedDataSet *GetInput();
   void SetHeight(const int height) { this->Height = height; }
   void SetWidth(const int width) {this->Width = width; }
+
+  //moved from base class.
+  vtkm::cont::PartitionedDataSet*  GetOutput() { return this->Output; }
 protected:
 
   int Width = 1024;
@@ -53,6 +55,9 @@ protected:
   PayloadImage * Convert(Result &result);
   ScalarRenderer::Result Convert(PayloadImage &image, std::vector<std::string> &names);
   //void ImageToDataSet(Image &image, vtkm::rendering::Canvas &canvas, bool get_depth);
+
+  //moved from base class.
+  vtkm::cont::PartitionedDataSet *Output = nullptr;
 };
 
 } // namespace vtkh

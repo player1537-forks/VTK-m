@@ -94,6 +94,15 @@ public:
   VTKM_CONT
   vtkm::Bounds GetGlobalBounds(vtkm::Id coordinateIndex = 0) const;
 
+  /// Get the scalar field range for partitions.
+  VTKM_CONT
+  vtkm::Range GetScalarFieldRange(const std::string& fieldName) const;
+
+  /// Get the scalar field range for partitions over all ranks.
+  /// @warning This method requires global communication (MPI_Allreduce) if MPI is enabled.
+  VTKM_CONT
+  vtkm::Range GetGlobalScalarFieldRange(const std::string& fieldName) const;
+
   ///@{
   /// Methods to Add and Get fields on a PartitionedDataSet
   VTKM_CONT
