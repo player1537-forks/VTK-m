@@ -15,6 +15,7 @@ set(headers
   DataSetIntegrator.h
   DataSetIntegratorSteadyState.h
   DataSetIntegratorUnsteadyState.h
+  EventLog.h
   GridMetaData.h
   LagrangianStructureHelpers.h
   Messenger.h

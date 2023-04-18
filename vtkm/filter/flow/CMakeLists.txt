@@ -23,6 +23,7 @@ set(flow_headers
   )
 
 set(flow_sources
+  internal/EventLog.cxx
   internal/Messenger.cxx
   FilterParticleAdvection.cxx
   ParticleAdvection.cxx

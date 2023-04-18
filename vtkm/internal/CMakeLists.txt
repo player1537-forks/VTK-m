@@ -40,6 +40,8 @@ endif()
 
 set(VTKM_ENABLE_LOGGING ${VTKm_ENABLE_LOGGING})
 
+set(VTKM_ENABLE_EVENTLOG ${VTKm_ENABLE_EVENTLOG})
+
 vtkm_get_kit_name(kit_name kit_dir)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Configure.h.in
   ${VTKm_BINARY_INCLUDE_DIR}/${kit_dir}/Configure.h

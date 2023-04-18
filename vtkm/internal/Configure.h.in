@@ -327,6 +327,9 @@
 //Mark if we have enabled logging.
 #cmakedefine VTKM_ENABLE_LOGGING
 
+//Mark if we have enabled event log.
+#cmakedefine VTKM_ENABLE_EVENTLOG
+
 // Define a pair of macros, VTKM_SWALLOW_SEMICOLON_PRE_BLOCK and
 // VTKM_SWALLOW_SEMICOLON_POST_BLOCK that can be used around a block in a
 // macro to "swallow" the semicolon after the macro's use so that it is

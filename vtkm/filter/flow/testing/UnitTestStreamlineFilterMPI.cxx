@@ -115,10 +115,10 @@ void SetFilter(FilterType& filter,
   filter.SetSeeds(seedArray);
   filter.SetActiveField(fieldName);
   filter.SetUseThreadedAlgorithm(useThreaded);
-  //  if (useAsyncComm)
-  //    filter.SetUseAsynchronousCommunication();
-  //  else
-  //    filter.SetUseSynchronousCommunication();
+  if (useAsyncComm)
+    filter.SetUseAsynchronousCommunication();
+  else
+    filter.SetUseSynchronousCommunication();
 
   if (useBlockIds)
     filter.SetBlockIDs(blockIds);
@@ -443,6 +443,7 @@ void TestPartitionedDataSet(vtkm::Id nPerRank,
       std::cout << " - with duplicate blocks";
     std::cout << " - on a partitioned data set" << std::endl;
   }
+
 
   std::vector<vtkm::Id> blockIds;
   //Uniform assignment.

@@ -134,6 +134,8 @@ endif()
 # with the performance of vtk-m
 vtkm_option(VTKm_ENABLE_LOGGING "Enable VTKm Logging" ON)
 
+vtkm_option(VTKm_ENABLE_EVENTLOG "Enable VTKm EventLog" OFF)
+
 # When VTK-m is embedded into larger projects they may desire to turn off
 # VTK-m internal assert checks when in debug mode to improve debug runtime
 # performance.
@@ -188,6 +190,7 @@ vtkm_option(VTKm_OVERRIDE_CTEST_TIMEOUT "Disable default ctest timeout" OFF)
 
 mark_as_advanced(
   VTKm_ENABLE_LOGGING
+  VTKm_ENABLE_EVENTLOG
   VTKm_NO_ASSERT
   VTKm_NO_ASSERT_CUDA
   VTKm_NO_ASSERT_HIP

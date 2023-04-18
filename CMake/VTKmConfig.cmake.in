@@ -41,6 +41,7 @@
 #  VTKm_ENABLE_OPENMP         Will be enabled if VTK-m was built with OpenMP support
 #  VTKm_ENABLE_KOKKOS         Will be enabled if VTK-m was built with Kokkos support
 #  VTKm_ENABLE_LOGGING        Will be enabled if VTK-m was built with logging support
+#  VTKm_ENABLE_EVENTLOG       Will be enabled if VTK-m was built with event logging support
 #  VTKm_ENABLE_MPI            Will be enabled if VTK-m was built with MPI support
 #  VTKm_ENABLE_RENDERING      Will be enabled if VTK-m was built with rendering support
 #  VTKm_ENABLE_GL_CONTEXT     Will be enabled if VTK-m rendering was built with a GL context
@@ -71,6 +72,7 @@ set(VTKm_ENABLE_KOKKOS "@VTKm_ENABLE_KOKKOS@")
 set(VTKm_ENABLE_OPENMP "@VTKm_ENABLE_OPENMP@")
 set(VTKm_ENABLE_TBB "@VTKm_ENABLE_TBB@")
 set(VTKm_ENABLE_LOGGING "@VTKm_ENABLE_LOGGING@")
+set(VTKm_ENABLE_EVENTLOG "@VTKm_ENABLE_EVENTLOG@")
 set(VTKm_ENABLE_RENDERING "@VTKm_ENABLE_RENDERING@")
 set(VTKm_ENABLE_GL_CONTEXT "@VTKm_ENABLE_GL_CONTEXT@")
 set(VTKm_ENABLE_OSMESA_CONTEXT "@VTKm_ENABLE_OSMESA_CONTEXT@")
