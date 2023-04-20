@@ -82,6 +82,8 @@ public:
     VTKM_ASSERT(this->InBounds.Particles.size() == this->InBounds.BlockIDs.size());
     VTKM_ASSERT(this->OutOfBounds.Particles.size() == this->OutOfBounds.BlockIDs.size());
     VTKM_ASSERT(this->TermIdx.size() == this->TermID.size());
+#else
+    (void)num;
 #endif
   }
 
