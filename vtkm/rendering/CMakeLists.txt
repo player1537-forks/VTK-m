@@ -86,7 +86,7 @@ set(headers
   vtkh/rendering/PointRenderer.hpp
   vtkh/rendering/RayTracer.hpp
   vtkh/rendering/Renderer.hpp
-  vtkh/rendering/Render.hpp
+  vtkh/rendering/Plot.h
   vtkh/rendering/ScalarRenderer.hpp
   vtkh/rendering/Scene.hpp
   vtkh/rendering/VolumeRenderer.hpp
@@ -141,7 +141,7 @@ set(sources
   vtkh/rendering/MeshRenderer.cpp
   vtkh/rendering/PointRenderer.cpp
   vtkh/rendering/RayTracer.cpp
-  vtkh/rendering/Render.cpp
+  vtkh/rendering/Plot.cxx
   vtkh/rendering/Renderer.cpp
   vtkh/rendering/ScalarRenderer.cpp
   vtkh/rendering/Scene.cpp

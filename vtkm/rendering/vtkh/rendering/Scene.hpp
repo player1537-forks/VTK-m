@@ -13,8 +13,8 @@
 
 #include <vector>
 #include <list>
-//#include <vtkm/rendering/<vtkm/rendering/vtkm_rendering_export.h>
-#include <vtkm/rendering/vtkh/rendering/Render.hpp>
+#include <vtkm/rendering/vtkm_rendering_export.h>
+#include <vtkm/rendering/vtkh/rendering/Plot.h>
 #include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
 
 namespace vtkh
@@ -25,8 +25,8 @@ class VTKM_RENDERING_EXPORT Scene
 public:
   Scene();
 
-  void AddRender(vtkh::Render &render);
-  void SetRenders(const std::vector<vtkh::Render> &renders);
+  void AddPlot(vtkh::Plot &render);
+  void SetPlots(const std::vector<vtkh::Plot> &renders);
   void AddRenderer(vtkh::Renderer *render);
   void Render();
   void Save();
@@ -35,13 +35,13 @@ public:
 protected:
   bool IsMesh(vtkh::Renderer *renderer);
   bool IsVolume(vtkh::Renderer *renderer);
-  void SynchDepths(std::vector<vtkh::Render> &renders);
+  void SynchDepths(std::vector<vtkh::Plot> &plots);
 
 private:
   int                          BatchSize;
   bool                         HasVolume;
   std::list<vtkh::Renderer*>   Renderers;
-  std::vector<vtkh::Render>    Renders;
+  std::vector<vtkh::Plot>    Plots;
 
 }; // class scene
 

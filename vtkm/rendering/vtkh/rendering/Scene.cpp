@@ -46,15 +46,15 @@ Scene::GetRenderBatchSize() const
 }
 
 void
-Scene::AddRender(vtkh::Render &render)
+Scene::AddPlot(vtkh::Plot &plot)
 {
-  this->Renders.push_back(render);
+  this->Plots.push_back(plot);
 }
 
 void
-Scene::SetRenders(const std::vector<vtkh::Render> &renders)
+Scene::SetPlots(const std::vector<vtkh::Plot> &plots)
 {
-  this->Renders = renders;
+  this->Plots = plots;
 }
 
 bool
@@ -144,19 +144,19 @@ Scene::Render()
   // would consume 7GB of space. Not good on the GPU, where resources
   // are limited.
   //
-  const int render_size = this->Renders.size();
+  const int render_size = this->Plots.size();
   int batch_start = 0;
   while(batch_start < render_size)
   {
     int batch_end = std::min(this->BatchSize + batch_start, render_size);
-    auto begin = this->Renders.begin() + batch_start;
-    auto end = this->Renders.begin() + batch_end;
+    auto begin = this->Plots.begin() + batch_start;
+    auto end = this->Plots.begin() + batch_end;
 
-    std::vector<vtkh::Render> current_batch(begin, end);
+    std::vector<vtkh::Plot> current_batch(begin, end);
 
-    for(auto  render : current_batch)
+    for(auto plot : current_batch)
     {
-      render.GetCanvas().Clear();
+      plot.GetCanvas().Clear();
     }
 
     const int plot_size = this->Renderers.size();
@@ -193,10 +193,10 @@ Scene::Render()
         (*renderer)->SetDoComposite(false);
       }
 
-      (*renderer)->SetRenders(current_batch);
+      (*renderer)->SetPlots(current_batch);
       (*renderer)->Update();
 
-      (*renderer)->ClearRenders();
+      (*renderer)->ClearPlots();
 
       synch_depths = true;
       renderer++;
@@ -212,11 +212,11 @@ Scene::Render()
         SynchDepths(current_batch);
       }
       (*renderer)->SetDoComposite(true);
-      (*renderer)->SetRenders(current_batch);
+      (*renderer)->SetPlots(current_batch);
       (*renderer)->Update();
 
-      current_batch  = (*renderer)->GetRenders();
-      (*renderer)->ClearRenders();
+      current_batch  = (*renderer)->GetPlots();
+      (*renderer)->ClearPlots();
     }
 
     if(do_once)
@@ -248,23 +248,10 @@ Scene::Render()
   } // while
 }
 
-void Scene::SynchDepths(std::vector<vtkh::Render> &renders)
+void Scene::SynchDepths(std::vector<vtkh::Plot> &plots)
 {
-#ifdef VTKM_ENABLE_MPI
-  //int root = 0; // full images in rank 0
-
-  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
-  //MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm);
-  MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
-
-  for(auto render : renders)
-  {
-    vtkm::rendering::Canvas &canvas = render.GetCanvas();
-    const int image_size = canvas.GetWidth() * canvas.GetHeight();
-    float *depth_ptr = GetVTKMPointer(canvas.GetDepthBuffer());
-    MPI_Bcast( depth_ptr, image_size, MPI_FLOAT, 0, comm);
-  }
-#endif
+  for (auto plot : plots)
+    plot.SyncDepth();
 }
 
 void

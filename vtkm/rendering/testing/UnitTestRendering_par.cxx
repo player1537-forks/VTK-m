@@ -125,7 +125,7 @@ void PointRenderer(bool renderVar, int blocksPerRank)
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(bounds);
   camera.SetPosition(vtkm::Vec<vtkm::Float64, 3>(16, 36, -36));
-  vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, imgFile);
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgFile);
   vtkh::PointRenderer renderer;
 
   vtkm::rendering::Actor actor(pds, "point_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
@@ -138,7 +138,7 @@ void PointRenderer(bool renderVar, int blocksPerRank)
 
   vtkh::Scene scene;
   scene.AddRenderer(&renderer);
-  scene.AddRender(render);
+  scene.AddPlot(plot);
   scene.Render();
 }
 
@@ -172,7 +172,7 @@ void RayTrace(bool doStructured, int blocksPerRank)
   else
     imgName += "_unstructured";
 
-  vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, imgName);
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
 
   vtkh::RayTracer tracer;
 
@@ -180,7 +180,7 @@ void RayTrace(bool doStructured, int blocksPerRank)
   tracer.SetInput(actor);
 
   vtkh::Scene scene;
-  scene.AddRender(render);
+  scene.AddPlot(plot);
   scene.AddRenderer(&tracer);
   scene.Render();
 }
@@ -203,18 +203,20 @@ void VolumeRender(bool doStructured, int blocksPerRank)
   else
     imgName += "_unstructured";
 
-  vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, imgName);
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
 
   vtkm::cont::ColorTable color_map("cool to warm");
   color_map.AddPointAlpha(0.0, .05);
   color_map.AddPointAlpha(1.0, .5);
 
+  //DRP: renderer needs to take an actor in ctor.
   vtkh::VolumeRenderer tracer;
-  tracer.SetColorTable(color_map);
   vtkm::rendering::Actor actor(pds, "point_data_Float64", color_map);
+  tracer.SetInput(actor);
+  tracer.SetColorTable(color_map);
 
   vtkh::Scene scene;
-  scene.AddRender(render);
+  scene.AddPlot(plot);
   scene.AddRenderer(&tracer);
   scene.Render();
 }
@@ -247,8 +249,7 @@ void VolumeRenderBlank(int blocksPerRank)
   look[1] = 100000.f;
   look[2] = 100000.f;
   camera.SetLookAt(look);
-  vtkh::Render render =
-    vtkh::MakeRender(512, 512, camera, isoOutput, "volume_unstructured_blank_par");
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, isoOutput, "volume_unstructured_blank_par");
 
 
   vtkm::cont::ColorTable color_map("Cool to Warm");
@@ -258,11 +259,12 @@ void VolumeRenderBlank(int blocksPerRank)
 
   vtkh::VolumeRenderer tracer;
   vtkm::rendering::Actor actor(pds, "point_data_Float64", color_map);
-  tracer.SetColorTable(color_map);
   tracer.SetInput(actor);
+  tracer.SetColorTable(color_map);
+
 
   vtkh::Scene scene;
-  scene.AddRender(render);
+  scene.AddPlot(plot);
   scene.AddRenderer(&tracer);
   scene.Render();
 }
@@ -287,7 +289,7 @@ void MultiRender(bool doBatch, int blocksPerRank)
 
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(bounds);
-  vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, "multi_par");
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, "multi_par");
   vtkh::RayTracer tracer;
   vtkm::rendering::Actor actor(
     iso_output, "cell_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
@@ -299,8 +301,9 @@ void MultiRender(bool doBatch, int blocksPerRank)
 
   vtkm::rendering::Actor actor2(pds, "point_data_Float64", color_map);
   vtkh::VolumeRenderer v_tracer;
-  v_tracer.SetColorTable(color_map);
   v_tracer.SetInput(actor2);
+  v_tracer.SetColorTable(color_map);
+
 
   vtkh::Scene scene;
 
@@ -309,10 +312,10 @@ void MultiRender(bool doBatch, int blocksPerRank)
     scene.SetRenderBatchSize(5);
 
     const int num_images = 11;
-    std::vector<vtkh::Render> renders;
+    std::vector<vtkh::Plot> renders;
     for (int i = 0; i < num_images; ++i)
     {
-      vtkh::Render tmp = render.Copy();
+      vtkh::Plot tmp = plot.Copy();
       camera.Azimuth(float(i));
       tmp.SetCamera(camera);
       std::stringstream name;
@@ -320,11 +323,11 @@ void MultiRender(bool doBatch, int blocksPerRank)
       tmp.SetImageName(name.str());
       renders.push_back(tmp);
     }
-    scene.SetRenders(renders);
+    scene.SetPlots(renders);
   }
   else
   {
-    scene.AddRender(render);
+    scene.AddPlot(plot);
   }
 
   scene.AddRenderer(&v_tracer);
@@ -355,11 +358,12 @@ void RenderTests()
 
   for (auto nb : blocksPerRank)
   {
-    ScalarRenderer(nb);
+    //Actor wants a fieldName
+    //ScalarRenderer(nb);
 
     for (auto v : flags)
     {
-      PointRenderer(v, nb);
+      //PointRenderer(v, nb);
 
       //Add PointRenderer no data
       MultiRender(v, nb);

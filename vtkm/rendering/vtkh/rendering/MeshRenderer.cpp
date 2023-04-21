@@ -38,7 +38,7 @@ MeshRenderer::PreExecute()
 
   if(this->UseForegroundColor)
   {
-    vtkm::rendering::Color fg = this->Renders[0].GetCanvas().GetForegroundColor();
+    vtkm::rendering::Color fg = this->Plots[0].GetCanvas().GetForegroundColor();
     vtkm::cont::ColorTable single_color;
     vtkm::Vec<vtkm::Float32,3> fg_vec3_not_4;
     fg_vec3_not_4[0] = fg.Components[0];

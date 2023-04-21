@@ -10,116 +10,108 @@
 
 #include <vtkm/cont/EnvironmentTracker.h>
 
-#include "Render.hpp"
-#include <vtkm/rendering/vtkh/rendering/Annotator.hpp>
-#include <vtkm/rendering/vtkh/compositing/PNGEncoder.h>
-#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
 #include <vtkm/rendering/MapperRayTracer.h>
 #include <vtkm/rendering/View2D.h>
 #include <vtkm/rendering/View3D.h>
+#include <vtkm/rendering/vtkh/compositing/PNGEncoder.h>
+#include <vtkm/rendering/vtkh/rendering/Annotator.hpp>
+#include <vtkm/rendering/vtkh/rendering/Plot.h>
+#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
+
+#ifdef VTKM_ENABLE_MPI
+#include <mpi.h>
+#include <vtkm/thirdparty/diy/mpi-cast.h>
+#endif
 
 namespace vtkh
 {
 
-Render::Render()
-  : Width(1024),
-    Height(1024),
-    DoRenderAnnotations(true),
-    DoRenderWorldAnnotations(true),
-    DoRenderScreenAnnotations(true),
-    DoRenderBackground(true),
-    DoShading(true),
-    Canvas(this->Width, this->Height)
+Plot::Plot()
+  : Width(1024)
+  , Height(1024)
+  , DoPlotAnnotations(true)
+  , DoPlotWorldAnnotations(true)
+  , DoPlotScreenAnnotations(true)
+  , DoPlotBackground(true)
+  , DoShading(true)
+  , Canvas(this->Width, this->Height)
 {
   this->WorldAnnotationScale[0] = 1.f;
   this->WorldAnnotationScale[1] = 1.f;
   this->WorldAnnotationScale[2] = 1.f;
 }
 
-Render::~Render()
-{
-}
+Plot::~Plot() {}
 
-Render::vtkmCanvas&
-Render::GetCanvas()
+Plot::vtkmCanvas& Plot::GetCanvas()
 {
   return this->Canvas;
 }
 
-vtkm::Bounds
-Render::GetSceneBounds() const
+vtkm::Bounds Plot::GetSceneBounds() const
 {
   return this->SceneBounds;
 }
 
-void
-Render::ScaleWorldAnnotations(float x, float y, float z)
+void Plot::ScaleWorldAnnotations(float x, float y, float z)
 {
   this->WorldAnnotationScale[0] = x;
   this->WorldAnnotationScale[1] = y;
   this->WorldAnnotationScale[2] = z;
 }
 
-vtkm::Int32
-Render::GetWidth() const
+vtkm::Int32 Plot::GetWidth() const
 {
   return this->Width;
 }
 
-vtkm::Int32
-Render::GetHeight() const
+vtkm::Int32 Plot::GetHeight() const
 {
   return this->Height;
 }
 
-void
-Render::SetWidth(const vtkm::Int32 width)
+void Plot::SetWidth(const vtkm::Int32 width)
 {
-  if(width == this->Width) return;
+  if (width == this->Width)
+    return;
   this->Width = width;
   this->Canvas.ResizeBuffers(this->Width, this->Height);
 }
 
-void
-Render::SetHeight(const vtkm::Int32 height)
+void Plot::SetHeight(const vtkm::Int32 height)
 {
-  if(height == this->Height) return;
+  if (height == this->Height)
+    return;
   this->Height = height;
   this->Canvas.ResizeBuffers(this->Width, this->Height);
 }
 
-void
-Render::SetSceneBounds(const vtkm::Bounds &bounds)
+void Plot::SetSceneBounds(const vtkm::Bounds& bounds)
 {
   this->SceneBounds = bounds;
 }
 
-const vtkm::rendering::Camera&
-Render::GetCamera() const
+const vtkm::rendering::Camera& Plot::GetCamera() const
 {
   return this->Camera;
 }
 
-void
-Render::SetCamera(const vtkm::rendering::Camera &camera)
+void Plot::SetCamera(const vtkm::rendering::Camera& camera)
 {
-   this->Camera = camera;
+  this->Camera = camera;
 }
 
-void
-Render::SetImageName(const std::string &name)
+void Plot::SetImageName(const std::string& name)
 {
   this->ImageName = name;
 }
 
-void
-Render::SetComments(const std::vector<std::string> &comments)
+void Plot::SetComments(const std::vector<std::string>& comments)
 {
   this->Comments = comments;
 }
 
-void
-Render::SetBackgroundColor(float bg_color[4])
+void Plot::SetBackgroundColor(float bg_color[4])
 {
   this->BgColor.Components[0] = bg_color[0];
   this->BgColor.Components[1] = bg_color[1];
@@ -127,8 +119,7 @@ Render::SetBackgroundColor(float bg_color[4])
   this->BgColor.Components[3] = bg_color[3];
 }
 
-void
-Render::SetForegroundColor(float fg_color[4])
+void Plot::SetForegroundColor(float fg_color[4])
 {
   this->FgColor.Components[0] = fg_color[0];
   this->FgColor.Components[1] = fg_color[1];
@@ -136,29 +127,27 @@ Render::SetForegroundColor(float fg_color[4])
   this->FgColor.Components[3] = fg_color[3];
 }
 
-std::string
-Render::GetImageName() const
+std::string Plot::GetImageName() const
 {
   return this->ImageName;
 }
 
-std::vector<std::string>
-Render::GetComments() const
+std::vector<std::string> Plot::GetComments() const
 {
   return this->Comments;
 }
 
-vtkm::rendering::Color
-Render::GetBackgroundColor() const
+vtkm::rendering::Color Plot::GetBackgroundColor() const
 {
   return this->BgColor;
 }
 
-void
-Render::RenderWorldAnnotations()
+void Plot::RenderWorldAnnotations()
 {
-  if(!this->DoRenderAnnotations) return;
-  if(!this->DoRenderWorldAnnotations) return;
+  if (!this->DoPlotAnnotations)
+    return;
+  if (!this->DoPlotWorldAnnotations)
+    return;
 #ifdef VTKM_ENABLE_MPI
   //if(vtkh::GetMPIRank() != 0) return;
   if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
@@ -169,34 +158,34 @@ Render::RenderWorldAnnotations()
 
   Annotator annotator(this->Canvas, this->Camera, this->SceneBounds);
   annotator.RenderWorldAnnotations(this->WorldAnnotationScale);
-
 }
 
-void
-Render::RenderScreenAnnotations(const std::vector<std::string> &field_names,
-                                const std::vector<vtkm::Range> &ranges,
-                                const std::vector<vtkm::cont::ColorTable> &colors)
+void Plot::RenderScreenAnnotations(const std::vector<std::string>& field_names,
+                                   const std::vector<vtkm::Range>& ranges,
+                                   const std::vector<vtkm::cont::ColorTable>& colors)
 {
-  if(!this->DoRenderAnnotations) return;
-  if(!this->DoRenderScreenAnnotations) return;
+  if (!this->DoPlotAnnotations)
+    return;
+  if (!this->DoPlotScreenAnnotations)
+    return;
 #ifdef VTKM_ENABLE_MPI
-  //if(vtkh::GetMPIRank() != 0) return;
   if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
     return;
 #endif
   this->Canvas.SetBackgroundColor(this->BgColor);
   this->Canvas.SetForegroundColor(this->FgColor);
-  if(this->DoRenderBackground) this->Canvas.BlendBackground();
+  if (this->DoPlotBackground)
+    this->Canvas.BlendBackground();
 
-  if(!this->DoRenderAnnotations) return;
+  if (!this->DoPlotAnnotations)
+    return;
   Annotator annotator(this->Canvas, this->Camera, this->SceneBounds);
   annotator.RenderScreenAnnotations(field_names, ranges, colors);
 }
 
-Render
-Render::Copy() const
+Plot Plot::Copy() const
 {
-  Render copy;
+  Plot copy;
   copy.Camera = this->Camera;
   copy.ImageName = this->ImageName;
   copy.SceneBounds = this->SceneBounds;
@@ -204,61 +193,61 @@ Render::Copy() const
   copy.Height = this->Height;
   copy.BgColor = this->BgColor;
   copy.FgColor = this->FgColor;
-  copy.DoRenderAnnotations = this->DoRenderAnnotations;
-  copy.DoRenderBackground = this->DoRenderBackground;
+  copy.DoPlotAnnotations = this->DoPlotAnnotations;
+  copy.DoPlotBackground = this->DoPlotBackground;
   copy.DoShading = this->DoShading;
   copy.Canvas = this->CreateCanvas();
   copy.WorldAnnotationScale = this->WorldAnnotationScale;
   return copy;
 }
 
-void
-Render::Print() const
+void Plot::Print() const
 {
-  std::cout<<"=== image name  : "<<this->ImageName<<"\n";;
-  std::cout<<"=== bounds .... : "<<this->SceneBounds<<"\n";
-  std::cout<<"=== width ..... : "<<this->Width<<"\n";
-  std::cout<<"=== height .... : "<<this->Height<<"\n";
-  std::cout<<"=== bg_color .. : "
-            <<this->BgColor.Components[0]<<" "
-            <<this->BgColor.Components[1]<<" "
-            <<this->BgColor.Components[2]<<" "
-            <<this->BgColor.Components[3]<<"\n";
-  std::cout<<"=== fg_color .. : "
-            <<this->FgColor.Components[0]<<" "
-            <<this->FgColor.Components[1]<<" "
-            <<this->FgColor.Components[2]<<" "
-            <<this->FgColor.Components[3]<<"\n";
-  std::cout<<"=== annotations : "
-           <<(this->DoRenderAnnotations ? "On" : "Off")
-           <<"\n";
-  std::cout<<"=== background  : "
-           <<(this->DoRenderBackground ? "On" : "Off")
-           <<"\n";
-  std::cout<<"=== shading ... : "
-           <<(this->DoShading ? "On" : "Off")
-           <<"\n";
+  std::cout << "=== image name  : " << this->ImageName << "\n";
+  ;
+  std::cout << "=== bounds .... : " << this->SceneBounds << "\n";
+  std::cout << "=== width ..... : " << this->Width << "\n";
+  std::cout << "=== height .... : " << this->Height << "\n";
+  std::cout << "=== bg_color .. : " << this->BgColor.Components[0] << " "
+            << this->BgColor.Components[1] << " " << this->BgColor.Components[2] << " "
+            << this->BgColor.Components[3] << "\n";
+  std::cout << "=== fg_color .. : " << this->FgColor.Components[0] << " "
+            << this->FgColor.Components[1] << " " << this->FgColor.Components[2] << " "
+            << this->FgColor.Components[3] << "\n";
+  std::cout << "=== annotations : " << (this->DoPlotAnnotations ? "On" : "Off") << "\n";
+  std::cout << "=== background  : " << (this->DoPlotBackground ? "On" : "Off") << "\n";
+  std::cout << "=== shading ... : " << (this->DoShading ? "On" : "Off") << "\n";
 }
 
-void
-Render::RenderBackground()
+void Plot::RenderBackground()
 {
-  if(this->DoRenderBackground)
+  if (this->DoPlotBackground)
     this->Canvas.BlendBackground();
 }
 
-Render::vtkmCanvas
-Render::CreateCanvas() const
+Plot::vtkmCanvas Plot::CreateCanvas() const
 {
-  Render::vtkmCanvas canvas(this->Width, this->Height);
+  Plot::vtkmCanvas canvas(this->Width, this->Height);
   canvas.SetBackgroundColor(this->BgColor);
   canvas.SetForegroundColor(this->FgColor);
   canvas.Clear();
   return canvas;
 }
 
-void
-Render::Save()
+void Plot::SyncDepth()
+{
+#ifdef VTKM_ENABLE_MPI
+  auto diy_comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
+
+  vtkm::rendering::Canvas& canvas = this->GetCanvas();
+  const int image_size = canvas.GetWidth() * canvas.GetHeight();
+  float* depth_ptr = GetVTKMPointer(canvas.GetDepthBuffer());
+  MPI_Bcast(depth_ptr, image_size, MPI_FLOAT, 0, comm);
+#endif
+}
+
+void Plot::Save()
 {
   // After rendering and compositing
   // Rank 0 contains the complete image.
@@ -275,15 +264,14 @@ Render::Save()
   encoder.Save(this->ImageName + ".png");
 }
 
-vtkh::Render
-MakeRender(int width,
-           int height,
-           vtkm::Bounds scene_bounds,
-           const std::string &image_name,
-           float bg_color[4],
-           float fg_color[4])
+vtkh::Plot MakePlot(int width,
+                    int height,
+                    vtkm::Bounds scene_bounds,
+                    const std::string& image_name,
+                    float bg_color[4],
+                    float fg_color[4])
 {
-  vtkh::Render render;
+  vtkh::Plot render;
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(scene_bounds);
   render.SetSceneBounds(scene_bounds);
@@ -296,7 +284,7 @@ MakeRender(int width,
 
   bool is_2d = scene_bounds.Z.Min == 0. && scene_bounds.Z.Max == 0.;
 
-  if(is_2d)
+  if (is_2d)
   {
     camera.SetModeTo2D();
     render.SetShadingOn(false);
@@ -310,16 +298,15 @@ MakeRender(int width,
   return render;
 }
 
-vtkh::Render
-MakeRender(int width,
-           int height,
-           vtkm::Bounds scene_bounds,
-           vtkm::rendering::Camera camera,
-           const std::string &image_name,
-           float bg_color[4],
-           float fg_color[4])
+vtkh::Plot MakePlot(int width,
+                    int height,
+                    vtkm::Bounds scene_bounds,
+                    vtkm::rendering::Camera camera,
+                    const std::string& image_name,
+                    float bg_color[4],
+                    float fg_color[4])
 {
-  vtkh::Render render;
+  vtkh::Plot render;
   render.SetSceneBounds(scene_bounds);
   render.SetWidth(width);
   render.SetHeight(height);
@@ -330,7 +317,7 @@ MakeRender(int width,
 
   bool is_2d = scene_bounds.Z.Min == 0. && scene_bounds.Z.Max == 0.;
 
-  if(is_2d)
+  if (is_2d)
   {
     camera.SetModeTo2D();
     render.SetShadingOn(false);
@@ -344,16 +331,15 @@ MakeRender(int width,
   return render;
 }
 
-vtkh::Render
-MakeRender(int width,
-           int height,
-           vtkm::rendering::Camera camera,
-           vtkm::cont::PartitionedDataSet& data_set,
-           const std::string &image_name,
-           float bg_color[4],
-           float fg_color[4])
+vtkh::Plot MakePlot(int width,
+                    int height,
+                    vtkm::rendering::Camera camera,
+                    vtkm::cont::PartitionedDataSet& data_set,
+                    const std::string& image_name,
+                    float bg_color[4],
+                    float fg_color[4])
 {
-  vtkh::Render render;
+  vtkh::Plot render;
   render.SetCamera(camera);
   render.SetImageName(image_name);
   vtkm::Bounds bounds = data_set.GetGlobalBounds();
@@ -365,7 +351,7 @@ MakeRender(int width,
   //
   bool is_2d = bounds.Z.Min == 0. && bounds.Z.Max == 0.;
 
-  if(is_2d)
+  if (is_2d)
   {
     camera.SetModeTo2D();
     render.SetShadingOn(false);

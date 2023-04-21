@@ -29,8 +29,8 @@
 #include <vtkm/rendering/raytracing/SphereIntersector.h>
 #include <vtkm/rendering/raytracing/TriangleExtractor.h>
 
+#include <vtkm/rendering/vtkh/rendering/Plot.h>
 #include <vtkm/rendering/vtkh/rendering/RayTracer.hpp>
-#include <vtkm/rendering/vtkh/rendering/Render.hpp>
 #include <vtkm/rendering/vtkh/rendering/Scene.hpp>
 
 #include <vtkm/exec/FunctorBase.h>
@@ -195,8 +195,8 @@ void BenchRayTracingMPI(::benchmark::State& state)
   vtkh::RayTracer rayTracer;
   rayTracer.SetInput(actor);
 
-  vtkh::Render render =
-    vtkh::MakeRender(options.CanvasWidth, options.CanvasHeight, camera, dataSet, "tmp");
+  vtkh::Plot plot =
+    vtkh::MakePlot(options.CanvasWidth, options.CanvasHeight, camera, dataSet, "tmp");
 
   vtkm::cont::Timer timer{ Config.Device };
   for (auto _ : state)
@@ -205,7 +205,7 @@ void BenchRayTracingMPI(::benchmark::State& state)
     timer.Start();
 
     vtkh::Scene scene;
-    scene.AddRender(render);
+    scene.AddPlot(plot);
     scene.AddRenderer(&rayTracer);
     scene.Render();
     timer.Stop();

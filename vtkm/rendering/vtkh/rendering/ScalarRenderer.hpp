@@ -14,7 +14,7 @@
 #include <vector>
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
-#include <vtkm/rendering/vtkh/rendering/Render.hpp>
+#include <vtkm/rendering/vtkh/rendering/Plot.h>
 #include <vtkm/rendering/vtkh/compositing/PayloadImage.hpp>
 
 #include <vtkm/rendering/Camera.h>

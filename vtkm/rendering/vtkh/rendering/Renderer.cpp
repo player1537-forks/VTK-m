@@ -12,7 +12,7 @@
 #include <vtkm/cont/FieldRangeGlobalCompute.h>
 
 #include <vtkm/cont/ErrorBadValue.h>
-#include "Renderer.hpp"
+#include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
 #include <vtkm/rendering/vtkh/compositing/Compositor.hpp>
 #include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
 
@@ -41,15 +41,15 @@ Renderer::Composite()
   //VTKH_DATA_OPEN("Composite");
 
   this->Compositor->SetCompositeMode(Compositor::Z_BUFFER_SURFACE);
-  std::size_t numImages = this->Renders.size();
+  std::size_t numImages = this->Plots.size();
 
   for(std::size_t i = 0; i < numImages; ++i)
   {
-    float* color_buffer = &GetVTKMPointer(this->Renders[i].GetCanvas().GetColorBuffer())[0][0];
-    float* depth_buffer = GetVTKMPointer(this->Renders[i].GetCanvas().GetDepthBuffer());
+    float* color_buffer = &GetVTKMPointer(this->Plots[i].GetCanvas().GetColorBuffer())[0][0];
+    float* depth_buffer = GetVTKMPointer(this->Plots[i].GetCanvas().GetDepthBuffer());
 
-    int height = this->Renders[i].GetCanvas().GetHeight();
-    int width = this->Renders[i].GetCanvas().GetWidth();
+    int height = this->Plots[i].GetCanvas().GetHeight();
+    int width = this->Plots[i].GetCanvas().GetWidth();
 
     this->Compositor->AddImage(color_buffer,
                            depth_buffer,
@@ -62,10 +62,10 @@ Renderer::Composite()
     //if(vtkh::GetMPIRank() == 0)
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
-      ImageToCanvas(result, this->Renders[i].GetCanvas(), true);
+      ImageToCanvas(result, this->Plots[i].GetCanvas(), true);
     }
 #else
-    ImageToCanvas(result, this->Renders[i].GetCanvas(), true);
+    ImageToCanvas(result, this->Plots[i].GetCanvas(), true);
 #endif
     this->Compositor->ClearImages();
   } // for image
@@ -141,7 +141,7 @@ Renderer::DoExecute()
     throw vtkm::cont::ErrorBadValue(msg);
   }
 
-  int total_renders = static_cast<int>(this->Renders.size());
+  int total_renders = static_cast<int>(this->Plots.size());
 
 
 //  int num_domains = static_cast<int>(this->Input->GetGlobalNumberOfPartitions());
@@ -167,7 +167,7 @@ Renderer::DoExecute()
 
     for(int i = 0; i < total_renders; ++i)
     {
-      if(this->Renders[i].GetShadingOn())
+      if(this->Plots[i].GetShadingOn())
       {
         this->SetShadingOn(true);
       }
@@ -178,8 +178,8 @@ Renderer::DoExecute()
 
       this->Mapper->SetActiveColorTable(this->GetColorTable());
 
-      Render::vtkmCanvas &canvas = this->Renders[i].GetCanvas();
-      const vtkmCamera &camera = this->Renders[i].GetCamera();
+      Plot::vtkmCanvas &canvas = this->Plots[i].GetCanvas();
+      const vtkmCamera &camera = this->Plots[i].GetCamera();
       this->Mapper->SetCanvas(&canvas);
       this->Mapper->RenderCells(cellset,
                                 coords,

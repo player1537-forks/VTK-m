@@ -502,7 +502,7 @@ VolumeRenderer::RenderOneDomainPerRank()
 
   this->Tracer->SetSampleDistance(this->SampleDist);
 
-  int total_renders = static_cast<int>(this->Renders.size());
+  int total_renders = static_cast<int>(this->Plots.size());
   int num_domains = static_cast<int>(this->Actor.GetDataSet().GetNumberOfPartitions());
   if(num_domains > 1)
   {
@@ -528,8 +528,8 @@ VolumeRenderer::RenderOneDomainPerRank()
     {
       this->Mapper->SetActiveColorTable(this->CorrectedColorTable);
 
-      Render::vtkmCanvas &canvas = this->Renders[i].GetCanvas();
-      const vtkmCamera &camera = this->Renders[i].GetCamera();
+      Plot::vtkmCanvas &canvas = this->Plots[i].GetCanvas();
+      const vtkmCamera &camera = this->Plots[i].GetCamera();
       this->Mapper->SetCanvas(&canvas);
       this->Mapper->RenderCells(cellset,
                             coords,
@@ -555,7 +555,7 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
   // this might be smaller than the input since
   // it is possible for cell sets to be empty
   const int num_domains = this->Wrappers.size();
-  const int total_renders = static_cast<int>(this->Renders.size());
+  const int total_renders = static_cast<int>(this->Plots.size());
 
   vtkm::cont::ArrayHandle<vtkm::Vec4f_32> color_map
     = detail::convert_table(this->CorrectedColorTable);
@@ -580,8 +580,8 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
 
     for(int r = 0; r < total_renders; ++r)
     {
-      Render::vtkmCanvas &canvas = this->Renders[r].GetCanvas();
-      const vtkmCamera &camera = this->Renders[r].GetCamera();
+      Plot::vtkmCanvas &canvas = this->Plots[r].GetCanvas();
+      const vtkmCamera &camera = this->Plots[r].GetCamera();
       wrapper->render(camera, canvas, render_partials[r][i]);
     }
   }
@@ -600,8 +600,8 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
       detail::partials_to_canvas(res,
-                                 this->Renders[r].GetCamera(),
-                                 this->Renders[r].GetCanvas());
+                                 this->Plots[r].GetCamera(),
+                                 this->Plots[r].GetCanvas());
     }
   }
 
@@ -666,15 +666,15 @@ VolumeRenderer::Composite()
   this->Compositor->SetCompositeMode(Compositor::VIS_ORDER_BLEND);
   FindVisibilityOrdering();
 
-  std::size_t numImages = this->Renders.size();
+  std::size_t numImages = this->Plots.size();
   for (std::size_t i = 0; i < numImages; ++i)
   {
     float* color_buffer =
-      &GetVTKMPointer(this->Renders[i].GetCanvas().GetColorBuffer())[0][0];
+      &GetVTKMPointer(this->Plots[i].GetCanvas().GetColorBuffer())[0][0];
     float* depth_buffer =
-      GetVTKMPointer(this->Renders[i].GetCanvas().GetDepthBuffer());
-    int height = this->Renders[i].GetCanvas().GetHeight();
-    int width = this->Renders[i].GetCanvas().GetWidth();
+      GetVTKMPointer(this->Plots[i].GetCanvas().GetDepthBuffer());
+    int height = this->Plots[i].GetCanvas().GetHeight();
+    int width = this->Plots[i].GetCanvas().GetWidth();
 
     this->Compositor->AddImage(color_buffer,
                            depth_buffer,
@@ -687,7 +687,7 @@ VolumeRenderer::Composite()
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
 #endif
-      ImageToCanvas(result, this->Renders[i].GetCanvas(), true);
+      ImageToCanvas(result, this->Plots[i].GetCanvas(), true);
 #ifdef VTKM_ENABLE_MPI
     }
 #endif
@@ -843,7 +843,7 @@ void
 VolumeRenderer::FindVisibilityOrdering()
 {
   const int num_domains = static_cast<int>(this->Actor.GetDataSet().GetNumberOfPartitions());
-  const int num_cameras = static_cast<int>(this->Renders.size());
+  const int num_cameras = static_cast<int>(this->Plots.size());
   this->VisibilityOrders.resize(num_cameras);
 
   for(int i = 0; i < num_cameras; ++i)
@@ -863,7 +863,7 @@ VolumeRenderer::FindVisibilityOrdering()
 
   for(int i = 0; i < num_cameras; ++i)
   {
-    const vtkm::rendering::Camera &camera = this->Renders[i].GetCamera();
+    const vtkm::rendering::Camera &camera = this->Plots[i].GetCamera();
     for(int dom = 0; dom < num_domains; ++dom)
     {
       vtkm::Bounds bounds = this->Actor.GetDataSet().GetPartition(dom).GetCoordinateSystem().GetBounds();

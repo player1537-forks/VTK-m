@@ -31,8 +31,8 @@
 #include <vtkm/source/PerlinNoise.h>
 #include <vtkm/source/Tangle.h>
 
+#include <vtkm/rendering/vtkh/rendering/Plot.h>
 #include <vtkm/rendering/vtkh/rendering/RayTracer.hpp>
-#include <vtkm/rendering/vtkh/rendering/Render.hpp>
 #include <vtkm/rendering/vtkh/rendering/Scene.hpp>
 #include <vtkm/rendering/vtkh/rendering/VolumeRenderer.hpp>
 
@@ -393,10 +393,10 @@ void RunBenchmark(const BenchmarkOptions& options)
     for (int iter = 0; iter < options.NumIterations; iter++)
     {
       vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
-      vtkh::Render render =
-        vtkh::MakeRender(options.CanvasWidth, options.CanvasHeight, camera, pds, imgFile);
+      vtkh::Plot plot =
+        vtkh::MakePlot(options.CanvasWidth, options.CanvasHeight, camera, pds, imgFile);
       vtkh::Scene scene;
-      scene.AddRender(render);
+      scene.AddPlot(plot);
       scene.AddRenderer(&rayTracer);
       scene.Render();
       /*
@@ -421,10 +421,10 @@ void RunBenchmark(const BenchmarkOptions& options)
     {
       vtkm::rendering::Color bg(0.2f, 0.2f, 0.2f, 1.0f);
       imgFile = GetFrameName("perlin_movie", iter, options, mpiTopology);
-      vtkh::Render render =
-        vtkh::MakeRender(options.CanvasWidth, options.CanvasHeight, camera, pds, imgFile);
+      vtkh::Plot plot =
+        vtkh::MakePlot(options.CanvasWidth, options.CanvasHeight, camera, pds, imgFile);
       vtkh::Scene scene;
-      scene.AddRender(render);
+      scene.AddPlot(plot);
       scene.AddRenderer(&rayTracer);
       scene.Render();
 

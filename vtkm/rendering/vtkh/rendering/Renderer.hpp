@@ -11,9 +11,10 @@
 #ifndef vtkm_rendering_rendering_Renderer_h
 #define vtkm_rendering_rendering_Renderer_h
 
-#include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/rendering/vtkm_rendering_export.h>
-#include <vtkm/rendering/vtkh/rendering/Render.hpp>
+
+#include <vtkm/cont/PartitionedDataSet.h>
+#include <vtkm/rendering/vtkh/rendering/Plot.h>
 #include <vtkm/rendering/vtkh/compositing/Image.hpp>
 
 #include <vtkm/rendering/Actor.h>
@@ -59,14 +60,14 @@ public:
   virtual void SetShadingOn(bool vtkmNotUsed(on)) {}   // do nothing by default;
   virtual void Update();
 
-  void AddRender(vtkh::Render &render) {   this->Renders.push_back(render);}
-  void ClearRenders() { this->Renders.clear(); }
+  void AddPlot(vtkh::Plot &plot) {   this->Plots.push_back(plot);}
+  void ClearPlots() { this->Plots.clear(); }
 
   void SetDoComposite(bool do_composite) {   this->DoComposite = do_composite; }
-  void SetRenders(const std::vector<Render> &renders) {   this->Renders = renders; }
+  void SetPlots(const std::vector<Plot> &renders) {   this->Plots = renders; }
 
-  int                         GetNumberOfRenders() const { return static_cast<int>(this->Renders.size());}
-  std::vector<Render>         GetRenders() const {   return this->Renders;}
+  int                         GetNumberOfPlots() const { return static_cast<int>(this->Plots.size());}
+  std::vector<Plot>         GetPlots() const {   return this->Plots;}
 
 
 protected:
@@ -75,7 +76,7 @@ protected:
   bool                                     DoComposite = true;
   bool                                     HasColorTable = true;
   vtkmMapperPtr                            Mapper;
-  std::vector<vtkh::Render>                Renders;
+  std::vector<vtkh::Plot>                Plots;
   vtkm::rendering::Actor Actor;
 
   // methods

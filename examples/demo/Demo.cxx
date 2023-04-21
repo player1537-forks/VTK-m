@@ -115,9 +115,9 @@ void doVTKH(vtkm::cont::PartitionedDataSet& pds)
   tracer.SetInput(actor);
 
   std::string imgName = "volume";
-  vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, imgName);
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
   vtkh::Scene scene;
-  scene.AddRender(render);
+  scene.AddPlot(plot);
   scene.AddRenderer(&tracer);
   scene.Render();
 
@@ -137,10 +137,10 @@ void doVTKH(vtkm::cont::PartitionedDataSet& pds)
     vtkh::RayTracer rayTracer;
     rayTracer.SetInput(isoActor);
     imgName = "rayTracer";
-    vtkh::Render render2 = vtkh::MakeRender(512, 512, camera, pds, imgName);
+    vtkh::Plot plot2 = vtkh::MakePlot(512, 512, camera, pds, imgName);
 
     vtkh::Scene scene2;
-    scene2.AddRender(render2);
+    scene.AddPlot(plot2);
     scene2.AddRenderer(&rayTracer);
     scene2.Render();
   }
@@ -193,9 +193,9 @@ int main(int argc, char* argv[])
   tracer.SetField(fieldName);
 
   std::string imgName = "volume";
-  vtkh::Render render = vtkh::MakeRender(512, 512, camera, pds, imgName);
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
   vtkh::Scene scene;
-  scene.AddRender(render);
+  scene.AddPlot(plot);
   scene.AddRenderer(&tracer);
   scene.Render();
 
@@ -216,10 +216,10 @@ int main(int argc, char* argv[])
     rayTracer.SetInput(&pds);
     rayTracer.SetField(fieldName);
     imgName = "rayTracer";
-    vtkh::Render render2 = vtkh::MakeRender(512, 512, camera, pds, imgName);
+    vtkh::Plot plot2 = vtkh::MakePlot(512, 512, camera, pds, imgName);
 
     vtkh::Scene scene2;
-    scene2.AddRender(render2);
+    scene2.AddPlot(plot2);
     scene2.AddRenderer(&rayTracer);
     scene2.Render();
   }
