@@ -19,11 +19,12 @@ namespace vtkh {
 class VTKM_RENDERING_EXPORT RayTracer : public Renderer
 {
 public:
+  static std::shared_ptr<vtkm::rendering::Canvas> GetNewCanvas(int width = 1024, int height = 1024);
+
   RayTracer();
   virtual ~RayTracer();
   std::string GetName() const override;
   void SetShadingOn(bool on) override;
-  static Renderer::vtkmCanvasPtr GetNewCanvas(int width = 1024, int height = 1024);
 };
 
 } // namespace vtkh

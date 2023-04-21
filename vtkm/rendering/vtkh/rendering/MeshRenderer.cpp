@@ -52,7 +52,7 @@ MeshRenderer::PreExecute()
   }
 }
 
-Renderer::vtkmCanvasPtr
+std::shared_ptr<vtkm::rendering::Canvas>
 MeshRenderer::GetNewCanvas(int width, int height)
 {
   return std::make_shared<vtkm::rendering::CanvasRayTracer>(width, height);

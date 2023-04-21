@@ -529,7 +529,7 @@ VolumeRenderer::RenderOneDomainPerRank()
       this->Mapper->SetActiveColorTable(this->CorrectedColorTable);
 
       Plot::vtkmCanvas &canvas = this->Plots[i].GetCanvas();
-      const vtkmCamera &camera = this->Plots[i].GetCamera();
+      const auto& camera = this->Plots[i].GetCamera();
       this->Mapper->SetCanvas(&canvas);
       this->Mapper->RenderCells(cellset,
                             coords,
@@ -581,7 +581,7 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
     for(int r = 0; r < total_renders; ++r)
     {
       Plot::vtkmCanvas &canvas = this->Plots[r].GetCanvas();
-      const vtkmCamera &camera = this->Plots[r].GetCamera();
+      const auto& camera = this->Plots[r].GetCamera();
       wrapper->render(camera, canvas, render_partials[r][i]);
     }
   }
@@ -639,7 +639,7 @@ VolumeRenderer::SetNumberOfSamples(const int num_samples)
   this->NumSamples = num_samples;
 }
 
-Renderer::vtkmCanvasPtr
+std::shared_ptr<vtkm::rendering::Canvas>
 VolumeRenderer::GetNewCanvas(int width, int height)
 {
   return std::make_shared<vtkm::rendering::CanvasRayTracer>(width, height);

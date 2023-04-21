@@ -26,11 +26,13 @@ namespace detail
 class VTKM_RENDERING_EXPORT VolumeRenderer : public Renderer
 {
 public:
+  static std::shared_ptr<vtkm::rendering::Canvas> GetNewCanvas(int width = 1024, int height = 1024);
+
   VolumeRenderer();
   virtual ~VolumeRenderer();
   std::string GetName() const override;
   void SetNumberOfSamples(const int num_samples);
-  static Renderer::vtkmCanvasPtr GetNewCanvas(int width = 1024, int height = 1024);
+
 
   void Update() override;
   virtual void SetInput(const vtkm::rendering::Actor& actor) override;

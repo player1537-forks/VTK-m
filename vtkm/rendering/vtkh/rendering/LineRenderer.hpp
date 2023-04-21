@@ -19,10 +19,11 @@ namespace vtkh {
 class VTKM_RENDERING_EXPORT LineRenderer : public Renderer
 {
 public:
+  static std::shared_ptr<vtkm::rendering::Canvas> GetNewCanvas(int width = 1024, int height = 1024);
+
   LineRenderer();
   virtual ~LineRenderer();
   std::string GetName() const override {return "vtkh::LineRenderer";}
-  static Renderer::vtkmCanvasPtr GetNewCanvas(int width = 1024, int height = 1024);
   void PreExecute() override;
   void SetRadius(vtkm::Float32 radius);
 private:

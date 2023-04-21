@@ -10,7 +10,6 @@
 
 #include <vtkm/cont/EnvironmentTracker.h>
 
-#include <vtkm/rendering/MapperRayTracer.h>
 #include <vtkm/rendering/View2D.h>
 #include <vtkm/rendering/View3D.h>
 #include <vtkm/rendering/vtkh/compositing/PNGEncoder.h>

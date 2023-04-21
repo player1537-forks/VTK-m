@@ -40,9 +40,7 @@ class Compositor;
 class VTKM_RENDERING_EXPORT Renderer
 {
 public:
-  typedef std::shared_ptr<vtkm::rendering::Canvas> vtkmCanvasPtr;
   typedef std::shared_ptr<vtkm::rendering::Mapper> vtkmMapperPtr;
-  typedef vtkm::rendering::Camera vtkmCamera;
 
   Renderer();
   virtual ~Renderer();
@@ -75,9 +73,9 @@ protected:
   vtkh::Compositor                        *Compositor = nullptr;
   bool                                     DoComposite = true;
   bool                                     HasColorTable = true;
-  vtkmMapperPtr                            Mapper;
-  std::vector<vtkh::Plot>                Plots;
   vtkm::rendering::Actor Actor;
+  vtkmMapperPtr Mapper;
+  std::vector<vtkh::Plot> Plots;
 
   // methods
   virtual void PreExecute(); // override;

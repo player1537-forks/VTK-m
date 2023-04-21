@@ -19,10 +19,12 @@ namespace vtkh {
 class VTKM_RENDERING_EXPORT MeshRenderer : public Renderer
 {
 public:
+  static std::shared_ptr<vtkm::rendering::Canvas> GetNewCanvas(int width = 1024, int height = 1024);
+
   MeshRenderer();
   virtual ~MeshRenderer() {}
   std::string GetName() const override { return "vtkh::MeshRenderer";}
-  static Renderer::vtkmCanvasPtr GetNewCanvas(int width = 1024, int height = 1024);
+
 
   void SetIsOverlay(bool on) { this->IsOverlay = on; }
   void SetShowInternal(bool on) { this->ShowInternal = on; }

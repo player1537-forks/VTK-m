@@ -179,7 +179,7 @@ Renderer::DoExecute()
       this->Mapper->SetActiveColorTable(this->GetColorTable());
 
       Plot::vtkmCanvas &canvas = this->Plots[i].GetCanvas();
-      const vtkmCamera &camera = this->Plots[i].GetCamera();
+      const auto& camera = this->Plots[i].GetCamera();
       this->Mapper->SetCanvas(&canvas);
       this->Mapper->RenderCells(cellset,
                                 coords,

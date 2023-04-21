@@ -26,7 +26,7 @@ PointRenderer::PointRenderer()
   this->Mapper = mapper;
 }
 
-Renderer::vtkmCanvasPtr
+std::shared_ptr<vtkm::rendering::Canvas>
 PointRenderer::GetNewCanvas(int width, int height)
 {
   return std::make_shared<vtkm::rendering::CanvasRayTracer>(width, height);
