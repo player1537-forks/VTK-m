@@ -45,18 +45,6 @@ Scene::GetRenderBatchSize() const
   return this->BatchSize;
 }
 
-void
-Scene::AddPlot(vtkh::Plot &plot)
-{
-  this->Plots.push_back(plot);
-}
-
-void
-Scene::SetPlots(const std::vector<vtkh::Plot> &plots)
-{
-  this->Plots = plots;
-}
-
 bool
 Scene::IsMesh(vtkh::Renderer *renderer)
 {
@@ -127,10 +115,22 @@ Scene::AddRenderer(vtkh::Renderer *renderer)
   }
 }
 
+#if 0
+  for (plot : this->Plots)
+  {
+    plot.GetCanvas().Clear();
+    for (renderer : plot->Renderers())
+    {
+      renderer.SetPlot();
+      renderer.Update();
+      renderer.ClearPlots();
+    }
+  }
+#endif
+
 void
 Scene::Render()
 {
-
   std::vector<vtkm::Range> ranges;
   std::vector<std::string> field_names;
   std::vector<vtkm::cont::ColorTable> color_tables;
@@ -223,13 +223,13 @@ Scene::Render()
     {
       // gather color tables and other information for
       // annotations
-      for(auto plot : this->Renderers)
+      for (const auto& r : this->Renderers)
       {
-        if((*plot).GetHasColorTable())
+        if((*r).GetHasColorTable())
         {
-          ranges.push_back((*plot).GetScalarRange());
-          field_names.push_back((*plot).GetFieldName());
-          color_tables.push_back((*plot).GetColorTable());
+          ranges.push_back((*r).GetScalarRange());
+          field_names.push_back((*r).GetFieldName());
+          color_tables.push_back((*r).GetColorTable());
         }
       }
       do_once = false;

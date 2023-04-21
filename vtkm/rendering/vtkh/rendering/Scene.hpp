@@ -25,8 +25,8 @@ class VTKM_RENDERING_EXPORT Scene
 public:
   Scene();
 
-  void AddPlot(vtkh::Plot &render);
-  void SetPlots(const std::vector<vtkh::Plot> &renders);
+  void AddPlot(vtkh::Plot &plot) {  this->Plots.push_back(plot); }
+  void SetPlots(const std::vector<vtkh::Plot> &plots) {this->Plots = plots;}
   void AddRenderer(vtkh::Renderer *render);
   void Render();
   void Save();

@@ -141,7 +141,7 @@ Renderer::DoExecute()
     throw vtkm::cont::ErrorBadValue(msg);
   }
 
-  int total_renders = static_cast<int>(this->Plots.size());
+  int total_plots = static_cast<int>(this->Plots.size());
 
 
 //  int num_domains = static_cast<int>(this->Input->GetGlobalNumberOfPartitions());
@@ -165,7 +165,7 @@ Renderer::DoExecute()
       continue;
     }
 
-    for(int i = 0; i < total_renders; ++i)
+    for(int i = 0; i < total_plots; ++i)
     {
       if(this->Plots[i].GetShadingOn())
       {

@@ -62,7 +62,7 @@ public:
   void ClearPlots() { this->Plots.clear(); }
 
   void SetDoComposite(bool do_composite) {   this->DoComposite = do_composite; }
-  void SetPlots(const std::vector<Plot> &renders) {   this->Plots = renders; }
+  void SetPlots(const std::vector<Plot> &plots) {   this->Plots = plots; }
 
   int                         GetNumberOfPlots() const { return static_cast<int>(this->Plots.size());}
   std::vector<Plot>         GetPlots() const {   return this->Plots;}
@@ -75,7 +75,7 @@ protected:
   bool                                     HasColorTable = true;
   vtkm::rendering::Actor Actor;
   vtkmMapperPtr Mapper;
-  std::vector<vtkh::Plot> Plots;
+  std::vector<vtkh::Plot> Plots; //used in Composite and DoExecute
 
   // methods
   virtual void PreExecute(); // override;
