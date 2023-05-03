@@ -40,9 +40,9 @@ PointRenderer::SetBaseRadius(vtkm::Float32 radius)
 }
 
 void
-PointRenderer::PreExecute()
+PointRenderer::PreExecute(std::vector<vtkh::Plot>& plots)
 {
-  Renderer::PreExecute();
+  Renderer::PreExecute(plots);
 
   typedef vtkm::rendering::MapperPoint MapperType;
   std::shared_ptr<MapperType> mesh_mapper =
@@ -106,10 +106,10 @@ PointRenderer::PreExecute()
 
 }
 
-void PointRenderer::PostExecute()
+void PointRenderer::PostExecute(std::vector<vtkh::Plot>& plots)
 {
   throw vtkm::cont::ErrorBadValue("Need to implement this.");
-  Renderer::PostExecute();
+  Renderer::PostExecute(plots);
   if(this->DeleteInput)
   {
 //    delete this->Input;

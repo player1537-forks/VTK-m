@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_rendering_Renderer_h
-#define vtkm_rendering_rendering_Renderer_h
+#ifndef vtkm_rendering_vtkh_rendering_Renderer_h
+#define vtkm_rendering_vtkh_rendering_Renderer_h
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
 
@@ -21,6 +21,8 @@
 #include <vtkm/rendering/Camera.h>
 #include <vtkm/rendering/Canvas.h>
 #include <vtkm/rendering/Mapper.h>
+
+#include <vector>
 
 
 /*
@@ -56,16 +58,23 @@ public:
 //Actor stuff end.
 
   virtual void SetShadingOn(bool vtkmNotUsed(on)) {}   // do nothing by default;
-  virtual void Update();
+/*
+  void Update(vtkh::Plot& plot)
+  {
+    std::vector<vtkh::Plot> plots = {plot};
+    this->Update(plots);
+  }
+*/
+  virtual void Update(std::vector<vtkh::Plot>& plots);
 
-  void AddPlot(vtkh::Plot &plot) {   this->Plots.push_back(plot);}
-  void ClearPlots() { this->Plots.clear(); }
+//  void AddPlot(vtkh::Plot &plot) { this->Plots.push_back(plot); }
+//  void ClearPlots() { this->Plots.clear(); }
 
   void SetDoComposite(bool do_composite) {   this->DoComposite = do_composite; }
-  void SetPlots(const std::vector<Plot> &plots) {   this->Plots = plots; }
+//  void SetPlots(const std::vector<Plot> &plots) {   this->Plots = plots; }
 
-  int                         GetNumberOfPlots() const { return static_cast<int>(this->Plots.size());}
-  std::vector<Plot>         GetPlots() const {   return this->Plots;}
+//  int                         GetNumberOfPlots() const { return static_cast<int>(this->Plots.size());}
+//  std::vector<Plot>         GetPlots() const {   return this->Plots;}
 
 
 protected:
@@ -75,19 +84,19 @@ protected:
   bool                                     HasColorTable = true;
   vtkm::rendering::Actor Actor;
   vtkmMapperPtr Mapper;
-  std::vector<vtkh::Plot> Plots; //used in Composite and DoExecute
+//  std::vector<vtkh::Plot> Plots; //used in Composite and DoExecute
 
   // methods
-  virtual void PreExecute(); // override;
-  virtual void PostExecute(); // override;
-  virtual void DoExecute(); // override;
+  virtual void PreExecute(std::vector<vtkh::Plot>& plots);
+  virtual void PostExecute(std::vector<vtkh::Plot>& plots);
+  virtual void DoExecute(std::vector<vtkh::Plot>& plots);
 
   void CheckForRequiredField(const std::string &field_name);
 
-  virtual void Composite();
+  virtual void Composite(std::vector<vtkh::Plot>& plots);
   void ImageToCanvas(Image &image, vtkm::rendering::Canvas &canvas, bool get_depth);
 };
 
 } // namespace vtkh
 
-#endif //vtkm_rendering_rendering_Renderer_h
+#endif //vtkm_rendering_vtkh_rendering_Renderer_h

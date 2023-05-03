@@ -45,9 +45,9 @@ LineRenderer::SetRadius(vtkm::Float32 radius)
 }
 
 void
-LineRenderer::PreExecute()
+LineRenderer::PreExecute(std::vector<vtkh::Plot>& plots)
 {
-  Renderer::PreExecute();
+  Renderer::PreExecute(plots);
 
   typedef vtkm::rendering::MapperCylinder MapperType;
   std::shared_ptr<MapperType> mapper =

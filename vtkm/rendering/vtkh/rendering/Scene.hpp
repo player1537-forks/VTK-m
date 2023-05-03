@@ -28,10 +28,10 @@ public:
   void AddPlot(vtkh::Plot &plot) {  this->Plots.push_back(plot); }
   void SetPlots(const std::vector<vtkh::Plot> &plots) {this->Plots = plots;}
   void AddRenderer(vtkh::Renderer *render);
+  void RenderORIG();
   void Render();
-  void Save();
   void SetRenderBatchSize(int batch_size);
-  int  GetRenderBatchSize() const;
+  int  GetRenderBatchSize() const { return this->BatchSize;}
 protected:
   bool IsMesh(vtkh::Renderer *renderer);
   bool IsVolume(vtkh::Renderer *renderer);

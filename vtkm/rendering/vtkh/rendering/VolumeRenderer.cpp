@@ -427,7 +427,7 @@ VolumeRenderer::~VolumeRenderer()
 }
 
 void
-VolumeRenderer::Update()
+VolumeRenderer::Update(std::vector<vtkh::Plot>& plots)
 {
   //DRP: Logger
   //VTKH_DATA_OPEN(this->GetName());
@@ -449,9 +449,9 @@ VolumeRenderer::Update()
   }
 #endif
 
-  PreExecute();
-  DoExecute();
-  PostExecute();
+  PreExecute(plots);
+  DoExecute(plots);
+  PostExecute(plots);
 
   //DRP: Logger
   //VTKH_DATA_CLOSE();
@@ -478,21 +478,21 @@ void VolumeRenderer::CorrectOpacity()
 }
 
 void
-VolumeRenderer::DoExecute()
+VolumeRenderer::DoExecute(std::vector<vtkh::Plot>& plots)
 {
   if(vtkh::GlobalHasOnePartition(this->Actor.GetDataSet()) && !this->HasUnstructured)
   {
     // Danger: this logic only works if there is exactly one per rank
-    RenderOneDomainPerRank();
+    RenderOneDomainPerRank(plots);
   }
   else
   {
-    RenderMultipleDomainsPerRank();
+    RenderMultipleDomainsPerRank(plots);
   }
 }
 
 void
-VolumeRenderer::RenderOneDomainPerRank()
+VolumeRenderer::RenderOneDomainPerRank(std::vector<vtkh::Plot>& plots)
 {
   if(this->Mapper.get() == 0)
   {
@@ -502,7 +502,7 @@ VolumeRenderer::RenderOneDomainPerRank()
 
   this->Tracer->SetSampleDistance(this->SampleDist);
 
-  int total_renders = static_cast<int>(this->Plots.size());
+  int total_renders = static_cast<int>(plots.size());
   int num_domains = static_cast<int>(this->Actor.GetDataSet().GetNumberOfPartitions());
   if(num_domains > 1)
   {
@@ -528,8 +528,8 @@ VolumeRenderer::RenderOneDomainPerRank()
     {
       this->Mapper->SetActiveColorTable(this->CorrectedColorTable);
 
-      Plot::vtkmCanvas &canvas = this->Plots[i].GetCanvas();
-      const auto& camera = this->Plots[i].GetCamera();
+      Plot::vtkmCanvas &canvas = plots[i].GetCanvas();
+      const auto& camera = plots[i].GetCamera();
       this->Mapper->SetCanvas(&canvas);
       this->Mapper->RenderCells(cellset,
                             coords,
@@ -541,11 +541,11 @@ VolumeRenderer::RenderOneDomainPerRank()
   }
 
   if(this->DoComposite)
-    this->Composite();
+    this->Composite(plots);
 }
 
 void
-VolumeRenderer::RenderMultipleDomainsPerRank()
+VolumeRenderer::RenderMultipleDomainsPerRank(std::vector<vtkh::Plot>& plots)
 {
   // We are treating this as the most general case
   // where we could have a mix of structured and
@@ -555,7 +555,7 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
   // this might be smaller than the input since
   // it is possible for cell sets to be empty
   const int num_domains = this->Wrappers.size();
-  const int total_renders = static_cast<int>(this->Plots.size());
+  const int total_renders = static_cast<int>(plots.size());
 
   vtkm::cont::ArrayHandle<vtkm::Vec4f_32> color_map
     = detail::convert_table(this->CorrectedColorTable);
@@ -580,8 +580,8 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
 
     for(int r = 0; r < total_renders; ++r)
     {
-      Plot::vtkmCanvas &canvas = this->Plots[r].GetCanvas();
-      const auto& camera = this->Plots[r].GetCamera();
+      Plot::vtkmCanvas &canvas = plots[r].GetCanvas();
+      const auto& camera = plots[r].GetCamera();
       wrapper->render(camera, canvas, render_partials[r][i]);
     }
   }
@@ -600,17 +600,16 @@ VolumeRenderer::RenderMultipleDomainsPerRank()
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
       detail::partials_to_canvas(res,
-                                 this->Plots[r].GetCamera(),
-                                 this->Plots[r].GetCanvas());
+                                 plots[r].GetCamera(),
+                                 plots[r].GetCanvas());
     }
   }
-
 }
 
 void
-VolumeRenderer::PreExecute()
+VolumeRenderer::PreExecute(std::vector<vtkh::Plot>& plots)
 {
-  Renderer::PreExecute();
+  Renderer::PreExecute(plots);
 
   CorrectOpacity();
 
@@ -623,7 +622,7 @@ VolumeRenderer::PreExecute()
 }
 
 void
-VolumeRenderer::PostExecute()
+VolumeRenderer::PostExecute(std::vector<vtkh::Plot>& vtkmNotUsed(plots))
 {
   // do nothing and override compositing since
   // we already did it
@@ -661,20 +660,20 @@ VolumeRenderer::FindMinDepth(const vtkm::rendering::Camera &camera,
 }
 
 void
-VolumeRenderer::Composite()
+VolumeRenderer::Composite(std::vector<vtkh::Plot>& plots)
 {
   this->Compositor->SetCompositeMode(Compositor::VIS_ORDER_BLEND);
-  FindVisibilityOrdering();
+  FindVisibilityOrdering(plots);
 
-  std::size_t numImages = this->Plots.size();
+  std::size_t numImages = plots.size();
   for (std::size_t i = 0; i < numImages; ++i)
   {
     float* color_buffer =
-      &GetVTKMPointer(this->Plots[i].GetCanvas().GetColorBuffer())[0][0];
+      &GetVTKMPointer(plots[i].GetCanvas().GetColorBuffer())[0][0];
     float* depth_buffer =
-      GetVTKMPointer(this->Plots[i].GetCanvas().GetDepthBuffer());
-    int height = this->Plots[i].GetCanvas().GetHeight();
-    int width = this->Plots[i].GetCanvas().GetWidth();
+      GetVTKMPointer(plots[i].GetCanvas().GetDepthBuffer());
+    int height = plots[i].GetCanvas().GetHeight();
+    int width = plots[i].GetCanvas().GetWidth();
 
     this->Compositor->AddImage(color_buffer,
                            depth_buffer,
@@ -687,7 +686,7 @@ VolumeRenderer::Composite()
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
 #endif
-      ImageToCanvas(result, this->Plots[i].GetCanvas(), true);
+      ImageToCanvas(result, plots[i].GetCanvas(), true);
 #ifdef VTKM_ENABLE_MPI
     }
 #endif
@@ -840,10 +839,10 @@ VolumeRenderer::DepthSort(int num_domains,
 }
 
 void
-VolumeRenderer::FindVisibilityOrdering()
+VolumeRenderer::FindVisibilityOrdering(std::vector<vtkh::Plot>& plots)
 {
   const int num_domains = static_cast<int>(this->Actor.GetDataSet().GetNumberOfPartitions());
-  const int num_cameras = static_cast<int>(this->Plots.size());
+  const int num_cameras = static_cast<int>(plots.size());
   this->VisibilityOrders.resize(num_cameras);
 
   for(int i = 0; i < num_cameras; ++i)
@@ -863,7 +862,7 @@ VolumeRenderer::FindVisibilityOrdering()
 
   for(int i = 0; i < num_cameras; ++i)
   {
-    const vtkm::rendering::Camera &camera = this->Plots[i].GetCamera();
+    const vtkm::rendering::Camera &camera = plots[i].GetCamera();
     for(int dom = 0; dom < num_domains; ++dom)
     {
       vtkm::Bounds bounds = this->Actor.GetDataSet().GetPartition(dom).GetCoordinateSystem().GetBounds();

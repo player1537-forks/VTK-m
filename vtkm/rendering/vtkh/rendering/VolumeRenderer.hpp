@@ -34,20 +34,20 @@ public:
   void SetNumberOfSamples(const int num_samples);
 
 
-  void Update() override;
+  void Update(std::vector<vtkh::Plot>& plots) override;
   virtual void SetInput(const vtkm::rendering::Actor& actor) override;
 
 protected:
-  virtual void Composite() override;
-  virtual void PreExecute() override;
-  virtual void DoExecute() override;
-  virtual void PostExecute() override;
+  virtual void Composite(std::vector<vtkh::Plot>& plots) override;
+  virtual void PreExecute(std::vector<vtkh::Plot>& plots) override;
+  virtual void DoExecute(std::vector<vtkh::Plot>& plots) override;
+  virtual void PostExecute(std::vector<vtkh::Plot>& plots) override;
 
-  void RenderOneDomainPerRank();
-  void RenderMultipleDomainsPerRank();
+  void RenderOneDomainPerRank(std::vector<vtkh::Plot>& plots);
+  void RenderMultipleDomainsPerRank(std::vector<vtkh::Plot>& plots);
 
   void CorrectOpacity();
-  void FindVisibilityOrdering();
+  void FindVisibilityOrdering(std::vector<vtkh::Plot>& plots);
   void DepthSort(int num_domains,
                  std::vector<float> &min_depths,
                  std::vector<int> &local_vis_order);

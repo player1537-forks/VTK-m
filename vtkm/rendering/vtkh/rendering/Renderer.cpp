@@ -35,21 +35,21 @@ Renderer::~Renderer()
 }
 
 void
-Renderer::Composite()
+Renderer::Composite(std::vector<vtkh::Plot>& plots)
 {
   //DRP: Logger
   //VTKH_DATA_OPEN("Composite");
 
   this->Compositor->SetCompositeMode(Compositor::Z_BUFFER_SURFACE);
-  std::size_t numImages = this->Plots.size();
+  std::size_t numImages = plots.size();
 
   for(std::size_t i = 0; i < numImages; ++i)
   {
-    float* color_buffer = &GetVTKMPointer(this->Plots[i].GetCanvas().GetColorBuffer())[0][0];
-    float* depth_buffer = GetVTKMPointer(this->Plots[i].GetCanvas().GetDepthBuffer());
+    float* color_buffer = &GetVTKMPointer(plots[i].GetCanvas().GetColorBuffer())[0][0];
+    float* depth_buffer = GetVTKMPointer(plots[i].GetCanvas().GetDepthBuffer());
 
-    int height = this->Plots[i].GetCanvas().GetHeight();
-    int width = this->Plots[i].GetCanvas().GetWidth();
+    int height = plots[i].GetCanvas().GetHeight();
+    int width = plots[i].GetCanvas().GetWidth();
 
     this->Compositor->AddImage(color_buffer,
                            depth_buffer,
@@ -62,10 +62,10 @@ Renderer::Composite()
     //if(vtkh::GetMPIRank() == 0)
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
     {
-      ImageToCanvas(result, this->Plots[i].GetCanvas(), true);
+      ImageToCanvas(result, plots[i].GetCanvas(), true);
     }
 #else
-    ImageToCanvas(result, this->Plots[i].GetCanvas(), true);
+    ImageToCanvas(result, plots[i].GetCanvas(), true);
 #endif
     this->Compositor->ClearImages();
   } // for image
@@ -74,7 +74,7 @@ Renderer::Composite()
 }
 
 void
-Renderer::PreExecute()
+Renderer::PreExecute(std::vector<vtkh::Plot>& vtkmNotUsed(plots))
 {
   bool range_set = this->GetScalarRange().IsNonEmpty();
   CheckForRequiredField(this->GetFieldName());
@@ -118,22 +118,22 @@ Renderer::PreExecute()
 }
 
 void
-Renderer::Update()
+Renderer::Update(std::vector<vtkh::Plot>& plots)
 {
-  this->PreExecute();
-  this->DoExecute();
-  this->PostExecute();
+  this->PreExecute(plots);
+  this->DoExecute(plots);
+  this->PostExecute(plots);
 }
 
 void
-Renderer::PostExecute()
+Renderer::PostExecute(std::vector<vtkh::Plot>& plots)
 {
   if(this->DoComposite)
-    this->Composite();
+    this->Composite(plots);
 }
 
 void
-Renderer::DoExecute()
+Renderer::DoExecute(std::vector<vtkh::Plot>& plots)
 {
   if(this->Mapper.get() == nullptr)
   {
@@ -141,7 +141,7 @@ Renderer::DoExecute()
     throw vtkm::cont::ErrorBadValue(msg);
   }
 
-  int total_plots = static_cast<int>(this->Plots.size());
+  int total_plots = static_cast<int>(plots.size());
 
 
 //  int num_domains = static_cast<int>(this->Input->GetGlobalNumberOfPartitions());
@@ -167,7 +167,7 @@ Renderer::DoExecute()
 
     for(int i = 0; i < total_plots; ++i)
     {
-      if(this->Plots[i].GetShadingOn())
+      if (plots[i].GetShadingOn())
       {
         this->SetShadingOn(true);
       }
@@ -178,8 +178,8 @@ Renderer::DoExecute()
 
       this->Mapper->SetActiveColorTable(this->GetColorTable());
 
-      Plot::vtkmCanvas &canvas = this->Plots[i].GetCanvas();
-      const auto& camera = this->Plots[i].GetCamera();
+      Plot::vtkmCanvas &canvas = plots[i].GetCanvas();
+      const auto& camera = plots[i].GetCamera();
       this->Mapper->SetCanvas(&canvas);
       this->Mapper->RenderCells(cellset,
                                 coords,

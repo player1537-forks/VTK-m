@@ -86,12 +86,12 @@ ScalarRenderer::SetCamera(vtkmCamera &camera)
 }
 
 void
-ScalarRenderer::PreExecute()
+ScalarRenderer::PreExecute(std::vector<vtkh::Plot>& vtkmNotUsed(plots))
 {
 }
 
 void
-ScalarRenderer::Update()
+ScalarRenderer::Update(std::vector<vtkh::Plot>& plots)
 {
   //DRP: Logger
   //VTKH_DATA_OPEN(this->GetName());
@@ -100,21 +100,21 @@ ScalarRenderer::Update()
   //DRP: Logger
   //VTKH_DATA_ADD("input_cells", in_cells);
 #endif
-  PreExecute();
-  DoExecute();
-  PostExecute();
+  this->PreExecute(plots);
+  this->DoExecute(plots);
+  this->PostExecute(plots);
   //DRP: Logger
   //VTKH_DATA_CLOSE();
 }
 
 void
-ScalarRenderer::PostExecute()
+ScalarRenderer::PostExecute(std::vector<vtkh::Plot>& plots)
 {
-  Renderer::PostExecute();
+  Renderer::PostExecute(plots);
 }
 
 void
-ScalarRenderer::DoExecute()
+ScalarRenderer::DoExecute(std::vector<vtkh::Plot>& vtkmNotUsed(plots))
 {
   vtkm::Id num_domains = this->Actor.GetDataSet().GetNumberOfPartitions();
   this->Output = new vtkm::cont::PartitionedDataSet();

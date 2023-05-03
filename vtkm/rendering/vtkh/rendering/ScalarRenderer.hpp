@@ -30,7 +30,7 @@ public:
 
   ScalarRenderer();
   virtual ~ScalarRenderer();
-  virtual void Update() override;
+  virtual void Update(std::vector<vtkh::Plot>& plots) override;
   virtual std::string GetName() const override;
 
   void SetCamera(vtkmCamera &camera);
@@ -48,9 +48,9 @@ protected:
   // image related data with cinema support
   vtkmCamera  Camera;
   // methods
-  virtual void PreExecute() override;
-  virtual void PostExecute() override;
-  virtual void DoExecute() override;
+  virtual void PreExecute(std::vector<vtkh::Plot>& plots) override;
+  virtual void PostExecute(std::vector<vtkh::Plot>& plots) override;
+  virtual void DoExecute(std::vector<vtkh::Plot>& plots) override;
 
   PayloadImage * Convert(Result &result);
   ScalarRenderer::Result Convert(PayloadImage &image, std::vector<std::string> &names);

@@ -11,13 +11,13 @@
 #ifndef vtkm_rendering_vtkh_rendering_Plot_h
 #define vtkm_rendering_vtkh_rendering_Plot_h
 
-#include <vector>
-#include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/rendering/vtkm_rendering_export.h>
-//#include <vtkm/rendering/vtkh/DataSet.hpp>
 
+#include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/rendering/Camera.h>
 #include <vtkm/rendering/CanvasRayTracer.h>
+
+#include <vector>
 
 namespace vtkh
 {
@@ -29,6 +29,8 @@ namespace vtkh
 // transformations, to handle this we keep track of the domain ids
 // that each canvas is associated with.
 //
+
+class Renderer;
 
 class VTKM_RENDERING_EXPORT Plot
 {
@@ -48,6 +50,8 @@ public:
   vtkm::rendering::Color GetBackgroundColor() const;
   bool GetShadingOn() const { return this->DoShading; }
   void Print() const;
+
+  void AddRenderer(vtkh::Renderer* renderer);
 
   void SetPlotAnnotations(bool on) { this->DoPlotAnnotations = on; }
   void SetPlotWorldAnnotations(bool on) { this->DoPlotWorldAnnotations = on; }
@@ -71,6 +75,8 @@ public:
   void SyncDepth();
   void Save();
 
+  std::vector<vtkh::Renderer*> Renderers;
+
 protected:
   vtkm::rendering::Camera Camera;
   std::string ImageName;
@@ -88,6 +94,8 @@ protected:
   bool DoShading;
   vtkmCanvas Canvas;
   vtkm::Vec<float, 3> WorldAnnotationScale;
+  bool HasVolume = false;
+  bool HasMesh = false;
 };
 
 static float vtkh_default_bg_color[4] = { 0.f, 0.f, 0.f, 1.f };

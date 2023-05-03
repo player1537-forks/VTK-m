@@ -39,12 +39,6 @@ Scene::SetRenderBatchSize(int batch_size)
   this->BatchSize = batch_size;
 }
 
-int
-Scene::GetRenderBatchSize() const
-{
-  return this->BatchSize;
-}
-
 bool
 Scene::IsMesh(vtkh::Renderer *renderer)
 {
@@ -89,7 +83,7 @@ Scene::AddRenderer(vtkh::Renderer *renderer)
   else if(is_mesh)
   {
     // make sure that the mesh plot is last
-    // and before the volume pl0t
+    // and before the volume plot
     if(this->HasVolume)
     {
       if(this->Renderers.size() == 1)
@@ -132,10 +126,48 @@ void
 Scene::Render()
 {
   std::vector<vtkm::Range> ranges;
-  std::vector<std::string> field_names;
-  std::vector<vtkm::cont::ColorTable> color_tables;
-  bool do_once = true;
+  std::vector<std::string> fieldNames;
+  std::vector<vtkm::cont::ColorTable> colorTables;
+  bool firstTime = true;
 
+  //ignore cinema right now.....
+  std::size_t numPlots = this->Plots.size();
+  for (std::size_t i = 0; i < numPlots; i++)
+  {
+    auto& plot = this->Plots[i];
+    plot.GetCanvas().Clear();
+    auto renderer = plot.Renderers[0];
+
+    //opaque pass...
+    //last plot
+    bool lastPlot = (i == numPlots-1);
+    renderer->SetDoComposite(lastPlot);
+    //renderer->SetPlots({plot});
+    std::vector<vtkh::Plot> plots = {plot};
+    renderer->Update(plots);
+    //renderer->ClearPlots();
+
+    if (firstTime)
+    {
+      const auto& r = plot.Renderers[0];
+      if (r->GetHasColorTable())
+      {
+        ranges.push_back(r->GetScalarRange());
+        fieldNames.push_back(r->GetFieldName());
+        colorTables.push_back(r->GetColorTable());
+      }
+      firstTime = false;
+    }
+
+    //batch
+    plot.RenderWorldAnnotations();
+    plot.RenderScreenAnnotations(fieldNames, ranges, colorTables);
+    plot.RenderBackground();
+    plot.Save();
+  }
+  return;
+
+#if 0
   //
   // We are going to render images in batches. With databases
   // like Cinema, we could be rendering hundres of images. Keeping
@@ -246,6 +278,131 @@ Scene::Render()
 
     batch_start = batch_end;
   } // while
+#endif
+}
+
+
+
+
+
+void
+Scene::RenderORIG()
+{
+  std::vector<vtkm::Range> ranges;
+  std::vector<std::string> field_names;
+  std::vector<vtkm::cont::ColorTable> color_tables;
+  bool do_once = true;
+
+  //
+  // We are going to render images in batches. With databases
+  // like Cinema, we could be rendering hundres of images. Keeping
+  // all the canvases around can hog memory so we will conserve it.
+  // For example, if we rendered 360 images at 1024^2, all the canvases
+  // would consume 7GB of space. Not good on the GPU, where resources
+  // are limited.
+  //
+  const int render_size = this->Plots.size();
+  int batch_start = 0;
+  while(batch_start < render_size)
+  {
+    int batch_end = std::min(this->BatchSize + batch_start, render_size);
+    auto begin = this->Plots.begin() + batch_start;
+    auto end = this->Plots.begin() + batch_end;
+
+    std::vector<vtkh::Plot> current_batch(begin, end);
+
+    for(auto plot : current_batch)
+    {
+      plot.GetCanvas().Clear();
+    }
+
+    const int numRenderers = this->Renderers.size();
+    auto renderer = this->Renderers.begin();
+
+    // render order is enforced inside add
+    // Order is:
+    // 1) surfaces
+    // 2) meshes
+    // 3) volume
+
+    // if we have both surfaces/mesh and volumes
+    // we need to synchronize depths so that volume
+    // only render to the max depth
+    bool synch_depths = false;
+
+    int opaqueRenderers = numRenderers;
+    if(this->HasVolume)
+    {
+      opaqueRenderers -= 1;
+    }
+
+    //
+    // pass 1: opaque geometry
+    //
+    for(int i = 0; i < opaqueRenderers; ++i)
+    {
+      if(i == opaqueRenderers - 1)
+      {
+        (*renderer)->SetDoComposite(true);
+      }
+      else
+      {
+        (*renderer)->SetDoComposite(false);
+      }
+
+      //(*renderer)->SetPlots(current_batch);
+      (*renderer)->Update(current_batch);
+
+      //(*renderer)->ClearPlots();
+
+      synch_depths = true;
+      renderer++;
+    }
+
+    //
+    // pass 2: volume
+    //
+    if(this->HasVolume)
+    {
+      if(synch_depths)
+      {
+        SynchDepths(current_batch);
+      }
+      (*renderer)->SetDoComposite(true);
+      //(*renderer)->SetPlots(current_batch);
+      (*renderer)->Update(current_batch);
+
+      //current_batch  = (*renderer)->GetPlots();
+      //(*renderer)->ClearPlots();
+    }
+
+    if(do_once)
+    {
+      // gather color tables and other information for
+      // annotations
+      for (const auto& r : this->Renderers)
+      {
+        if((*r).GetHasColorTable())
+        {
+          ranges.push_back((*r).GetScalarRange());
+          field_names.push_back((*r).GetFieldName());
+          color_tables.push_back((*r).GetColorTable());
+        }
+      }
+      do_once = false;
+    }
+
+    // render screen annotations last and save
+    for(std::size_t i = 0; i < current_batch.size(); ++i)
+    {
+      current_batch[i].RenderWorldAnnotations();
+      current_batch[i].RenderScreenAnnotations(field_names, ranges, color_tables);
+      current_batch[i].RenderBackground();
+      current_batch[i].Save();
+    }
+
+    batch_start = batch_end;
+  } // while
 }
 
 void Scene::SynchDepths(std::vector<vtkh::Plot> &plots)
@@ -253,11 +410,4 @@ void Scene::SynchDepths(std::vector<vtkh::Plot> &plots)
   for (auto plot : plots)
     plot.SyncDepth();
 }
-
-void
-Scene::Save()
-{
-
-}
-
 } // namespace vtkh

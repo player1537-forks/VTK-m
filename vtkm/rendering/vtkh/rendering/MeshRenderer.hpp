@@ -12,6 +12,7 @@
 #define vtkm_rendering_rendering_MeshRenderer_h
 
 #include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
+#include <vtkm/rendering/vtkh/rendering/Plot.h>
 #include <vtkm/rendering/vtkm_rendering_export.h>
 
 namespace vtkh {
@@ -33,7 +34,7 @@ public:
   bool GetShowInternal() const { return this->ShowInternal; }
 
 protected:
-  void PreExecute() override;
+  void PreExecute(std::vector<vtkh::Plot>& plots) override;
 
   bool IsOverlay = false;
   bool ShowInternal = false;

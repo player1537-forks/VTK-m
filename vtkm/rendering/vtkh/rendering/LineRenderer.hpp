@@ -12,6 +12,7 @@
 #define vtkm_rendering_rendering_LineRenderer_h
 
 #include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
+#include <vtkm/rendering/vtkh/rendering/Plot.h>
 #include <vtkm/rendering/vtkm_rendering_export.h>
 
 namespace vtkh {
@@ -24,7 +25,7 @@ public:
   LineRenderer();
   virtual ~LineRenderer();
   std::string GetName() const override {return "vtkh::LineRenderer";}
-  void PreExecute() override;
+  void PreExecute(std::vector<vtkh::Plot>& plots) override;
   void SetRadius(vtkm::Float32 radius);
 private:
   vtkm::Float32 Radius;

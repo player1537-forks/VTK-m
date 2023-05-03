@@ -14,7 +14,10 @@
 #include <vtkm/rendering/View3D.h>
 #include <vtkm/rendering/vtkh/compositing/PNGEncoder.h>
 #include <vtkm/rendering/vtkh/rendering/Annotator.hpp>
+#include <vtkm/rendering/vtkh/rendering/MeshRenderer.hpp>
 #include <vtkm/rendering/vtkh/rendering/Plot.h>
+#include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
+#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.hpp>
 #include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
 
 #ifdef VTKM_ENABLE_MPI
@@ -41,6 +44,51 @@ Plot::Plot()
 }
 
 Plot::~Plot() {}
+
+void Plot::AddRenderer(vtkh::Renderer* renderer)
+{
+  //Redo this... Implicit ordering is asking for trouble....
+
+  bool isVolume = (dynamic_cast<vtkh::VolumeRenderer*>(renderer) != nullptr);
+  bool isMesh = (dynamic_cast<vtkh::MeshRenderer*>(renderer) != nullptr);
+
+  if (isVolume)
+  {
+    if (this->HasVolume)
+    {
+      throw vtkm::cont::ErrorBadValue("Scenes only support a single volume plot");
+    }
+    this->HasVolume = true;
+
+    // make sure that the volume render is last
+    this->Renderers.push_back(renderer);
+  }
+  else if (isMesh)
+  {
+    // make sure that the mesh plot is last
+    // and before the volume plot
+    if (this->HasVolume)
+    {
+      if (this->Renderers.size() == 1)
+        this->Renderers.insert(this->Renderers.begin(), renderer);
+      else
+      {
+        auto it = this->Renderers.end();
+        it--;
+        it--;
+        this->Renderers.insert(it, renderer);
+      }
+    }
+    else
+    {
+      this->Renderers.push_back(renderer);
+    }
+  }
+  else
+  {
+    this->Renderers.insert(this->Renderers.begin(), renderer);
+  }
+}
 
 Plot::vtkmCanvas& Plot::GetCanvas()
 {
