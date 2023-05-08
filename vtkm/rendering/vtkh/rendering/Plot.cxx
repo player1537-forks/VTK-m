@@ -245,6 +245,7 @@ Plot Plot::Copy() const
   copy.DoShading = this->DoShading;
   copy.Canvas = this->CreateCanvas();
   copy.WorldAnnotationScale = this->WorldAnnotationScale;
+  copy.Renderers = this->Renderers;
   return copy;
 }
 
@@ -292,6 +293,45 @@ void Plot::SyncDepth()
   float* depth_ptr = GetVTKMPointer(canvas.GetDepthBuffer());
   MPI_Bcast(depth_ptr, image_size, MPI_FLOAT, 0, comm);
 #endif
+}
+
+void Plot::Render()
+{
+  this->GetCanvas().Clear();
+  if (this->Renderers.empty())
+    return;
+
+  std::size_t totalNum = this->Renderers.size();
+  std::size_t numOpaque = totalNum;
+  if (this->HasVolume)
+    numOpaque--;
+
+  bool syncDepth = (numOpaque > 0);
+
+  //Pass 1: opaque renderers.
+  for (std::size_t i = 0; i < numOpaque; i++)
+  {
+    auto renderer = this->Renderers[i];
+    //composite if last.
+    renderer->SetDoComposite(i == numOpaque - 1);
+
+    renderer->Update(*this);
+  }
+
+  // Pass 2: volume render
+  if (this->HasVolume)
+  {
+    if (syncDepth)
+      this->SyncDepth();
+    auto renderer = this->Renderers[totalNum - 1];
+    renderer->SetDoComposite(true);
+    renderer->Update(*this);
+  }
+
+  this->RenderWorldAnnotations();
+  //this->RenderScreenAnnotations();
+  this->RenderBackground();
+  this->Save();
 }
 
 void Plot::Save()

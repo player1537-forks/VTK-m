@@ -91,12 +91,13 @@ void ScalarRenderer(int blocksPerRank)
   vtkh::ScalarRenderer tracer;
 
   std::cout << __FILE__ << " " << __LINE__ << " fix me" << std::endl;
+  /*
   vtkm::rendering::Actor actor(pds, "", vtkm::cont::ColorTable("Cool to Warm"));
 
   tracer.SetInput(actor);
   tracer.SetCamera(camera);
   std::vector<vtkh::Plot> plots;
-  std::cout << "FIX ME!!!!!!!!!!" << std::endl;
+  std::cout<<"FIX ME!!!!!!!!!!"<<std::endl;
   tracer.Update(plots);
 
   vtkm::cont::PartitionedDataSet* output = tracer.GetOutput();
@@ -107,6 +108,7 @@ void ScalarRenderer(int blocksPerRank)
     vtkm::io::VTKDataSetWriter writer("scalar_data.vtk");
     writer.WriteDataSet(result);
   }
+  */
 }
 
 void PointRenderer(bool renderVar, int blocksPerRank)
@@ -141,7 +143,7 @@ void PointRenderer(bool renderVar, int blocksPerRank)
   vtkh::Scene scene;
   scene.AddRenderer(&renderer);
   scene.AddPlot(plot);
-  scene.Render();
+  scene.RenderNEW();
 }
 
 void RayTrace(bool doStructured, int blocksPerRank)
@@ -184,7 +186,7 @@ void RayTrace(bool doStructured, int blocksPerRank)
   vtkh::Scene scene;
   scene.AddPlot(plot);
   scene.AddRenderer(&tracer);
-  scene.Render();
+  scene.RenderNEW();
 }
 
 void RayTrace2(bool doStructured, int blocksPerRank)
@@ -225,12 +227,11 @@ void RayTrace2(bool doStructured, int blocksPerRank)
   rendererRT.SetInput(actor);
 
   plot.AddRenderer(&rendererRT);
-  //plot.RENDERERS.push_back(&rendererRT);
 
   vtkh::Scene scene;
   scene.AddPlot(plot);
   //scene.AddRenderer(&rendererRT);
-  scene.Render();
+  scene.RenderNEW();
 }
 
 void VolumeRender(bool doStructured, int blocksPerRank)
@@ -266,8 +267,8 @@ void VolumeRender(bool doStructured, int blocksPerRank)
   plot.AddRenderer(&tracer);
   vtkh::Scene scene;
   scene.AddPlot(plot);
-  scene.AddRenderer(&tracer);
-  scene.Render();
+  //scene.AddRenderer(&tracer);
+  scene.RenderNEW();
 }
 
 void VolumeRenderBlank(int blocksPerRank)
@@ -315,7 +316,7 @@ void VolumeRenderBlank(int blocksPerRank)
   vtkh::Scene scene;
   scene.AddPlot(plot);
   //scene.AddRenderer(&tracer);
-  scene.Render();
+  scene.RenderNEW();
 }
 
 void MultiRender(bool doBatch, int blocksPerRank)
@@ -354,14 +355,16 @@ void MultiRender(bool doBatch, int blocksPerRank)
   v_tracer.SetColorTable(color_map);
 
 
-  vtkh::Scene scene;
+  plot.AddRenderer(&v_tracer);
+  plot.AddRenderer(&tracer);
 
+  vtkh::Scene scene;
   if (doBatch)
   {
     scene.SetRenderBatchSize(5);
 
     const int num_images = 11;
-    std::vector<vtkh::Plot> renders;
+    std::vector<vtkh::Plot> plots;
     for (int i = 0; i < num_images; ++i)
     {
       vtkh::Plot tmp = plot.Copy();
@@ -370,18 +373,19 @@ void MultiRender(bool doBatch, int blocksPerRank)
       std::stringstream name;
       name << "par_batch_" << i;
       tmp.SetImageName(name.str());
-      renders.push_back(tmp);
+      plots.push_back(tmp);
     }
-    scene.SetPlots(renders);
+    scene.SetPlots(plots);
   }
   else
   {
     scene.AddPlot(plot);
   }
 
-  scene.AddRenderer(&v_tracer);
-  scene.AddRenderer(&tracer);
-  scene.RenderORIG();
+  //  scene.AddRenderer(&v_tracer);
+  //  scene.AddRenderer(&tracer);
+  //  scene.RenderORIG();
+  scene.RenderNEW();
 }
 
 //TODO
@@ -401,9 +405,13 @@ void MultiRender(bool doBatch, int blocksPerRank)
 //
 void RenderTests()
 {
-  //MultiRender(true, 1);
-  //RayTrace2(true, 1);
+  /*
+  MultiRender(true, 1);
+  RayTrace2(true, 1);
+  VolumeRender(true, 1);
+  return;
   //RayTrace2(true, 2);
+  */
 
 #if 1
 

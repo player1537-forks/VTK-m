@@ -25,8 +25,8 @@ public:
   PointRenderer();
   virtual ~PointRenderer() {};
   std::string GetName() const override {   return "vtkh::PointRenderer"; }
-  void PreExecute(std::vector<vtkh::Plot>& plots) override;
-  void PostExecute(std::vector<vtkh::Plot>& plots) override;
+  void PreExecute(vtkh::Plot& plot) override;
+  void PostExecute(vtkh::Plot& plot) override;
   void SetUseCells() { this->UseNodes = false; }
   void SetUseNodes() { this->UseNodes = true; }
   void SetUseVariableRadius(bool useVariableRadius) { this->UseVariableRadius = useVariableRadius; }

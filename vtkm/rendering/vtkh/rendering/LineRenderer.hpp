@@ -25,7 +25,7 @@ public:
   LineRenderer();
   virtual ~LineRenderer();
   std::string GetName() const override {return "vtkh::LineRenderer";}
-  void PreExecute(std::vector<vtkh::Plot>& plots) override;
+  void PreExecute(vtkh::Plot& plot) override;
   void SetRadius(vtkm::Float32 radius);
 private:
   vtkm::Float32 Radius;

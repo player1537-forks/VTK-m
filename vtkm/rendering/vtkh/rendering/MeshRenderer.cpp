@@ -26,9 +26,9 @@ MeshRenderer::MeshRenderer()
 }
 
 void
-MeshRenderer::PreExecute(std::vector<vtkh::Plot>& plots)
+MeshRenderer::PreExecute(vtkh::Plot& plot)
 {
-  Renderer::PreExecute(plots);
+  Renderer::PreExecute(plot);
 
   typedef vtkm::rendering::MapperWireframer MapperType;
   std::shared_ptr<MapperType> mesh_mapper =
@@ -39,7 +39,7 @@ MeshRenderer::PreExecute(std::vector<vtkh::Plot>& plots)
 
   if(this->UseForegroundColor)
   {
-    vtkm::rendering::Color fg = plots[0].GetCanvas().GetForegroundColor();
+    vtkm::rendering::Color fg = plot.GetCanvas().GetForegroundColor();
     vtkm::cont::ColorTable single_color;
     vtkm::Vec<vtkm::Float32,3> fg_vec3_not_4;
     fg_vec3_not_4[0] = fg.Components[0];

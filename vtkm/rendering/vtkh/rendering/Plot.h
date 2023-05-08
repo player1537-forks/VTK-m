@@ -74,6 +74,7 @@ public:
                                const std::vector<vtkm::cont::ColorTable>& colors);
   void SyncDepth();
   void Save();
+  void Render();
 
   std::vector<vtkh::Renderer*> Renderers;
 

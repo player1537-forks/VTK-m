@@ -34,7 +34,7 @@ public:
   bool GetShowInternal() const { return this->ShowInternal; }
 
 protected:
-  void PreExecute(std::vector<vtkh::Plot>& plots) override;
+  void PreExecute(vtkh::Plot& plot) override;
 
   bool IsOverlay = false;
   bool ShowInternal = false;

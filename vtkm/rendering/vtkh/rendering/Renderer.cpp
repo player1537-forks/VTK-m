@@ -35,46 +35,36 @@ Renderer::~Renderer()
 }
 
 void
-Renderer::Composite(std::vector<vtkh::Plot>& plots)
+Renderer::Composite(vtkh::Plot& plot)
 {
-  //DRP: Logger
-  //VTKH_DATA_OPEN("Composite");
-
   this->Compositor->SetCompositeMode(Compositor::Z_BUFFER_SURFACE);
-  std::size_t numImages = plots.size();
 
-  for(std::size_t i = 0; i < numImages; ++i)
-  {
-    float* color_buffer = &GetVTKMPointer(plots[i].GetCanvas().GetColorBuffer())[0][0];
-    float* depth_buffer = GetVTKMPointer(plots[i].GetCanvas().GetDepthBuffer());
+  float* color_buffer = &GetVTKMPointer(plot.GetCanvas().GetColorBuffer())[0][0];
+  float* depth_buffer = GetVTKMPointer(plot.GetCanvas().GetDepthBuffer());
 
-    int height = plots[i].GetCanvas().GetHeight();
-    int width = plots[i].GetCanvas().GetWidth();
+  int height = plot.GetCanvas().GetHeight();
+  int width = plot.GetCanvas().GetWidth();
 
-    this->Compositor->AddImage(color_buffer,
-                           depth_buffer,
-                           width,
-                           height);
+  this->Compositor->AddImage(color_buffer,
+                             depth_buffer,
+                             width,
+                             height);
 
-    Image result = this->Compositor->Composite();
+  Image result = this->Compositor->Composite();
 
 #ifdef VTKM_ENABLE_MPI
-    //if(vtkh::GetMPIRank() == 0)
-    if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
-    {
-      ImageToCanvas(result, plots[i].GetCanvas(), true);
-    }
+  if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
+  {
+    ImageToCanvas(result, plot.GetCanvas(), true);
+  }
 #else
-    ImageToCanvas(result, plots[i].GetCanvas(), true);
+  ImageToCanvas(result, plot.GetCanvas(), true);
 #endif
-    this->Compositor->ClearImages();
-  } // for image
-  //DRP: Logger
-  //VTKH_DATA_CLOSE();
+  this->Compositor->ClearImages();
 }
 
 void
-Renderer::PreExecute(std::vector<vtkh::Plot>& vtkmNotUsed(plots))
+Renderer::PreExecute(vtkh::Plot& vtkmNotUsed(plot))
 {
   bool range_set = this->GetScalarRange().IsNonEmpty();
   CheckForRequiredField(this->GetFieldName());
@@ -118,31 +108,28 @@ Renderer::PreExecute(std::vector<vtkh::Plot>& vtkmNotUsed(plots))
 }
 
 void
-Renderer::Update(std::vector<vtkh::Plot>& plots)
+Renderer::Update(vtkh::Plot& plot)
 {
-  this->PreExecute(plots);
-  this->DoExecute(plots);
-  this->PostExecute(plots);
+  this->PreExecute(plot);
+  this->DoExecute(plot);
+  this->PostExecute(plot);
 }
 
 void
-Renderer::PostExecute(std::vector<vtkh::Plot>& plots)
+Renderer::PostExecute(vtkh::Plot& plot)
 {
   if(this->DoComposite)
-    this->Composite(plots);
+    this->Composite(plot);
 }
 
 void
-Renderer::DoExecute(std::vector<vtkh::Plot>& plots)
+Renderer::DoExecute(vtkh::Plot& plot)
 {
   if(this->Mapper.get() == nullptr)
   {
     std::string msg = "Renderer Error: no renderer was set by sub-class";
     throw vtkm::cont::ErrorBadValue(msg);
   }
-
-  int total_plots = static_cast<int>(plots.size());
-
 
 //  int num_domains = static_cast<int>(this->Input->GetGlobalNumberOfPartitions());
 //  for(int dom = 0; dom < num_domains; ++dom)
@@ -165,32 +152,20 @@ Renderer::DoExecute(std::vector<vtkh::Plot>& plots)
       continue;
     }
 
-    for(int i = 0; i < total_plots; ++i)
-    {
-      if (plots[i].GetShadingOn())
-      {
-        this->SetShadingOn(true);
-      }
-      else
-      {
-        this->SetShadingOn(false);
-      }
+    this->SetShadingOn(plot.GetShadingOn());
 
-      this->Mapper->SetActiveColorTable(this->GetColorTable());
+    this->Mapper->SetActiveColorTable(this->GetColorTable());
 
-      Plot::vtkmCanvas &canvas = plots[i].GetCanvas();
-      const auto& camera = plots[i].GetCamera();
-      this->Mapper->SetCanvas(&canvas);
-      this->Mapper->RenderCells(cellset,
-                                coords,
-                                field,
-                                this->GetColorTable(),
-                                camera,
-                                this->GetScalarRange());
-    }
+    Plot::vtkmCanvas &canvas = plot.GetCanvas();
+    const auto& camera = plot.GetCamera();
+    this->Mapper->SetCanvas(&canvas);
+    this->Mapper->RenderCells(cellset,
+                              coords,
+                              field,
+                              this->GetColorTable(),
+                              camera,
+                              this->GetScalarRange());
   }
-
-
 }
 
 void

@@ -34,20 +34,20 @@ public:
   void SetNumberOfSamples(const int num_samples);
 
 
-  void Update(std::vector<vtkh::Plot>& plots) override;
+  void Update(vtkh::Plot& plot) override;
   virtual void SetInput(const vtkm::rendering::Actor& actor) override;
 
 protected:
-  virtual void Composite(std::vector<vtkh::Plot>& plots) override;
-  virtual void PreExecute(std::vector<vtkh::Plot>& plots) override;
-  virtual void DoExecute(std::vector<vtkh::Plot>& plots) override;
-  virtual void PostExecute(std::vector<vtkh::Plot>& plots) override;
+  virtual void Composite(vtkh::Plot& plot) override;
+  virtual void PreExecute(vtkh::Plot& plot) override;
+  virtual void DoExecute(vtkh::Plot& plot) override;
+  virtual void PostExecute(vtkh::Plot& plot) override;
 
-  void RenderOneDomainPerRank(std::vector<vtkh::Plot>& plots);
-  void RenderMultipleDomainsPerRank(std::vector<vtkh::Plot>& plots);
+  void RenderOneDomainPerRank(vtkh::Plot& plot);
+  void RenderMultipleDomainsPerRank(vtkh::Plot& plot);
 
   void CorrectOpacity();
-  void FindVisibilityOrdering(std::vector<vtkh::Plot>& plots);
+  void FindVisibilityOrdering(vtkh::Plot& plot);
   void DepthSort(int num_domains,
                  std::vector<float> &min_depths,
                  std::vector<int> &local_vis_order);
@@ -59,7 +59,7 @@ protected:
   bool HasUnstructured;
   std::shared_ptr<vtkm::rendering::MapperVolume> Tracer;
   vtkm::cont::ColorTable CorrectedColorTable;
-  std::vector<std::vector<int>> VisibilityOrders;
+  std::vector<int> VisibilityOrders;
 
   void ClearWrappers();
   std::vector<detail::VolumeWrapper*> Wrappers;

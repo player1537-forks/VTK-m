@@ -427,7 +427,7 @@ VolumeRenderer::~VolumeRenderer()
 }
 
 void
-VolumeRenderer::Update(std::vector<vtkh::Plot>& plots)
+VolumeRenderer::Update(vtkh::Plot& plot)
 {
   //DRP: Logger
   //VTKH_DATA_OPEN(this->GetName());
@@ -449,9 +449,9 @@ VolumeRenderer::Update(std::vector<vtkh::Plot>& plots)
   }
 #endif
 
-  PreExecute(plots);
-  DoExecute(plots);
-  PostExecute(plots);
+  PreExecute(plot);
+  DoExecute(plot);
+  PostExecute(plot);
 
   //DRP: Logger
   //VTKH_DATA_CLOSE();
@@ -478,21 +478,21 @@ void VolumeRenderer::CorrectOpacity()
 }
 
 void
-VolumeRenderer::DoExecute(std::vector<vtkh::Plot>& plots)
+VolumeRenderer::DoExecute(vtkh::Plot& plot)
 {
   if(vtkh::GlobalHasOnePartition(this->Actor.GetDataSet()) && !this->HasUnstructured)
   {
     // Danger: this logic only works if there is exactly one per rank
-    RenderOneDomainPerRank(plots);
+    RenderOneDomainPerRank(plot);
   }
   else
   {
-    RenderMultipleDomainsPerRank(plots);
+    RenderMultipleDomainsPerRank(plot);
   }
 }
 
 void
-VolumeRenderer::RenderOneDomainPerRank(std::vector<vtkh::Plot>& plots)
+VolumeRenderer::RenderOneDomainPerRank(vtkh::Plot& plot)
 {
   if(this->Mapper.get() == 0)
   {
@@ -502,7 +502,6 @@ VolumeRenderer::RenderOneDomainPerRank(std::vector<vtkh::Plot>& plots)
 
   this->Tracer->SetSampleDistance(this->SampleDist);
 
-  int total_renders = static_cast<int>(plots.size());
   int num_domains = static_cast<int>(this->Actor.GetDataSet().GetNumberOfPartitions());
   if(num_domains > 1)
   {
@@ -524,28 +523,25 @@ VolumeRenderer::RenderOneDomainPerRank(std::vector<vtkh::Plot>& plots)
 
     if(cellset.GetNumberOfCells() == 0) continue;
 
-    for(int i = 0; i < total_renders; ++i)
-    {
-      this->Mapper->SetActiveColorTable(this->CorrectedColorTable);
+    this->Mapper->SetActiveColorTable(this->CorrectedColorTable);
 
-      Plot::vtkmCanvas &canvas = plots[i].GetCanvas();
-      const auto& camera = plots[i].GetCamera();
-      this->Mapper->SetCanvas(&canvas);
-      this->Mapper->RenderCells(cellset,
-                            coords,
-                            field,
-                            this->CorrectedColorTable,
-                            camera,
-                                this->Actor.GetScalarRange());
-    }
+    Plot::vtkmCanvas &canvas = plot.GetCanvas();
+    const auto& camera = plot.GetCamera();
+    this->Mapper->SetCanvas(&canvas);
+    this->Mapper->RenderCells(cellset,
+                              coords,
+                              field,
+                              this->CorrectedColorTable,
+                              camera,
+                              this->Actor.GetScalarRange());
   }
 
   if(this->DoComposite)
-    this->Composite(plots);
+    this->Composite(plot);
 }
 
 void
-VolumeRenderer::RenderMultipleDomainsPerRank(std::vector<vtkh::Plot>& plots)
+VolumeRenderer::RenderMultipleDomainsPerRank(vtkh::Plot& plot)
 {
   // We are treating this as the most general case
   // where we could have a mix of structured and
@@ -555,7 +551,6 @@ VolumeRenderer::RenderMultipleDomainsPerRank(std::vector<vtkh::Plot>& plots)
   // this might be smaller than the input since
   // it is possible for cell sets to be empty
   const int num_domains = this->Wrappers.size();
-  const int total_renders = static_cast<int>(plots.size());
 
   vtkm::cont::ArrayHandle<vtkm::Vec4f_32> color_map
     = detail::convert_table(this->CorrectedColorTable);
@@ -563,12 +558,8 @@ VolumeRenderer::RenderMultipleDomainsPerRank(std::vector<vtkh::Plot>& plots)
     = detail::convert_table(this->GetColorTable());
 
   // render/domain/result
-  std::vector<std::vector<std::vector<VolumePartial<float>>>> render_partials;
-  render_partials.resize(total_renders);
-  for(int i = 0; i < total_renders; ++i)
-  {
-    render_partials[i].resize(num_domains);
-  }
+  std::vector<std::vector<VolumePartial<float>>> render_partials;
+  render_partials.resize(num_domains);
 
   for(int i = 0; i < num_domains; ++i)
   {
@@ -578,12 +569,9 @@ VolumeRenderer::RenderMultipleDomainsPerRank(std::vector<vtkh::Plot>& plots)
     wrapper->field(this->GetFieldName());
     wrapper->scalar_range(this->GetScalarRange());
 
-    for(int r = 0; r < total_renders; ++r)
-    {
-      Plot::vtkmCanvas &canvas = plots[r].GetCanvas();
-      const auto& camera = plots[r].GetCamera();
-      wrapper->render(camera, canvas, render_partials[r][i]);
-    }
+    Plot::vtkmCanvas &canvas = plot.GetCanvas();
+    const auto& camera = plot.GetCamera();
+    wrapper->render(camera, canvas, render_partials[i]);
   }
 
   PartialCompositor<VolumePartial<float>> compositor;
@@ -592,24 +580,22 @@ VolumeRenderer::RenderMultipleDomainsPerRank(std::vector<vtkh::Plot>& plots)
   MPI_Comm comm = vtkmdiy::mpi::mpi_cast(diy_comm.handle());
   compositor.set_comm_handle(comm);
 #endif
+
   // composite
-  for(int r = 0; r < total_renders; ++r)
+  std::vector<VolumePartial<float>> res;
+  compositor.composite(render_partials,res);
+  if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
   {
-    std::vector<VolumePartial<float>> res;
-    compositor.composite(render_partials[r],res);
-    if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
-    {
-      detail::partials_to_canvas(res,
-                                 plots[r].GetCamera(),
-                                 plots[r].GetCanvas());
-    }
+    detail::partials_to_canvas(res,
+                               plot.GetCamera(),
+                               plot.GetCanvas());
   }
 }
 
 void
-VolumeRenderer::PreExecute(std::vector<vtkh::Plot>& plots)
+VolumeRenderer::PreExecute(vtkh::Plot& plot)
 {
-  Renderer::PreExecute(plots);
+  Renderer::PreExecute(plot);
 
   CorrectOpacity();
 
@@ -622,7 +608,7 @@ VolumeRenderer::PreExecute(std::vector<vtkh::Plot>& plots)
 }
 
 void
-VolumeRenderer::PostExecute(std::vector<vtkh::Plot>& vtkmNotUsed(plots))
+VolumeRenderer::PostExecute(vtkh::Plot& vtkmNotUsed(plot))
 {
   // do nothing and override compositing since
   // we already did it
@@ -660,38 +646,34 @@ VolumeRenderer::FindMinDepth(const vtkm::rendering::Camera &camera,
 }
 
 void
-VolumeRenderer::Composite(std::vector<vtkh::Plot>& plots)
+VolumeRenderer::Composite(vtkh::Plot& plot)
 {
   this->Compositor->SetCompositeMode(Compositor::VIS_ORDER_BLEND);
-  FindVisibilityOrdering(plots);
+  FindVisibilityOrdering(plot);
 
-  std::size_t numImages = plots.size();
-  for (std::size_t i = 0; i < numImages; ++i)
+  float* color_buffer =
+    &GetVTKMPointer(plot.GetCanvas().GetColorBuffer())[0][0];
+  float* depth_buffer =
+    GetVTKMPointer(plot.GetCanvas().GetDepthBuffer());
+  int height = plot.GetCanvas().GetHeight();
+  int width = plot.GetCanvas().GetWidth();
+
+  this->Compositor->AddImage(color_buffer,
+                             depth_buffer,
+                             width,
+                             height,
+                             this->VisibilityOrders[0]);
+
+  Image result = this->Compositor->Composite();
+#ifdef VTKM_ENABLE_MPI
+  if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
   {
-    float* color_buffer =
-      &GetVTKMPointer(plots[i].GetCanvas().GetColorBuffer())[0][0];
-    float* depth_buffer =
-      GetVTKMPointer(plots[i].GetCanvas().GetDepthBuffer());
-    int height = plots[i].GetCanvas().GetHeight();
-    int width = plots[i].GetCanvas().GetWidth();
-
-    this->Compositor->AddImage(color_buffer,
-                           depth_buffer,
-                           width,
-                           height,
-                           this->VisibilityOrders[i][0]);
-
-    Image result = this->Compositor->Composite();
-#ifdef VTKM_ENABLE_MPI
-    if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
-    {
 #endif
-      ImageToCanvas(result, plots[i].GetCanvas(), true);
+    ImageToCanvas(result, plot.GetCanvas(), true);
 #ifdef VTKM_ENABLE_MPI
-    }
+  }
 #endif
-    this->Compositor->ClearImages();
-  } // for image
+  this->Compositor->ClearImages();
 }
 
 void
@@ -839,16 +821,10 @@ VolumeRenderer::DepthSort(int num_domains,
 }
 
 void
-VolumeRenderer::FindVisibilityOrdering(std::vector<vtkh::Plot>& plots)
+VolumeRenderer::FindVisibilityOrdering(vtkh::Plot& plot)
 {
   const int num_domains = static_cast<int>(this->Actor.GetDataSet().GetNumberOfPartitions());
-  const int num_cameras = static_cast<int>(plots.size());
-  this->VisibilityOrders.resize(num_cameras);
-
-  for(int i = 0; i < num_cameras; ++i)
-  {
-    this->VisibilityOrders[i].resize(num_domains);
-  }
+  this->VisibilityOrders.resize(num_domains);
 
   //
   // In order for parallel volume rendering to composite correctly,
@@ -860,19 +836,16 @@ VolumeRenderer::FindVisibilityOrdering(std::vector<vtkh::Plot>& plots)
   std::vector<float> min_depths;
   min_depths.resize(num_domains);
 
-  for(int i = 0; i < num_cameras; ++i)
+  const vtkm::rendering::Camera &camera = plot.GetCamera();
+  for(int dom = 0; dom < num_domains; ++dom)
   {
-    const vtkm::rendering::Camera &camera = plots[i].GetCamera();
-    for(int dom = 0; dom < num_domains; ++dom)
-    {
-      vtkm::Bounds bounds = this->Actor.GetDataSet().GetPartition(dom).GetCoordinateSystem().GetBounds();
-      min_depths[dom] = FindMinDepth(camera, bounds);
-    }
+    vtkm::Bounds bounds = this->Actor.GetDataSet().GetPartition(dom).GetCoordinateSystem().GetBounds();
+    min_depths[dom] = FindMinDepth(camera, bounds);
+  }
 
-    DepthSort(num_domains, min_depths, this->VisibilityOrders[i]);
-
-  } // for each camera
+  this->DepthSort(num_domains, min_depths, this->VisibilityOrders);
 }
+
 void VolumeRenderer::SetInput(const vtkm::rendering::Actor& actor)
 {
   Renderer::SetInput(actor);

@@ -30,16 +30,16 @@ public:
   void AddRenderer(vtkh::Renderer *render);
   void RenderORIG();
   void Render();
+  void RenderNEW();
   void SetRenderBatchSize(int batch_size);
-  int  GetRenderBatchSize() const { return this->BatchSize;}
-protected:
+private:
   bool IsMesh(vtkh::Renderer *renderer);
   bool IsVolume(vtkh::Renderer *renderer);
   void SynchDepths(std::vector<vtkh::Plot> &plots);
 
-private:
-  int                          BatchSize;
-  bool                         HasVolume;
+  bool RenderInBatches = false;
+  int                          BatchSize = 10;
+  bool                         HasVolume = false;
   std::list<vtkh::Renderer*>   Renderers;
   std::vector<vtkh::Plot>    Plots;
 

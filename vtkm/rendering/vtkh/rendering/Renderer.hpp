@@ -65,7 +65,7 @@ public:
     this->Update(plots);
   }
 */
-  virtual void Update(std::vector<vtkh::Plot>& plots);
+  virtual void Update(vtkh::Plot& plot);
 
 //  void AddPlot(vtkh::Plot &plot) { this->Plots.push_back(plot); }
 //  void ClearPlots() { this->Plots.clear(); }
@@ -87,13 +87,13 @@ protected:
 //  std::vector<vtkh::Plot> Plots; //used in Composite and DoExecute
 
   // methods
-  virtual void PreExecute(std::vector<vtkh::Plot>& plots);
-  virtual void PostExecute(std::vector<vtkh::Plot>& plots);
-  virtual void DoExecute(std::vector<vtkh::Plot>& plots);
+  virtual void PreExecute(vtkh::Plot& plot);
+  virtual void PostExecute(vtkh::Plot& plot);
+  virtual void DoExecute(vtkh::Plot& plot);
 
   void CheckForRequiredField(const std::string &field_name);
 
-  virtual void Composite(std::vector<vtkh::Plot>& plots);
+  virtual void Composite(vtkh::Plot& plot);
   void ImageToCanvas(Image &image, vtkm::rendering::Canvas &canvas, bool get_depth);
 };
 
