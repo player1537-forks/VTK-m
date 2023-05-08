@@ -27,14 +27,14 @@
 #include <vtkm/rendering/Scene.h>
 #include <vtkm/rendering/View3D.h>
 #include <vtkm/rendering/testing/RenderTest.h>
-#include <vtkm/rendering/vtkh/compositing/Image.hpp>
+#include <vtkm/rendering/vtkh/compositing/Image.h>
 #include <vtkm/source/PerlinNoise.h>
 #include <vtkm/source/Tangle.h>
 
 #include <vtkm/rendering/vtkh/rendering/Plot.h>
-#include <vtkm/rendering/vtkh/rendering/RayTracer.hpp>
-#include <vtkm/rendering/vtkh/rendering/Scene.hpp>
-#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.hpp>
+#include <vtkm/rendering/vtkh/rendering/RayTracer.h>
+#include <vtkm/rendering/vtkh/rendering/Scene.h>
+#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.h>
 
 #include <iomanip>
 #include <iostream>

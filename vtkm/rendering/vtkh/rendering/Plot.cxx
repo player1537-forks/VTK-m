@@ -13,12 +13,12 @@
 #include <vtkm/rendering/View2D.h>
 #include <vtkm/rendering/View3D.h>
 #include <vtkm/rendering/vtkh/compositing/PNGEncoder.h>
-#include <vtkm/rendering/vtkh/rendering/Annotator.hpp>
-#include <vtkm/rendering/vtkh/rendering/MeshRenderer.hpp>
+#include <vtkm/rendering/vtkh/rendering/Annotator.h>
+#include <vtkm/rendering/vtkh/rendering/MeshRenderer.h>
 #include <vtkm/rendering/vtkh/rendering/Plot.h>
-#include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
-#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.hpp>
-#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
+#include <vtkm/rendering/vtkh/rendering/Renderer.h>
+#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.h>
+#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.h>
 
 #ifdef VTKM_ENABLE_MPI
 #include <mpi.h>

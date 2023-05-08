@@ -30,8 +30,8 @@
 #include <vtkm/rendering/raytracing/TriangleExtractor.h>
 
 #include <vtkm/rendering/vtkh/rendering/Plot.h>
-#include <vtkm/rendering/vtkh/rendering/RayTracer.hpp>
-#include <vtkm/rendering/vtkh/rendering/Scene.hpp>
+#include <vtkm/rendering/vtkh/rendering/RayTracer.h>
+#include <vtkm/rendering/vtkh/rendering/Scene.h>
 
 #include <vtkm/exec/FunctorBase.h>
 

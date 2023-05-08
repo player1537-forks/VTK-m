@@ -57,41 +57,41 @@ set(headers
   WorldAnnotator.h
 
   ## Add VTK-h headers
-  vtkh/utils/vtkm_dataset_info.hpp
-  vtkh/utils/vtkm_array_utils.hpp
+  vtkh/utils/vtkm_dataset_info.h
+  vtkh/utils/vtkm_array_utils.h
 
-  vtkh/compositing/AbsorptionPartial.hpp
-  vtkh/compositing/Compositor.hpp
-  vtkh/compositing/DirectSendCompositor.hpp
-  vtkh/compositing/EmissionPartial.hpp
-  vtkh/compositing/ImageCompositor.hpp
-  vtkh/compositing/Image.hpp
-  vtkh/compositing/PartialCompositor.hpp
-  vtkh/compositing/PayloadCompositor.hpp
-  vtkh/compositing/PayloadImageCompositor.hpp
-  vtkh/compositing/PayloadImage.hpp
+  vtkh/compositing/AbsorptionPartial.h
+  vtkh/compositing/Compositor.h
+  vtkh/compositing/DirectSendCompositor.h
+  vtkh/compositing/EmissionPartial.h
+  vtkh/compositing/ImageCompositor.h
+  vtkh/compositing/Image.h
+  vtkh/compositing/PartialCompositor.h
+  vtkh/compositing/PayloadCompositor.h
+  vtkh/compositing/PayloadImageCompositor.h
+  vtkh/compositing/PayloadImage.h
   vtkh/compositing/PNGEncoder.h
-  vtkh/compositing/RadixKCompositor.hpp
-  vtkh/compositing/VolumePartial.hpp
-  vtkh/compositing/vtkh_diy_collect.hpp
-  vtkh/compositing/vtkh_diy_image_block.hpp
-  vtkh/compositing/vtkh_diy_partial_blocks.hpp
-  vtkh/compositing/vtkh_diy_partial_collect.hpp
-  vtkh/compositing/vtkh_diy_partial_redistribute.hpp
-  vtkh/compositing/vtkh_diy_utils.hpp
+  vtkh/compositing/RadixKCompositor.h
+  vtkh/compositing/VolumePartial.h
+  vtkh/compositing/vtkh_diy_collect.h
+  vtkh/compositing/vtkh_diy_image_block.h
+  vtkh/compositing/vtkh_diy_partial_blocks.h
+  vtkh/compositing/vtkh_diy_partial_collect.h
+  vtkh/compositing/vtkh_diy_partial_redistribute.h
+  vtkh/compositing/vtkh_diy_utils.h
 
-  vtkh/rendering/Annotator.hpp
-  vtkh/rendering/LineRenderer.hpp
-  vtkh/rendering/MeshRenderer.hpp
-  vtkh/rendering/PointRenderer.hpp
-  vtkh/rendering/RayTracer.hpp
-  vtkh/rendering/Renderer.hpp
+  vtkh/rendering/Annotator.h
+  vtkh/rendering/LineRenderer.h
+  vtkh/rendering/MeshRenderer.h
+  vtkh/rendering/PointRenderer.h
+  vtkh/rendering/RayTracer.h
+  vtkh/rendering/Renderer.h
   vtkh/rendering/Plot.h
-  vtkh/rendering/ScalarRenderer.hpp
-  vtkh/rendering/Scene.hpp
-  vtkh/rendering/VolumeRenderer.hpp
+  vtkh/rendering/ScalarRenderer.h
+  vtkh/rendering/Scene.h
+  vtkh/rendering/VolumeRenderer.h
 
-  vtkh/filters/ParticleMerging.hpp
+  vtkh/filters/ParticleMerging.h
   )
 
 set(sources
@@ -126,25 +126,24 @@ set(sources
 
   ##vtk-h sources
 
-
-  vtkh/compositing/Compositor.cpp
-  vtkh/compositing/DirectSendCompositor.cpp
-  vtkh/compositing/Image.cpp
-  vtkh/compositing/PartialCompositor.cpp
-  vtkh/compositing/PayloadCompositor.cpp
-  vtkh/compositing/PayloadImage.cpp
+  vtkh/compositing/Compositor.cxx
+  vtkh/compositing/DirectSendCompositor.cxx
+  vtkh/compositing/Image.cxx
+  vtkh/compositing/PartialCompositor.cxx
+  vtkh/compositing/PayloadCompositor.cxx
+  vtkh/compositing/PayloadImage.cxx
   vtkh/compositing/PNGEncoder.cxx
-  vtkh/compositing/RadixKCompositor.cpp
+  vtkh/compositing/RadixKCompositor.cxx
 
-  vtkh/rendering/Annotator.cpp
-  vtkh/rendering/LineRenderer.cpp
-  vtkh/rendering/MeshRenderer.cpp
-  vtkh/rendering/PointRenderer.cpp
-  vtkh/rendering/RayTracer.cpp
+  vtkh/rendering/Annotator.cxx
+  vtkh/rendering/LineRenderer.cxx
+  vtkh/rendering/MeshRenderer.cxx
+  vtkh/rendering/PointRenderer.cxx
+  vtkh/rendering/RayTracer.cxx
   vtkh/rendering/Plot.cxx
-  vtkh/rendering/Renderer.cpp
-  vtkh/rendering/ScalarRenderer.cpp
-  vtkh/rendering/Scene.cpp
+  vtkh/rendering/Renderer.cxx
+  vtkh/rendering/ScalarRenderer.cxx
+  vtkh/rendering/Scene.cxx
   )
 
 # This list of sources has code that uses devices and so might need to be
@@ -190,12 +189,12 @@ set(device_sources
   raytracing/TriangleIntersector.cxx
   raytracing/VolumeRendererStructured.cxx
 
-  vtkh/utils/vtkm_dataset_info.cpp
-  vtkh/utils/vtkm_array_utils.cpp
+  vtkh/utils/vtkm_dataset_info.cxx
+  vtkh/utils/vtkm_array_utils.cxx
 
-  vtkh/rendering/VolumeRenderer.cpp
+  vtkh/rendering/VolumeRenderer.cxx
 
-  vtkh/filters/ParticleMerging.cpp
+  vtkh/filters/ParticleMerging.cxx
   )
 
 # the None backend supports not building the opengl version

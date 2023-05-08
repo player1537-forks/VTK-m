@@ -13,11 +13,11 @@
 #include <vtkm/filter/contour/Contour.h>
 #include <vtkm/io/VTKDataSetWriter.h>
 #include <vtkm/rendering/testing/RenderTest.h>
-#include <vtkm/rendering/vtkh/rendering/PointRenderer.hpp>
-#include <vtkm/rendering/vtkh/rendering/RayTracer.hpp>
-#include <vtkm/rendering/vtkh/rendering/ScalarRenderer.hpp>
-#include <vtkm/rendering/vtkh/rendering/Scene.hpp>
-#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.hpp>
+#include <vtkm/rendering/vtkh/rendering/PointRenderer.h>
+#include <vtkm/rendering/vtkh/rendering/RayTracer.h>
+#include <vtkm/rendering/vtkh/rendering/ScalarRenderer.h>
+#include <vtkm/rendering/vtkh/rendering/Scene.h>
+#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.h>
 
 #include <vtkm/filter/clean_grid/CleanGrid.h>
 #include <vtkm/rendering/testing/t_vtkm_test_utils.hpp>

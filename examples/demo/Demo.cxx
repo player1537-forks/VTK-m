@@ -20,10 +20,10 @@
 #include <vtkm/rendering/Scene.h>
 #include <vtkm/rendering/View3D.h>
 
-#include <vtkm/rendering/vtkh/rendering/RayTracer.hpp>
-#include <vtkm/rendering/vtkh/rendering/ScalarRenderer.hpp>
-#include <vtkm/rendering/vtkh/rendering/Scene.hpp>
-#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.hpp>
+#include <vtkm/rendering/vtkh/rendering/RayTracer.h>
+#include <vtkm/rendering/vtkh/rendering/ScalarRenderer.h>
+#include <vtkm/rendering/vtkh/rendering/Scene.h>
+#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.h>
 
 #include <vtkm/filter/contour/Contour.h>
 
