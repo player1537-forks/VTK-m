@@ -12,7 +12,6 @@
 #define vtkm_rendering_rendering_VolumeRenderer_h
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
-#include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
 #include <vtkm/rendering/MapperVolume.h>
 

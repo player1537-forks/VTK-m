@@ -48,43 +48,25 @@ public:
   virtual ~Renderer();
   virtual std::string GetName() const = 0;
 
-//Actor stuff beg.
   virtual void SetInput(const vtkm::rendering::Actor& actor) {this->Actor = actor;}
   virtual void SetColorTable(const vtkm::cont::ColorTable &ct) {this->Actor.SetColorTable(ct);}
-  vtkm::cont::ColorTable      GetColorTable() const {   return this->Actor.GetColorTable(); }
-  std::string                 GetFieldName() const { return this->Actor.GetScalarFieldName(); }
-  vtkm::Range                 GetScalarRange() const { return this->Actor.GetScalarRange(); }
-  bool                        GetHasColorTable() const {   return this->HasColorTable; }
-//Actor stuff end.
+  vtkm::cont::ColorTable GetColorTable() const {   return this->Actor.GetColorTable(); }
+  std::string GetFieldName() const { return this->Actor.GetScalarFieldName(); }
+  vtkm::Range GetScalarRange() const { return this->Actor.GetScalarRange(); }
+  bool GetHasColorTable() const {   return this->HasColorTable; }
 
   virtual void SetShadingOn(bool vtkmNotUsed(on)) {}   // do nothing by default;
-/*
-  void Update(vtkh::Plot& plot)
-  {
-    std::vector<vtkh::Plot> plots = {plot};
-    this->Update(plots);
-  }
-*/
   virtual void Update(vtkh::Plot& plot);
 
-//  void AddPlot(vtkh::Plot &plot) { this->Plots.push_back(plot); }
-//  void ClearPlots() { this->Plots.clear(); }
-
-  void SetDoComposite(bool do_composite) {   this->DoComposite = do_composite; }
-//  void SetPlots(const std::vector<Plot> &plots) {   this->Plots = plots; }
-
-//  int                         GetNumberOfPlots() const { return static_cast<int>(this->Plots.size());}
-//  std::vector<Plot>         GetPlots() const {   return this->Plots;}
-
+  void SetDoComposite(bool do_composite) { this->DoComposite = do_composite; }
 
 protected:
   // image related data with cinema support
-  vtkh::Compositor                        *Compositor = nullptr;
-  bool                                     DoComposite = true;
-  bool                                     HasColorTable = true;
+  vtkh::Compositor *Compositor = nullptr;
+  bool DoComposite = true;
+  bool HasColorTable = true;
   vtkm::rendering::Actor Actor;
   vtkmMapperPtr Mapper;
-//  std::vector<vtkh::Plot> Plots; //used in Composite and DoExecute
 
   // methods
   virtual void PreExecute(vtkh::Plot& plot);

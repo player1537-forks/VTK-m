@@ -117,8 +117,8 @@ void doVTKH(vtkm::cont::PartitionedDataSet& pds)
   std::string imgName = "volume";
   vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
   vtkh::Scene scene;
+  plot.AddRenderer(&tracer);
   scene.AddPlot(plot);
-  scene.AddRenderer(&tracer);
   scene.Render();
 
   if (1)
@@ -138,10 +138,10 @@ void doVTKH(vtkm::cont::PartitionedDataSet& pds)
     rayTracer.SetInput(isoActor);
     imgName = "rayTracer";
     vtkh::Plot plot2 = vtkh::MakePlot(512, 512, camera, pds, imgName);
+    plot2.AddRenderer(&rayTracer);
 
     vtkh::Scene scene2;
     scene.AddPlot(plot2);
-    scene2.AddRenderer(&rayTracer);
     scene2.Render();
   }
 }

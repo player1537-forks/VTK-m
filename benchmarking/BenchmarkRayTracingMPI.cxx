@@ -205,8 +205,8 @@ void BenchRayTracingMPI(::benchmark::State& state)
     timer.Start();
 
     vtkh::Scene scene;
+    plot.AddRenderer(&rayTracer);
     scene.AddPlot(plot);
-    scene.AddRenderer(&rayTracer);
     scene.Render();
     timer.Stop();
 

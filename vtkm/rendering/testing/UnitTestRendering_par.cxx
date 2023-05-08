@@ -141,9 +141,9 @@ void PointRenderer(bool renderVar, int blocksPerRank)
   }
 
   vtkh::Scene scene;
-  scene.AddRenderer(&renderer);
+  plot.AddRenderer(&renderer);
   scene.AddPlot(plot);
-  scene.RenderNEW();
+  scene.Render();
 }
 
 void RayTrace(bool doStructured, int blocksPerRank)
@@ -182,11 +182,11 @@ void RayTrace(bool doStructured, int blocksPerRank)
 
   vtkm::rendering::Actor actor(pds, "point_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
   tracer.SetInput(actor);
+  plot.AddRenderer(&tracer);
 
   vtkh::Scene scene;
   scene.AddPlot(plot);
-  scene.AddRenderer(&tracer);
-  scene.RenderNEW();
+  scene.Render();
 }
 
 void RayTrace2(bool doStructured, int blocksPerRank)
@@ -231,7 +231,7 @@ void RayTrace2(bool doStructured, int blocksPerRank)
   vtkh::Scene scene;
   scene.AddPlot(plot);
   //scene.AddRenderer(&rendererRT);
-  scene.RenderNEW();
+  scene.Render();
 }
 
 void VolumeRender(bool doStructured, int blocksPerRank)
@@ -268,7 +268,7 @@ void VolumeRender(bool doStructured, int blocksPerRank)
   vtkh::Scene scene;
   scene.AddPlot(plot);
   //scene.AddRenderer(&tracer);
-  scene.RenderNEW();
+  scene.Render();
 }
 
 void VolumeRenderBlank(int blocksPerRank)
@@ -316,7 +316,7 @@ void VolumeRenderBlank(int blocksPerRank)
   vtkh::Scene scene;
   scene.AddPlot(plot);
   //scene.AddRenderer(&tracer);
-  scene.RenderNEW();
+  scene.Render();
 }
 
 void MultiRender(bool doBatch, int blocksPerRank)
@@ -385,7 +385,7 @@ void MultiRender(bool doBatch, int blocksPerRank)
   //  scene.AddRenderer(&v_tracer);
   //  scene.AddRenderer(&tracer);
   //  scene.RenderORIG();
-  scene.RenderNEW();
+  scene.Render();
 }
 
 //TODO

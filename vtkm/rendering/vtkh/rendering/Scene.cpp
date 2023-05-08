@@ -11,8 +11,6 @@
 #include <vtkm/cont/EnvironmentTracker.h>
 
 #include <vtkm/rendering/vtkh/rendering/Scene.hpp>
-#include <vtkm/rendering/vtkh/rendering/MeshRenderer.hpp>
-#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.hpp>
 #include <vtkm/rendering/vtkh/utils/vtkm_array_utils.hpp>
 
 #ifdef VTKM_ENABLE_MPI
@@ -22,10 +20,6 @@
 
 namespace vtkh
 {
-
-Scene::Scene()
-{
-}
 
 void
 Scene::SetRenderBatchSize(int batch_size)
@@ -38,89 +32,25 @@ Scene::SetRenderBatchSize(int batch_size)
   this->BatchSize = batch_size;
 }
 
-bool
-Scene::IsMesh(vtkh::Renderer *renderer)
-{
-  bool is_mesh = false;
-
-  if(dynamic_cast<vtkh::MeshRenderer*>(renderer) != nullptr)
-  {
-    is_mesh = true;
-  }
-  return is_mesh;
-}
-
-bool
-Scene::IsVolume(vtkh::Renderer *renderer)
-{
-  bool is_volume = false;
-
-  if(dynamic_cast<vtkh::VolumeRenderer*>(renderer) != nullptr)
-  {
-    is_volume = true;
-  }
-  return is_volume;
-}
-
 void
-Scene::AddRenderer(vtkh::Renderer *renderer)
+Scene::Render()
 {
-  bool is_volume = this->IsVolume(renderer);
-  bool is_mesh = this->IsMesh(renderer);
-
-  if(is_volume)
+  if (this->RenderInBatches)
   {
-    if(this->HasVolume)
-    {
-      throw vtkm::cont::ErrorBadValue("Scenes only support a single volume plot");
-    }
-
-    this->HasVolume = true;
-    // make sure that the volume render is last
-    this->Renderers.push_back(renderer);
-  }
-  else if(is_mesh)
-  {
-    // make sure that the mesh plot is last
-    // and before the volume plot
-    if(this->HasVolume)
-    {
-      if(this->Renderers.size() == 1)
-      {
-        this->Renderers.push_front(renderer);
-      }
-      else
-      {
-        auto it = this->Renderers.end();
-        it--;
-        it--;
-        this->Renderers.insert(it,renderer);
-      }
-    }
-    else
-    {
-      this->Renderers.push_back(renderer);
-    }
+    for (auto& plot : this->Plots)
+      plot.Render();
   }
   else
   {
-    this->Renderers.push_front(renderer);
+    for (auto& plot : this->Plots)
+      plot.Render();
   }
 }
 
+//
+//old stuff
+//
 #if 0
-  for (plot : this->Plots)
-  {
-    plot.GetCanvas().Clear();
-    for (renderer : plot->Renderers())
-    {
-      renderer.SetPlot();
-      renderer.Update();
-      renderer.ClearPlots();
-    }
-  }
-#endif
-
 void
 Scene::Render()
 {
@@ -167,24 +97,8 @@ Scene::Render()
 }
 
 void
-Scene::RenderNEW()
-{
-  if (this->RenderInBatches)
-  {
-    for (auto& plot : this->Plots)
-      plot.Render();
-  }
-  else
-  {
-    for (auto& plot : this->Plots)
-      plot.Render();
-  }
-}
-
-void
 Scene::RenderORIG()
 {
-#if 0
   std::vector<vtkm::Range> ranges;
   std::vector<std::string> field_names;
   std::vector<vtkm::cont::ColorTable> color_tables;
@@ -298,12 +212,84 @@ Scene::RenderORIG()
 
     batch_start = batch_end;
   } // while
-#endif
 }
+
+void
+Scene::AddRenderer(vtkh::Renderer *renderer)
+{
+  bool is_volume = this->IsVolume(renderer);
+  bool is_mesh = this->IsMesh(renderer);
+
+  if(is_volume)
+  {
+    if(this->HasVolume)
+    {
+      throw vtkm::cont::ErrorBadValue("Scenes only support a single volume plot");
+    }
+
+    this->HasVolume = true;
+    // make sure that the volume render is last
+    this->Renderers.push_back(renderer);
+  }
+  else if(is_mesh)
+  {
+    // make sure that the mesh plot is last
+    // and before the volume plot
+    if(this->HasVolume)
+    {
+      if(this->Renderers.size() == 1)
+      {
+        this->Renderers.push_front(renderer);
+      }
+      else
+      {
+        auto it = this->Renderers.end();
+        it--;
+        it--;
+        this->Renderers.insert(it,renderer);
+      }
+    }
+    else
+    {
+      this->Renderers.push_back(renderer);
+    }
+  }
+  else
+  {
+    this->Renderers.push_front(renderer);
+  }
+}
+
+bool
+Scene::IsMesh(vtkh::Renderer *renderer)
+{
+  bool is_mesh = false;
+
+  if(dynamic_cast<vtkh::MeshRenderer*>(renderer) != nullptr)
+  {
+    is_mesh = true;
+  }
+  return is_mesh;
+}
+
+bool
+Scene::IsVolume(vtkh::Renderer *renderer)
+{
+  bool is_volume = false;
+
+  if(dynamic_cast<vtkh::VolumeRenderer*>(renderer) != nullptr)
+  {
+    is_volume = true;
+  }
+  return is_volume;
+}
+
 
 void Scene::SynchDepths(std::vector<vtkh::Plot> &plots)
 {
   for (auto plot : plots)
     plot.SyncDepth();
 }
+#endif
+
 } // namespace vtkh

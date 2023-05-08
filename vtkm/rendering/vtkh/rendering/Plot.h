@@ -40,14 +40,14 @@ public:
   Plot();
   ~Plot();
   Plot Copy() const;
-  vtkmCanvas& GetCanvas();
-  const vtkm::rendering::Camera& GetCamera() const;
-  std::string GetImageName() const;
-  std::vector<std::string> GetComments() const;
-  vtkm::Bounds GetSceneBounds() const;
-  vtkm::Int32 GetHeight() const;
-  vtkm::Int32 GetWidth() const;
-  vtkm::rendering::Color GetBackgroundColor() const;
+  vtkmCanvas& GetCanvas() { return this->Canvas; }
+  const vtkm::rendering::Camera& GetCamera() const { return this->Camera; }
+  std::string GetImageName() const { return this->ImageName; }
+  std::vector<std::string> GetComments() const { return this->Comments; }
+  vtkm::Bounds GetSceneBounds() const { return this->SceneBounds; }
+  vtkm::Int32 GetHeight() const { return this->Height; }
+  vtkm::Int32 GetWidth() const { return this->Width; }
+  vtkm::rendering::Color GetBackgroundColor() const { return this->BgColor; }
   bool GetShadingOn() const { return this->DoShading; }
   void Print() const;
 
@@ -60,10 +60,10 @@ public:
   void ScaleWorldAnnotations(float x, float y, float z);
   void SetWidth(const vtkm::Int32 width);
   void SetHeight(const vtkm::Int32 height);
-  void SetSceneBounds(const vtkm::Bounds& bounds);
-  void SetCamera(const vtkm::rendering::Camera& camera);
-  void SetImageName(const std::string& name);
-  void SetComments(const std::vector<std::string>& comments);
+  void SetSceneBounds(const vtkm::Bounds& bounds) { this->SceneBounds = bounds; }
+  void SetCamera(const vtkm::rendering::Camera& camera) { this->Camera = camera; }
+  void SetImageName(const std::string& name) { this->ImageName = name; }
+  void SetComments(const std::vector<std::string>& comments) { this->Comments = comments; }
   void SetBackgroundColor(float bg_color[4]);
   void SetForegroundColor(float fg_color[4]);
   void SetShadingOn(bool on) { this->DoShading = on; }

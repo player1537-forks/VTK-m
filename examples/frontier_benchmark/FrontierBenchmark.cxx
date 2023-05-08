@@ -396,9 +396,10 @@ void RunBenchmark(const BenchmarkOptions& options)
       vtkh::Plot plot =
         vtkh::MakePlot(options.CanvasWidth, options.CanvasHeight, camera, pds, imgFile);
       vtkh::Scene scene;
+      plot.AddRenderer(&rayTracer);
       scene.AddPlot(plot);
-      scene.AddRenderer(&rayTracer);
       scene.Render();
+
       /*
       if (comm.rank() == 0)
       {
@@ -423,9 +424,10 @@ void RunBenchmark(const BenchmarkOptions& options)
       imgFile = GetFrameName("perlin_movie", iter, options, mpiTopology);
       vtkh::Plot plot =
         vtkh::MakePlot(options.CanvasWidth, options.CanvasHeight, camera, pds, imgFile);
+      plot.AddRenderer(&rayTracer);
+
       vtkh::Scene scene;
       scene.AddPlot(plot);
-      scene.AddRenderer(&rayTracer);
       scene.Render();
 
       vtkm::Float64 speedX = 0.01f * dirX;

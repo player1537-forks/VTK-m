@@ -90,31 +90,11 @@ void Plot::AddRenderer(vtkh::Renderer* renderer)
   }
 }
 
-Plot::vtkmCanvas& Plot::GetCanvas()
-{
-  return this->Canvas;
-}
-
-vtkm::Bounds Plot::GetSceneBounds() const
-{
-  return this->SceneBounds;
-}
-
 void Plot::ScaleWorldAnnotations(float x, float y, float z)
 {
   this->WorldAnnotationScale[0] = x;
   this->WorldAnnotationScale[1] = y;
   this->WorldAnnotationScale[2] = z;
-}
-
-vtkm::Int32 Plot::GetWidth() const
-{
-  return this->Width;
-}
-
-vtkm::Int32 Plot::GetHeight() const
-{
-  return this->Height;
 }
 
 void Plot::SetWidth(const vtkm::Int32 width)
@@ -133,31 +113,6 @@ void Plot::SetHeight(const vtkm::Int32 height)
   this->Canvas.ResizeBuffers(this->Width, this->Height);
 }
 
-void Plot::SetSceneBounds(const vtkm::Bounds& bounds)
-{
-  this->SceneBounds = bounds;
-}
-
-const vtkm::rendering::Camera& Plot::GetCamera() const
-{
-  return this->Camera;
-}
-
-void Plot::SetCamera(const vtkm::rendering::Camera& camera)
-{
-  this->Camera = camera;
-}
-
-void Plot::SetImageName(const std::string& name)
-{
-  this->ImageName = name;
-}
-
-void Plot::SetComments(const std::vector<std::string>& comments)
-{
-  this->Comments = comments;
-}
-
 void Plot::SetBackgroundColor(float bg_color[4])
 {
   this->BgColor.Components[0] = bg_color[0];
@@ -174,21 +129,6 @@ void Plot::SetForegroundColor(float fg_color[4])
   this->FgColor.Components[3] = fg_color[3];
 }
 
-std::string Plot::GetImageName() const
-{
-  return this->ImageName;
-}
-
-std::vector<std::string> Plot::GetComments() const
-{
-  return this->Comments;
-}
-
-vtkm::rendering::Color Plot::GetBackgroundColor() const
-{
-  return this->BgColor;
-}
-
 void Plot::RenderWorldAnnotations()
 {
   if (!this->DoPlotAnnotations)
@@ -196,7 +136,6 @@ void Plot::RenderWorldAnnotations()
   if (!this->DoPlotWorldAnnotations)
     return;
 #ifdef VTKM_ENABLE_MPI
-  //if(vtkh::GetMPIRank() != 0) return;
   if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
     return;
 #endif
@@ -301,6 +240,19 @@ void Plot::Render()
   if (this->Renderers.empty())
     return;
 
+  std::vector<vtkm::Range> ranges;
+  std::vector<std::string> fieldNames;
+  std::vector<vtkm::cont::ColorTable> colorTables;
+  for (const auto renderer : this->Renderers)
+  {
+    if (renderer->GetHasColorTable())
+    {
+      ranges.push_back(renderer->GetScalarRange());
+      fieldNames.push_back(renderer->GetFieldName());
+      colorTables.push_back(renderer->GetColorTable());
+    }
+  }
+
   std::size_t totalNum = this->Renderers.size();
   std::size_t numOpaque = totalNum;
   if (this->HasVolume)
@@ -329,7 +281,7 @@ void Plot::Render()
   }
 
   this->RenderWorldAnnotations();
-  //this->RenderScreenAnnotations();
+  this->RenderScreenAnnotations(fieldNames, ranges, colorTables);
   this->RenderBackground();
   this->Save();
 }
@@ -339,10 +291,10 @@ void Plot::Save()
   // After rendering and compositing
   // Rank 0 contains the complete image.
 #ifdef VTKM_ENABLE_MPI
-  //if(vtkh::GetMPIRank() != 0) return;
   if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() != 0)
     return;
 #endif
+
   float* color_buffer = &GetVTKMPointer(this->Canvas.GetColorBuffer())[0][0];
   int height = this->Canvas.GetHeight();
   int width = this->Canvas.GetWidth();

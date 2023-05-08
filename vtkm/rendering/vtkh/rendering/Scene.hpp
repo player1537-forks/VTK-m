@@ -11,11 +11,8 @@
 #ifndef vtkm_rendering_rendering_Scene_h
 #define vtkm_rendering_rendering_Scene_h
 
-#include <vector>
-#include <list>
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering/vtkh/rendering/Plot.h>
-#include <vtkm/rendering/vtkh/rendering/Renderer.hpp>
 
 namespace vtkh
 {
@@ -23,25 +20,18 @@ namespace vtkh
 class VTKM_RENDERING_EXPORT Scene
 {
 public:
-  Scene();
+  Scene() {}
 
-  void AddPlot(vtkh::Plot &plot) {  this->Plots.push_back(plot); }
-  void SetPlots(const std::vector<vtkh::Plot> &plots) {this->Plots = plots;}
-  void AddRenderer(vtkh::Renderer *render);
-  void RenderORIG();
-  void Render();
-  void RenderNEW();
+  void AddPlot(vtkh::Plot &plot) { this->Plots.push_back(plot); }
+  void SetPlots(const std::vector<vtkh::Plot> &plots) { this->Plots = plots; }
   void SetRenderBatchSize(int batch_size);
-private:
-  bool IsMesh(vtkh::Renderer *renderer);
-  bool IsVolume(vtkh::Renderer *renderer);
-  void SynchDepths(std::vector<vtkh::Plot> &plots);
 
+  void Render();
+
+private:
+  int  BatchSize = 10;
   bool RenderInBatches = false;
-  int                          BatchSize = 10;
-  bool                         HasVolume = false;
-  std::list<vtkh::Renderer*>   Renderers;
-  std::vector<vtkh::Plot>    Plots;
+  std::vector<vtkh::Plot> Plots;
 
 }; // class scene
 
