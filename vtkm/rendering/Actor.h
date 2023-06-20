@@ -50,6 +50,7 @@ public:
               const vtkm::rendering::Camera& camera) const;
 
   const vtkm::cont::PartitionedDataSet& GetDataSet() const;
+  void SetDataSet(const vtkm::cont::PartitionedDataSet& pds);
 
   void SetScalarFieldName(const std::string& fieldName);
   std::string GetScalarFieldName() const;

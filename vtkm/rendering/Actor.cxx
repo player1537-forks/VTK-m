@@ -119,6 +119,11 @@ const vtkm::cont::PartitionedDataSet& Actor::GetDataSet() const
   return this->Internals->DataSet;
 }
 
+void Actor::SetDataSet(const vtkm::cont::PartitionedDataSet& pds)
+{
+  this->Internals->DataSet = pds;
+}
+
 std::string Actor::GetScalarFieldName() const
 {
   return this->Internals->ScalarFieldName;

@@ -27,6 +27,8 @@ void PrintDescription(const std::string& testName, int blocksPerRank)
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   if (comm.rank() == 0)
   {
+    std::cout << std::endl;
+    std::cout << "*******************************************************************" << std::endl;
     std::cout << testName << " #ranks= " << comm.size() << " blocksPerRank= " << blocksPerRank
               << " ";
     std::cout << std::endl;
@@ -38,6 +40,8 @@ void PrintDescription(const std::string& testName, int blocksPerRank, bool struc
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   if (comm.rank() == 0)
   {
+    std::cout << std::endl;
+    std::cout << "*******************************************************************" << std::endl;
     std::cout << testName << " #ranks= " << comm.size() << " blocksPerRank= " << blocksPerRank
               << " ";
     if (structured)
@@ -47,6 +51,30 @@ void PrintDescription(const std::string& testName, int blocksPerRank, bool struc
 
     std::cout << std::endl;
   }
+}
+
+std::string GetImageName(const std::string& testName, bool structured, int blocksPerRank)
+{
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+
+  std::string imgName = testName + "_rank" + std::to_string(comm.size());
+  if (structured)
+    imgName += "_struct";
+  else
+    imgName += "_unstruct";
+  imgName += "_bpr" + std::to_string(blocksPerRank);
+
+  return imgName;
+}
+
+std::string GetImageName(const std::string& testName, int blocksPerRank)
+{
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+
+  std::string imgName = testName + "_rank" + std::to_string(comm.size());
+  imgName += "_bpr" + std::to_string(blocksPerRank);
+
+  return imgName;
 }
 
 vtkm::cont::PartitionedDataSet GenerateData(int baseSize,
@@ -80,6 +108,7 @@ void ScalarRenderer(int blocksPerRank)
 
   const int baseSize = 32;
   auto pds = GenerateData(baseSize, blocksPerRank);
+  pds.PrintSummary(std::cout);
 
   vtkm::Bounds bounds = pds.GetGlobalBounds();
 
@@ -87,11 +116,29 @@ void ScalarRenderer(int blocksPerRank)
   camera.ResetToBounds(bounds);
   camera.Azimuth(-30.f);
   camera.Elevation(-30.f);
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, "TMP");
+
+  vtkm::rendering::Actor actor(pds, "point_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
 
   vtkh::ScalarRenderer tracer;
+  tracer.SetInput(actor);
+  plot.AddRenderer(&tracer);
+  vtkh::Scene scene;
+  scene.AddPlot(plot);
+  scene.Render();
 
-  std::cout << __FILE__ << " " << __LINE__ << " fix me" << std::endl;
+  vtkm::cont::PartitionedDataSet* output = tracer.GetOutput();
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  if (comm.rank() == 0)
+  {
+    auto result = output->GetPartition(0);
+    vtkm::io::VTKDataSetWriter writer("scalar_data.vtk");
+    writer.WriteDataSet(result);
+  }
+
   /*
+  std::cout<<__FILE__<<" "<<__LINE__<<" fix me"<<std::endl;
+
   vtkm::rendering::Actor actor(pds, "", vtkm::cont::ColorTable("Cool to Warm"));
 
   tracer.SetInput(actor);
@@ -125,6 +172,7 @@ void PointRenderer(bool renderVar, int blocksPerRank)
     imgFile = "render_var_points";
   else
     imgFile = "render_points";
+  imgFile = GetImageName(imgFile, blocksPerRank);
 
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(bounds);
@@ -170,11 +218,7 @@ void RayTrace(bool doStructured, int blocksPerRank)
   camera.SetPosition(vtkm::Vec<vtkm::Float64, 3>(-16, -16, -16));
   camera.ResetToBounds(bounds);
 
-  std::string imgName = "ray_trace_par";
-  if (doStructured)
-    imgName += "_structured";
-  else
-    imgName += "_unstructured";
+  std::string imgName = GetImageName("ray_trace_par", doStructured, blocksPerRank);
 
   vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
 
@@ -213,12 +257,7 @@ void RayTrace2(bool doStructured, int blocksPerRank)
   camera.SetPosition(vtkm::Vec<vtkm::Float64, 3>(-16, -16, -16));
   camera.ResetToBounds(bounds);
 
-  std::string imgName = "RayTrace2";
-  if (doStructured)
-    imgName += "_structured";
-  else
-    imgName += "_unstructured";
-
+  std::string imgName = GetImageName("RayTrace2", doStructured, blocksPerRank);
   vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
 
 
@@ -246,11 +285,7 @@ void VolumeRender(bool doStructured, int blocksPerRank)
   vtkm::rendering::Camera camera;
   camera.SetPosition(vtkm::Vec<vtkm::Float64, 3>(-16, -16, -16));
   camera.ResetToBounds(bounds);
-  std::string imgName = "volume_par";
-  if (doStructured)
-    imgName += "_structured";
-  else
-    imgName += "_unstructured";
+  std::string imgName = GetImageName("volume_par", doStructured, blocksPerRank);
 
   vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
 
@@ -299,8 +334,8 @@ void VolumeRenderBlank(int blocksPerRank)
   look[1] = 100000.f;
   look[2] = 100000.f;
   camera.SetLookAt(look);
-  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, isoOutput, "volume_unstructured_blank_par");
-
+  std::string imgName = GetImageName("volume_blank", false, blocksPerRank);
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, isoOutput, imgName);
 
   vtkm::cont::ColorTable color_map("Cool to Warm");
   color_map.AddPointAlpha(0.0, 0.01);
@@ -337,9 +372,10 @@ void MultiRender(bool doBatch, int blocksPerRank)
   auto iso_output = contour.Execute(pds);
   vtkm::Bounds bounds = pds.GetGlobalBounds();
 
+  std::string imgName = GetImageName("multiRender", blocksPerRank);
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(bounds);
-  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, "multi_par");
+  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
   vtkh::RayTracer tracer;
   vtkm::rendering::Actor actor(
     iso_output, "cell_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
@@ -371,7 +407,8 @@ void MultiRender(bool doBatch, int blocksPerRank)
       camera.Azimuth(float(i));
       tmp.SetCamera(camera);
       std::stringstream name;
-      name << "par_batch_" << i;
+      name << imgName << "_"
+           << "par_batch_" << i;
       tmp.SetImageName(name.str());
       plots.push_back(tmp);
     }
@@ -389,9 +426,16 @@ void MultiRender(bool doBatch, int blocksPerRank)
 }
 
 //TODO
+// 1 rank issues with DIY. Vicente working on this
+// ScalarRenderer -- not clear what this is supposed to do.
+// PointRenderer: setting bbox is off with 4 ranks.
+
+
+
 // serial pointrenderer fails.
 // add serial versions
 // Is VR_blank correct?
+//PointRenderer: needs ParticleMerging filter.
 
 
 //Issues:
@@ -405,6 +449,14 @@ void MultiRender(bool doBatch, int blocksPerRank)
 //
 void RenderTests()
 {
+  RayTrace2(true, 1);
+  //PointRenderer(false, 1);
+  return;
+
+  //ScalarRenderer(1);
+  //return;
+
+
   /*
   MultiRender(true, 1);
   RayTrace2(true, 1);
@@ -415,8 +467,8 @@ void RenderTests()
 
 #if 1
 
-  //std::vector<int> blocksPerRank = {1,2,3};
-  std::vector<int> blocksPerRank = { 1 };
+  std::vector<int> blocksPerRank = { 1, 2 };
+  //std::vector<int> blocksPerRank = {1};
   std::vector<bool> flags = { true, false };
 
   for (auto nb : blocksPerRank)
@@ -426,7 +478,7 @@ void RenderTests()
 
     for (auto v : flags)
     {
-      //PointRenderer(v, nb);
+      //PointRenderer(v, nb); //doesn't work...
 
       //Add PointRenderer no data
       MultiRender(v, nb);

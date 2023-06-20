@@ -9,9 +9,9 @@
 //============================================================================
 
 #include <memory>
+#include <vtkm/filter/clean_grid/CleanGrid.h>
 #include <vtkm/rendering/CanvasRayTracer.h>
 #include <vtkm/rendering/MapperPoint.h>
-#include <vtkm/rendering/vtkh/filters/ParticleMerging.h>
 #include <vtkm/rendering/vtkh/rendering/PointRenderer.h>
 #include <vtkm/rendering/vtkh/utils/vtkm_array_utils.h>
 
@@ -42,21 +42,21 @@ void PointRenderer::PreExecute(vtkh::Plot& plot)
   Renderer::PreExecute(plot);
 
   typedef vtkm::rendering::MapperPoint MapperType;
-  std::shared_ptr<MapperType> mesh_mapper = std::dynamic_pointer_cast<MapperType>(this->Mapper);
+  std::shared_ptr<MapperType> meshMapper = std::dynamic_pointer_cast<MapperType>(this->Mapper);
 
   if (this->UseNodes)
   {
-    mesh_mapper->UseNodes();
+    meshMapper->UseNodes();
   }
   else
   {
-    mesh_mapper->UseCells();
+    meshMapper->UseCells();
   }
 
   vtkm::Float32 radius = this->BaseRadius;
   if (this->RadiusSet)
   {
-    mesh_mapper->SetRadius(this->BaseRadius);
+    meshMapper->SetRadius(this->BaseRadius);
   }
   else
   {
@@ -74,42 +74,51 @@ void PointRenderer::PreExecute(vtkh::Plot& plot)
     {
       radius = 0.00001f;
     }
-    mesh_mapper->SetRadius(radius);
+    meshMapper->SetRadius(radius);
   }
 
   if (!this->UseNodes && vtkh::IsPointMesh(this->Actor.GetDataSet()) && this->UsePointMerging)
   {
-    throw vtkm::cont::ErrorBadValue("Need to implement this.");
-    /*
-    vtkm::Float32 max_radius = radius;
-    if(this->UseVariableRadius)
+    vtkm::filter::clean_grid::CleanGrid gridCleaner;
+    gridCleaner.SetMergePoints(true);
+    gridCleaner.SetFastMerge(true);
+
+
+    vtkm::Float32 maxRadius = radius;
+    if (this->UseVariableRadius)
     {
-      max_radius = radius + radius * this->DeltaRadius;
+      maxRadius = radius + radius * this->DeltaRadius;
     }
+    gridCleaner.SetTolerance(maxRadius * this->RadiusMult);
+    gridCleaner.SetActiveField(this->Actor.GetScalarFieldName());
+    auto output = gridCleaner.Execute(this->Actor.GetDataSet());
+    this->Actor.SetDataSet(output);
+    /*
 
     ParticleMerging  merger;
     merger.SetInput(this->Input);
     merger.SetField(this->FieldName);
-    merger.SetRadius(max_radius * this->RadiusMult);
+    merger.SetRadius(
     merger.Update();
     this->Input = merger.GetOutput();
     this->DeleteInput = true;
-    */
+*/
   }
 
-  mesh_mapper->UseVariableRadius(this->UseVariableRadius);
-  mesh_mapper->SetRadiusDelta(this->DeltaRadius);
+  meshMapper->UseVariableRadius(this->UseVariableRadius);
+  meshMapper->SetRadiusDelta(this->DeltaRadius);
 }
 
 void PointRenderer::PostExecute(vtkh::Plot& plot)
 {
-  throw vtkm::cont::ErrorBadValue("Need to implement this.");
   Renderer::PostExecute(plot);
-  if (this->DeleteInput)
+  /*
+  if(this->DeleteInput)
   {
-    //    delete this->Input;
-    //    this->Input = nullptr;
+//    delete this->Input;
+//    this->Input = nullptr;
   }
+  */
 }
 
 } // namespace vtkh
