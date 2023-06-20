@@ -482,12 +482,7 @@ void PartialCompositor<PartialType>::composite(
 #endif
 
   const int total_partial_comps = partials.size();
-
-  //
-  // TODO: check to see if we have less than one
-  //
-  //assert(total_partial_comps > 1);
-
+  VTKM_ASSERT(total_partial_comps > 1);
   composite_partials(partials, output_partials);
 
 #ifdef VTKM_ENABLE_MPI

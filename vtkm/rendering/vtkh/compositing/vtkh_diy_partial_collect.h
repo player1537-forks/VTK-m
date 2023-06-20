@@ -14,6 +14,7 @@
 #include <vtkm/rendering/vtkh/compositing/AbsorptionPartial.h>
 #include <vtkm/rendering/vtkh/compositing/EmissionPartial.h>
 #include <vtkm/rendering/vtkh/compositing/VolumePartial.h>
+#include <vtkm/rendering/vtkh/compositing/vtkh_diy_partial_blocks.h>
 
 #include <vtkm/thirdparty/diy/assigner.h>
 #include <vtkm/thirdparty/diy/decomposition.h>
