@@ -18,7 +18,6 @@
 #include <vtkm/rendering/vtkh/rendering/Plot.h>
 #include <vtkm/rendering/vtkh/rendering/Renderer.h>
 #include <vtkm/rendering/vtkh/rendering/VolumeRenderer.h>
-#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.h>
 
 #ifdef VTKM_ENABLE_MPI
 #include <mpi.h>
@@ -229,7 +228,7 @@ void Plot::SyncDepth()
 
   vtkm::rendering::Canvas& canvas = this->GetCanvas();
   const int image_size = canvas.GetWidth() * canvas.GetHeight();
-  float* depth_ptr = GetVTKMPointer(canvas.GetDepthBuffer());
+  float* depth_ptr = canvas.GetDepthBuffer().WritePortal().GetArray();
   MPI_Bcast(depth_ptr, image_size, MPI_FLOAT, 0, comm);
 #endif
 }
@@ -295,7 +294,7 @@ void Plot::Save()
     return;
 #endif
 
-  float* color_buffer = &GetVTKMPointer(this->Canvas.GetColorBuffer())[0][0];
+  float* color_buffer = &(this->Canvas.GetColorBuffer().WritePortal().GetArray()[0][0]);
   int height = this->Canvas.GetHeight();
   int width = this->Canvas.GetWidth();
   vtkm::rendering::compositing::PNGEncoder encoder;

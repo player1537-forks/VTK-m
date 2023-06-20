@@ -57,9 +57,6 @@ set(headers
   WorldAnnotator.h
 
   ## Add VTK-h headers
-  vtkh/utils/vtkm_dataset_info.h
-  vtkh/utils/vtkm_array_utils.h
-
   vtkh/compositing/AbsorptionPartial.h
   vtkh/compositing/Compositor.h
   vtkh/compositing/DirectSendCompositor.h
@@ -90,8 +87,6 @@ set(headers
   vtkh/rendering/ScalarRenderer.h
   vtkh/rendering/Scene.h
   vtkh/rendering/VolumeRenderer.h
-
-  vtkh/filters/ParticleMerging.h
   )
 
 set(sources
@@ -189,12 +184,7 @@ set(device_sources
   raytracing/TriangleIntersector.cxx
   raytracing/VolumeRendererStructured.cxx
 
-  vtkh/utils/vtkm_dataset_info.cxx
-  vtkh/utils/vtkm_array_utils.cxx
-
   vtkh/rendering/VolumeRenderer.cxx
-
-  vtkh/filters/ParticleMerging.cxx
   )
 
 # the None backend supports not building the opengl version

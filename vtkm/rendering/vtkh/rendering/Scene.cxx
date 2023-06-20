@@ -11,7 +11,6 @@
 #include <vtkm/cont/EnvironmentTracker.h>
 
 #include <vtkm/rendering/vtkh/rendering/Scene.h>
-#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.h>
 
 #ifdef VTKM_ENABLE_MPI
 #include <mpi.h>

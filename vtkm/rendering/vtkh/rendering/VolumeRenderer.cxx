@@ -8,17 +8,11 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#include <vtkm/cont/EnvironmentTracker.h>
-
-#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.h>
-
-#include <vtkm/rendering/vtkh/compositing/Compositor.h>
-#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.h>
-
-#include <vtkm/rendering/CanvasRayTracer.h>
-
 #include <memory>
-
+#include <vtkm/cont/EnvironmentTracker.h>
+#include <vtkm/rendering/CanvasRayTracer.h>
+#include <vtkm/rendering/vtkh/compositing/Compositor.h>
+#include <vtkm/rendering/vtkh/rendering/VolumeRenderer.h>
 #include <vtkm/thirdparty/diy/diy.h>
 
 #ifdef VTKM_ENABLE_MPI
@@ -458,7 +452,15 @@ void VolumeRenderer::CorrectOpacity()
 
 void VolumeRenderer::DoExecute(vtkh::Plot& plot)
 {
-  if (vtkh::GlobalHasOnePartition(this->Actor.GetDataSet()) && !this->HasUnstructured)
+  bool localHasOnePartition = this->Actor.GetDataSet().GetNumberOfPartitions();
+  bool globalHasOnePartition = localHasOnePartition;
+#ifdef VTKM_ENABLE_MPI
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  vtkmdiy::mpi::all_reduce(
+    comm, localHasOnePartition, globalHasOnePartition, std::logical_and<bool>());
+#endif
+
+  if (globalHasOnePartition && !this->HasUnstructured)
   {
     // Danger: this logic only works if there is exactly one per rank
     RenderOneDomainPerRank(plot);
@@ -615,8 +617,8 @@ void VolumeRenderer::Composite(vtkh::Plot& plot)
   this->Compositor->SetCompositeMode(Compositor::VIS_ORDER_BLEND);
   FindVisibilityOrdering(plot);
 
-  float* color_buffer = &GetVTKMPointer(plot.GetCanvas().GetColorBuffer())[0][0];
-  float* depth_buffer = GetVTKMPointer(plot.GetCanvas().GetDepthBuffer());
+  float* color_buffer = &(plot.GetCanvas().GetColorBuffer().WritePortal().GetArray()[0][0]);
+  float* depth_buffer = plot.GetCanvas().GetDepthBuffer().WritePortal().GetArray();
   int height = plot.GetCanvas().GetHeight();
   int width = plot.GetCanvas().GetWidth();
 

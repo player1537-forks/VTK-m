@@ -9,14 +9,84 @@
 //============================================================================
 
 #include <memory>
+#include <vtkm/cont/Algorithm.h>
+#include <vtkm/cont/EnvironmentTracker.h>
 #include <vtkm/filter/clean_grid/CleanGrid.h>
 #include <vtkm/rendering/CanvasRayTracer.h>
 #include <vtkm/rendering/MapperPoint.h>
 #include <vtkm/rendering/vtkh/rendering/PointRenderer.h>
-#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.h>
 
 namespace vtkh
 {
+
+//this needs to be moved someplace more general...
+namespace detail
+{
+bool IsStructured(const vtkm::cont::UnknownCellSet& cell_set, int& topo_dims)
+{
+  bool is_structured = false;
+  topo_dims = -1;
+
+  if (cell_set.IsType<vtkm::cont::CellSetStructured<1>>())
+  {
+    is_structured = true;
+    topo_dims = 1;
+  }
+  else if (cell_set.IsType<vtkm::cont::CellSetStructured<2>>())
+  {
+    is_structured = true;
+    topo_dims = 2;
+  }
+  else if (cell_set.IsType<vtkm::cont::CellSetStructured<3>>())
+  {
+    is_structured = true;
+    topo_dims = 3;
+  }
+
+  return is_structured;
+}
+
+bool IsSingleCellShape(const vtkm::cont::UnknownCellSet& cell_set, vtkm::UInt8& shape_id)
+{
+  int dims;
+  shape_id = 0;
+  bool is_single_shape = false;
+  if (IsStructured(cell_set, dims))
+  {
+    is_single_shape = true;
+    shape_id = 12;
+  }
+  else
+  {
+    // we have an explicit cell set so we have to look deeper
+    if (cell_set.IsType<vtkm::cont::CellSetSingleType<>>())
+    {
+      vtkm::cont::CellSetSingleType<> single =
+        cell_set.AsCellSet<vtkm::cont::CellSetSingleType<>>();
+      is_single_shape = true;
+      shape_id = single.GetCellShape(0);
+    }
+    else if (cell_set.IsType<vtkm::cont::CellSetExplicit<>>())
+    {
+      vtkm::cont::CellSetExplicit<> exp = cell_set.AsCellSet<vtkm::cont::CellSetExplicit<>>();
+      const vtkm::cont::ArrayHandle<vtkm::UInt8> shapes =
+        exp.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+
+      vtkm::UInt8 init_min = 255;
+      vtkm::UInt8 min = vtkm::cont::Algorithm::Reduce(shapes, init_min, vtkm::Minimum());
+
+      vtkm::UInt8 init_max = 0;
+      vtkm::UInt8 max = vtkm::cont::Algorithm::Reduce(shapes, init_max, vtkm::Maximum());
+      if (min == max)
+      {
+        is_single_shape = true;
+        shape_id = max;
+      }
+    }
+  }
+  return is_single_shape;
+}
+}
 
 PointRenderer::PointRenderer()
 {
@@ -24,6 +94,30 @@ PointRenderer::PointRenderer()
   auto mapper = std::make_shared<TracerType>();
   mapper->SetCompositeBackground(false);
   this->Mapper = mapper;
+}
+
+bool PointRenderer::IsPointMesh() const
+{
+  const auto& pds = this->Actor.GetDataSet();
+  vtkm::Id totNumCells = pds.GetGlobalNumberOfCells();
+  if (totNumCells == 0)
+    return false;
+
+  bool isPoints = true;
+  for (const auto& ds : pds.GetPartitions())
+  {
+    vtkm::UInt8 shape_type;
+    bool single_type = vtkh::detail::IsSingleCellShape(ds.GetCellSet(), shape_type);
+
+    if (ds.GetCellSet().GetNumberOfCells() > 0)
+    {
+      isPoints = (single_type && (shape_type == 1)) && isPoints;
+    }
+  }
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  bool globalIsPoints;
+  vtkmdiy::mpi::all_reduce(comm, isPoints, globalIsPoints, std::logical_and<bool>());
+  return globalIsPoints;
 }
 
 std::shared_ptr<vtkm::rendering::Canvas> PointRenderer::GetNewCanvas(int width, int height)
@@ -77,7 +171,7 @@ void PointRenderer::PreExecute(vtkh::Plot& plot)
     meshMapper->SetRadius(radius);
   }
 
-  if (!this->UseNodes && vtkh::IsPointMesh(this->Actor.GetDataSet()) && this->UsePointMerging)
+  if (!this->UseNodes && this->IsPointMesh() && this->UsePointMerging)
   {
     vtkm::filter::clean_grid::CleanGrid gridCleaner;
     gridCleaner.SetMergePoints(true);
@@ -94,7 +188,6 @@ void PointRenderer::PreExecute(vtkh::Plot& plot)
     auto output = gridCleaner.Execute(this->Actor.GetDataSet());
     this->Actor.SetDataSet(output);
     /*
-
     ParticleMerging  merger;
     merger.SetInput(this->Input);
     merger.SetField(this->FieldName);

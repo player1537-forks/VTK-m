@@ -39,6 +39,8 @@ public:
   void SetPointMergeRadiusMultiplyer(vtkm::Float32 radius_mult) { this->RadiusMult = radius_mult; }
 
 private:
+  bool IsPointMesh() const;
+
   bool UseNodes = true;
   bool RadiusSet = false;
   bool UseVariableRadius = false;
@@ -46,7 +48,6 @@ private:
   vtkm::Float32 DeltaRadius = 0.5f;
   bool UsePointMerging = false;
   vtkm::Float32 RadiusMult = 2.f;
-  bool DeleteInput = false;
 };
 
 } // namespace vtkh

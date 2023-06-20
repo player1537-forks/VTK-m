@@ -14,11 +14,6 @@
 #include <vtkm/cont/ErrorBadValue.h>
 #include <vtkm/rendering/vtkh/compositing/Compositor.h>
 #include <vtkm/rendering/vtkh/rendering/Renderer.h>
-#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.h>
-
-#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.h>
-#include <vtkm/rendering/vtkh/utils/vtkm_dataset_info.h>
-
 
 namespace vtkh
 {
@@ -37,8 +32,8 @@ void Renderer::Composite(vtkh::Plot& plot)
 {
   this->Compositor->SetCompositeMode(Compositor::Z_BUFFER_SURFACE);
 
-  float* color_buffer = &GetVTKMPointer(plot.GetCanvas().GetColorBuffer())[0][0];
-  float* depth_buffer = GetVTKMPointer(plot.GetCanvas().GetDepthBuffer());
+  float* color_buffer = &(plot.GetCanvas().GetColorBuffer().WritePortal().GetArray()[0][0]);
+  float* depth_buffer = plot.GetCanvas().GetDepthBuffer().WritePortal().GetArray();
 
   int height = plot.GetCanvas().GetHeight();
   int width = plot.GetCanvas().GetWidth();
@@ -162,7 +157,7 @@ void Renderer::ImageToCanvas(Image& image, vtkm::rendering::Canvas& canvas, bool
   const int height = canvas.GetHeight();
   const int size = width * height;
   const int color_size = size * 4;
-  float* color_buffer = &GetVTKMPointer(canvas.GetColorBuffer())[0][0];
+  float* color_buffer = &(canvas.GetColorBuffer().WritePortal().GetArray()[0][0]);
   float one_over_255 = 1.f / 255.f;
 #ifdef VTKH_OPENMP_ENABLED
 #pragma omp parallel for
@@ -172,7 +167,7 @@ void Renderer::ImageToCanvas(Image& image, vtkm::rendering::Canvas& canvas, bool
     color_buffer[i] = static_cast<float>(image.Pixels[i]) * one_over_255;
   }
 
-  float* depth_buffer = GetVTKMPointer(canvas.GetDepthBuffer());
+  float* depth_buffer = canvas.GetDepthBuffer().WritePortal().GetArray();
   if (get_depth)
     memcpy(depth_buffer, &image.Depths[0], sizeof(float) * size);
 }
@@ -187,7 +182,21 @@ void Renderer::CheckForRequiredField(const std::string& field_name)
     throw vtkm::cont::ErrorBadValue(msg.str());
   }
 
-  if (!vtkh::GlobalHasField(this->Actor.GetDataSet(), field_name))
+  bool hasFieldLocal = true, hasFieldGlobal = false;
+  for (const auto& ds : this->Actor.GetDataSet())
+    if (!ds.HasField(field_name))
+    {
+      hasFieldLocal = false;
+      break;
+    }
+#ifdef VTKM_ENABLE_MPI
+  auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
+  vtkmdiy::mpi::all_reduce(comm, hasFieldLocal, hasFieldGlobal, std::logical_and<bool>());
+#else
+  hasFieldGlobal = hasFieldLocal;
+#endif
+
+  if (!hasFieldGlobal)
   {
     std::stringstream msg;
     msg << "Required field '" << field_name;

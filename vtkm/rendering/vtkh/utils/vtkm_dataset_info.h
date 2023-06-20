@@ -17,38 +17,42 @@
 
 namespace vtkh
 {
+#if 0
 
 class VTKM_RENDERING_EXPORT VTKMDataSetInfo
 {
 public:
-  typedef typename vtkm::cont::ArrayHandleUniformPointCoordinates UniformArrayHandle;
-  typedef vtkm::cont::ArrayHandle<vtkm::FloatDefault> DefaultHandle;
-  typedef
-    typename vtkm::cont::ArrayHandleCartesianProduct<DefaultHandle, DefaultHandle, DefaultHandle>
-      CartesianArrayHandle;
-  //-----------------------------------------------------------------------------
-  static bool IsStructured(const vtkm::cont::DataSet& data_set, int& topo_dims);
+ typedef typename vtkm::cont::ArrayHandleUniformPointCoordinates UniformArrayHandle;
+ typedef vtkm::cont::ArrayHandle<vtkm::FloatDefault> DefaultHandle;
+ typedef typename vtkm::cont::ArrayHandleCartesianProduct<DefaultHandle,
+                                                          DefaultHandle,
+                                                          DefaultHandle> CartesianArrayHandle;
+//-----------------------------------------------------------------------------
+  static bool IsStructured(const vtkm::cont::DataSet &data_set,
+                           int &topo_dims);
 
-  static bool IsStructured(const vtkm::cont::UnknownCellSet& cell_set, int& topo_dims);
+  static bool IsStructured(const vtkm::cont::UnknownCellSet &cell_set, int &topo_dims);
 
-  static bool IsRectilinear(const vtkm::cont::DataSet& data_set);
+  static bool IsRectilinear(const vtkm::cont::DataSet &data_set);
 
-  static bool IsRectilinear(const vtkm::cont::CoordinateSystem& coords);
+  static bool IsRectilinear(const vtkm::cont::CoordinateSystem &coords);
 
-  static bool IsUniform(const vtkm::cont::DataSet& data_set);
+  static bool IsUniform(const vtkm::cont::DataSet &data_set);
 
-  static bool IsUniform(const vtkm::cont::CoordinateSystem& coords);
+  static bool IsUniform(const vtkm::cont::CoordinateSystem &coords);
 
-  static bool GetPointDims(const vtkm::cont::DataSet& data_set, int* dims);
+  static bool GetPointDims(const vtkm::cont::DataSet &data_set, int *dims);
 
-  static bool GetPointDims(const vtkm::cont::UnknownCellSet& cell_set, int* dims);
+  static bool GetPointDims(const vtkm::cont::UnknownCellSet &cell_set, int *dims);
 
-  static bool GetCellDims(const vtkm::cont::DataSet& data_set, int* dims);
+  static bool GetCellDims(const vtkm::cont::DataSet &data_set, int *dims);
 
-  static bool GetCellDims(const vtkm::cont::UnknownCellSet& cell_set, int* dims);
+  static bool GetCellDims(const vtkm::cont::UnknownCellSet &cell_set, int *dims);
 
-  static bool IsSingleCellShape(const vtkm::cont::UnknownCellSet& cell_set, vtkm::UInt8& shape_id);
+  static bool IsSingleCellShape(const vtkm::cont::UnknownCellSet &cell_set, vtkm::UInt8 &shape_id);
+
 };
+#endif
 
 } // namespace vtkh
 

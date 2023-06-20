@@ -450,7 +450,7 @@ void MultiRender(bool doBatch, int blocksPerRank)
 void RenderTests()
 {
   RayTrace2(true, 1);
-  //PointRenderer(false, 1);
+  PointRenderer(false, 1);
   return;
 
   //ScalarRenderer(1);

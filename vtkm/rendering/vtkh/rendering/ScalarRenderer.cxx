@@ -10,12 +10,9 @@
 
 #include <vtkm/cont/EnvironmentTracker.h>
 
+#include <vtkm/rendering/ScalarRenderer.h>
 #include <vtkm/rendering/vtkh/compositing/PayloadCompositor.h>
 #include <vtkm/rendering/vtkh/rendering/ScalarRenderer.h>
-
-#include <vtkm/rendering/ScalarRenderer.h>
-#include <vtkm/rendering/vtkh/utils/vtkm_array_utils.h>
-#include <vtkm/rendering/vtkh/utils/vtkm_dataset_info.h>
 
 #ifdef VTKM_ENABLE_MPI
 #include <mpi.h>
@@ -250,7 +247,6 @@ void ScalarRenderer::DoExecute(vtkh::Plot& vtkmNotUsed(plot))
 
     PayloadImage final_image = compositor.Composite();
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0)
-    //if(vtkh::GetMPIRank() == 0)
     {
       Result final_result = Convert(final_image, field_names);
       if (final_result.Scalars.size() != 0)
@@ -284,7 +280,7 @@ ScalarRenderer::Result ScalarRenderer::Convert(PayloadImage& image, std::vector<
     vtkm::cont::ArrayHandle<vtkm::Float32> array;
     array.Allocate(size);
     result.Scalars.push_back(array);
-    float* buffer = GetVTKMPointer(result.Scalars[i]);
+    float* buffer = result.Scalars[i].WritePortal().GetArray();
     buffers.push_back(buffer);
   }
 
@@ -302,7 +298,7 @@ ScalarRenderer::Result ScalarRenderer::Convert(PayloadImage& image, std::vector<
 
   //
   result.Depths.Allocate(size);
-  float* dbuffer = GetVTKMPointer(result.Depths);
+  float* dbuffer = result.Depths.WritePortal().GetArray();
   memcpy(dbuffer, &image.Depths[0], sizeof(float) * size);
 
   return result;
@@ -323,14 +319,14 @@ PayloadImage* ScalarRenderer::Convert(Result& result)
   PayloadImage* image = new PayloadImage(bounds, payload_size);
   unsigned char* loads = &image->Payloads[0];
 
-  float* dbuffer = GetVTKMPointer(result.Depths);
+  float* dbuffer = result.Depths.WritePortal().GetArray();
   memcpy(&image->Depths[0], dbuffer, sizeof(float) * size);
   // copy scalars into payload
   std::vector<float*> buffers;
   for (int i = 0; i < num_fields; ++i)
   {
     vtkm::cont::ArrayHandle<vtkm::Float32> scalar = result.Scalars[i];
-    float* buffer = GetVTKMPointer(scalar);
+    float* buffer = scalar.WritePortal().GetArray();
     buffers.push_back(buffer);
   }
 #ifdef VTKH_OPENMP_ENABLED
