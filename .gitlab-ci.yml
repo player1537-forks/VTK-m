@@ -1,3 +1,15 @@
+##=============================================================================
+##
+##  Copyright (c) Kitware, Inc.
+##  All rights reserved.
+##  See LICENSE.txt for details.
+##
+##  This software is distributed WITHOUT ANY WARRANTY; without even
+##  the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+##  PURPOSE.  See the above copyright notice for more information.
+##
+##=============================================================================
+
 .docker_image: &docker_image
   variables:
     GIT_CLONE_PATH: $CI_BUILDS_DIR/gitlab-kitware-sciviz-ci
@@ -53,12 +65,17 @@
     - .docker_image
 
 .ubuntu2004_kokkos: &ubuntu2004_kokkos
-  image: "kitware/vtkm:ci-ubuntu2004_kokkos-20230125"
+  image: "kitware/vtkm:ci-ubuntu2004_kokkos-20230705"
   extends:
     - .docker_image
 
 .ubuntu2004_hip_kokkos: &ubuntu2004_hip_kokkos
   image: "kitware/vtkm:ci-ubuntu2004_hip_kokkos-20230220"
+  extends:
+    - .docker_image
+
+.opensuse: &opensuse
+  image: "kitware/vtkm:ci-opensuse-20230619"
   extends:
     - .docker_image
 
@@ -226,6 +243,7 @@ include:
   - local: '/.gitlab/ci/centos8.yml'
   - local: '/.gitlab/ci/doxygen.yml'
   - local: '/.gitlab/ci/macos.yml'
+  - local: '/.gitlab/ci/opensuse.yml'
   - local: '/.gitlab/ci/rhel8.yml'
   - local: '/.gitlab/ci/ubuntu1604.yml'
   - local: '/.gitlab/ci/ubuntu1804.yml'
