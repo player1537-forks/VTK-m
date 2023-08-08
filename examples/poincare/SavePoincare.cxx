@@ -40,7 +40,7 @@ void Save2Adios(const vtkm::cont::DataSet& ds,
   size2D = shape2D;
   size3D = shape3D;
 
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   auto varR = io.DefineVariable<vtkm::FloatDefault>("R", shape2D, offset, size2D);
   auto varZ = io.DefineVariable<vtkm::FloatDefault>("Z", shape2D, offset, size2D);
@@ -51,35 +51,35 @@ void Save2Adios(const vtkm::cont::DataSet& ds,
   auto var_dB_r = io.DefineVariable<vtkm::FloatDefault>("dB_r", shape2D, offset, size2D);
   auto var_dB_z = io.DefineVariable<vtkm::FloatDefault>("dB_z", shape2D, offset, size2D);
   auto var_dB_p = io.DefineVariable<vtkm::FloatDefault>("dB_p", shape2D, offset, size2D);
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   auto varBr = io.DefineVariable<vtkm::FloatDefault>("Br", shape2D, offset, size2D);
   auto var_dBr_dr = io.DefineVariable<vtkm::FloatDefault>("dBr_dr", shape2D, offset, size2D);
   auto var_dBz_dz = io.DefineVariable<vtkm::FloatDefault>("dBz_dz", shape2D, offset, size2D);
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   */
 
   auto varVec_r = io.DefineVariable<vtkm::FloatDefault>("vec_r", shape3D, offset, size3D);
   auto varVec_z = io.DefineVariable<vtkm::FloatDefault>("vec_z", shape3D, offset, size3D);
   auto varVec_p = io.DefineVariable<vtkm::FloatDefault>("vec_p", shape3D, offset, size3D);
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   vtkm::cont::ArrayHandle<vtkm::Vec3f> coords, B0_rzp, vec_rzp, Br_rzp;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> Br, dBr_dr, dBz_dz;
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   ds.GetCoordinateSystem().GetData().AsArrayHandle(coords);
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   ds.GetPointField("B_rzp").GetData().AsArrayHandle(B0_rzp);
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   ds.GetPointField("B_dB_rzp").GetData().AsArrayHandle(vec_rzp);
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   ds.GetPointField("Br").GetData().AsArrayHandle(Br);
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   ds.GetPointField("dBr_dr").GetData().AsArrayHandle(dBr_dr);
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   ds.GetPointField("dBz_dz").GetData().AsArrayHandle(dBz_dz);
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
   //auto cellSet = ds.GetCellSet().AsCellSet<vtkm::cont::CellSetSingleType<>>();
 
   std::vector<vtkm::FloatDefault> R, Z, B0_r, B0_z, B0_p, dB_r, dB_z, dB_p, _dBr_dr, _dBz_dz, _Br;
@@ -102,7 +102,7 @@ void Save2Adios(const vtkm::cont::DataSet& ds,
     _Br.push_back(Br.ReadPortal().Get(i));
     */
   }
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   std::vector<vtkm::FloatDefault> vec_r, vec_z, vec_p;
 
@@ -117,7 +117,7 @@ void Save2Adios(const vtkm::cont::DataSet& ds,
       idx++;
     }
   }
-  std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+  //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
 
   std::vector<vtkm::Id> Conn;
   for (vtkm::Id i = 0; i < cells2D.GetNumberOfCells(); i++)
@@ -189,7 +189,7 @@ SavePoincare(const vtkm::cont::DataSet& ds,
   if (useLinearB)
   {
     useBOnly = true;
-    std::cout<<"Warning: Using linear B, forcing UseBOnly = true."<<std::endl;
+    //std::cout<<"Warning: Using linear B, forcing UseBOnly = true."<<std::endl;
   }
   bool usePrevCell = true;
   if (args.find("--UsePrevCell") != args.end()) usePrevCell = std::atoi(args["--UsePrevCell"][0].c_str());
@@ -232,7 +232,7 @@ SavePoincare(const vtkm::cont::DataSet& ds,
     vtkm::Id ny = std::atoi(a[1].c_str());
     locatorUB.SetDimensions({nx, ny, 1});
     useUB = true;
-    std::cout<<"SetUniformBins: "<<nx<<" "<<ny<<std::endl;
+    //std::cout<<"SetUniformBins: "<<nx<<" "<<ny<<std::endl;
   }
 
   if (args.find("--LocatorDensity") != args.end())
@@ -242,7 +242,7 @@ SavePoincare(const vtkm::cont::DataSet& ds,
     vtkm::FloatDefault density2 = std::atof(d[1].c_str());
     locator2L.SetDensityL1(density1);
     locator2L.SetDensityL2(density2);
-    std::cout<<"SetDensity: "<<density1<<" "<<density2<<std::endl;
+    //std::cout<<"SetDensity: "<<density1<<" "<<density2<<std::endl;
   }
 
   auto startL = std::chrono::steady_clock::now();
@@ -259,7 +259,7 @@ SavePoincare(const vtkm::cont::DataSet& ds,
     locator2L.Update();
   }
   std::chrono::duration<double> dt = std::chrono::steady_clock::now()-startL;
-  std::cout<<"Locator build= "<<dt.count()<<std::endl;
+  //std::cout<<"Locator build= "<<dt.count()<<std::endl;
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> eq_psi_gridArr;
   ds.GetField("eq_psi_grid").GetData().AsArrayHandle(eq_psi_gridArr);
@@ -298,7 +298,7 @@ SavePoincare(const vtkm::cont::DataSet& ds,
   }
   else
   {
-    std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+    //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
     vtkm::cont::ArrayHandle<vtkm::Vec3f> vecField_RZP, vec_B_RZP, vec_dB_RZP;
     vecField_RZP.Allocate(coords.GetNumberOfValues() * xgcParams.numPlanes);
     vec_B_RZP.Allocate(coords.GetNumberOfValues() * xgcParams.numPlanes);
@@ -308,17 +308,17 @@ SavePoincare(const vtkm::cont::DataSet& ds,
     Br.Allocate(coords.GetNumberOfValues() * xgcParams.numPlanes);
     dBz_dz.Allocate(coords.GetNumberOfValues() * xgcParams.numPlanes);
     //Evaluate at nodes...
-    std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+    //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
     //DRP
     invoker(worklet, coords, vec_B_RZP, vec_dB_RZP, vecField_RZP,
             dBr_dr, Br, dBz_dz,
             locator2L, cellSet,
             As_ff, dAs_ff_rzp, coeff_1D, coeff_2D, B_RZP);
-    std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
+    //std::cout<<__FILE__<<" "<<__LINE__<<std::endl;
     //B_RZP, psi,
     //tracesArr, outR, outZ, outTheta, outPsi, outID);
     for (vtkm::Id i = 0; i < 25; i++)
-      std::cout<<i<<":: "<<vecField_RZP.ReadPortal().Get(i)<<std::endl;
+      //std::cout<<i<<":: "<<vecField_RZP.ReadPortal().Get(i)<<std::endl;
 
     if (1)
     {
@@ -337,7 +337,7 @@ SavePoincare(const vtkm::cont::DataSet& ds,
         }
       }
 
-      std::cout<<"********************************** remove this...."<<std::endl;
+      //std::cout<<"********************************** remove this...."<<std::endl;
       vtkm::Id NP = xgcParams.numPlanes;
       //NP = 2;
 
@@ -406,7 +406,7 @@ SavePoincare(const vtkm::cont::DataSet& ds,
       dsOut.AddPointField("dBz_dz", dBz_dz);
 
       Save2Adios(dsOut, cellSet, xgcParams.numNodes, xgcParams.numPlanes, "output.bp");
-      dsOut.PrintSummary(std::cout);
+      //dsOut.PrintSummary(std::cout);
       vtkm::io::VTKDataSetWriter writer("B_dB_field.vtk");
       writer.WriteDataSet(dsOut);
     }
@@ -422,12 +422,12 @@ SavePoincare(const vtkm::cont::DataSet& ds,
     //auto groupArr = vtkm::cont::make_ArrayHandleGroupVec<10>(seedsArray);
     vtkm::cont::ArrayHandle<vtkm::Id> offsetArray;
     //auto groupArr = vtkm::cont::make_ArrayHandleGroupVecVariable(seedsArray, offsetArray);
-    std::cout<<"********************************* Call worklet: "<<std::endl;
+    //std::cout<<"********************************* Call worklet: "<<std::endl;
     for (int i = 0; i < groupArr.GetNumberOfValues(); i++)
     {
       auto x = groupArr.ReadPortal().Get(i);
       //for (int j = 0; j < x.GetNumberOfComponents(); j++)
-        std::cout<<"  "<<i<<" : "<<x<<std::endl;
+        //std::cout<<"  "<<i<<" : "<<x<<std::endl;
     }
 
     invoker(worklet, seedsArray, groupArr,

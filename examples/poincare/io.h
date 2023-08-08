@@ -39,7 +39,7 @@ public:
         auto x = args.find("--dir")->second;
         if (x.size() > 0) pathNm = x;
         this->fileName = pathNm + "/" + fn;
-        std::cout<<"Open: "<<this->fileName<<std::endl;
+        // std::cout<<"Open: "<<this->fileName<<std::endl;
         this->io = adios2::IO(adiosPtr->DeclareIO(this->ioName));
         this->engine = io.Open(fileName, adios2::Mode::Read);
     }

@@ -148,8 +148,8 @@ public:
     this->dPhi = this->Period/static_cast<vtkm::FloatDefault>(this->NumPlanes);
 //    this->StepSize_2 = this->StepSize / 2.0;
 //    this->StepSize_6 = this->StepSize / 6.0;
-    std::cout<<"************************ NumPlanes= "<<this->NumPlanes<<std::endl;
-    std::cout<<"************************ Period= "<<this->Period<<" "<<xgcParams.sml_wedge_n<<std::endl;
+    // std::cout<<"************************ NumPlanes= "<<this->NumPlanes<<std::endl;
+    // std::cout<<"************************ Period= "<<this->Period<<" "<<xgcParams.sml_wedge_n<<std::endl;
 
     this->nr = xgcParams.eq_mr-1;
     this->nz = xgcParams.eq_mz-1;
@@ -472,9 +472,9 @@ public:
 #endif
     if (vtkm::Abs(divergence) > divEps)
     {
-      std::cout<<std::endl;
-      std::cout<<"****************************************************** DIVERGENCE= "<<divergence<<std::endl;
-      std::cout<<std::endl;
+      //std::cout<<std::endl;
+      //std::cout<<"****************************************************** DIVERGENCE= "<<divergence<<std::endl;
+      //std::cout<<std::endl;
     }
 #endif
 
@@ -505,10 +505,10 @@ public:
                             WholeArrayType<vtkm::FloatDefault>& outputPsi,
                             WholeArrayType<vtkm::Id> punctureID) const
   {
-    if (idx == 0) std::cout<<"****************************** USING NEW WORKlet"<<std::endl;
+    // if (idx == 0) std::cout<<"****************************** USING NEW WORKlet"<<std::endl;
 
     vtkm::Id idx0 = indices[0], idx1 = indices[indices.GetNumberOfComponents()-1];
-    std::cout<<"IDX= "<<idx<<" :: "<<idx0<<" "<<idx1<<std::endl;
+    // std::cout<<"IDX= "<<idx<<" :: "<<idx0<<" "<<idx1<<std::endl;
 
     vtkm::Vec<ParticleInfo, 10> particleInfos;
     vtkm::IdComponent numP = indices.GetNumberOfComponents();

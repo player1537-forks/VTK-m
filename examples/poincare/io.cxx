@@ -160,10 +160,10 @@ static void CreateGeom(bool fullTorus,
         //phi -= dPhi;
         phi += dPhi;
     }
-    std::cout<<"FullTorus= "<<fullTorus<<std::endl;
-    std::cout<<"#coords= "<<coords.size()<<std::endl;
-    std::cout<<"#conn= "<<conn.size()<<std::endl;
-    std::cout<<"totNumPlanes= "<<totNumPlanes<<std::endl;
+    //std::cout<<"FullTorus= "<<fullTorus<<std::endl;
+    //std::cout<<"#coords= "<<coords.size()<<std::endl;
+    //std::cout<<"#conn= "<<conn.size()<<std::endl;
+    //std::cout<<"totNumPlanes= "<<totNumPlanes<<std::endl;
 
     int plane = 0;
     for (int p = 0; p < numPlanes; p++)
@@ -208,9 +208,9 @@ static void CreateGeom(bool fullTorus,
 
         if (badID != -1)
         {
-          std::cout<<"BAD ID: plane= "<<plane<<" offset= "<<badID<<" i= "<<i<<std::endl;
-          std::cout<<"   "<<p0+off<<" "<<p1+off<<" "<<p2+off<<std::endl;
-          std::cout<<"   off= "<<plane*nNodes<<" "<<off<<std::endl;
+          //std::cout<<"BAD ID: plane= "<<plane<<" offset= "<<badID<<" i= "<<i<<std::endl;
+          //std::cout<<"   "<<p0+off<<" "<<p1+off<<" "<<p2+off<<std::endl;
+          //std::cout<<"   off= "<<plane*nNodes<<" "<<off<<std::endl;
           exit(-1);
         }
       }
@@ -398,19 +398,19 @@ ReadVar(const std::string &vname, adiosS *data, vtkm::cont::DataSet &ds, bool is
     /*
     if (status != adios2::StepStatus::OK)
     {
-      std::cout<<"Read failed for "<<vname<<std::endl;
+      //std::cout<<"Read failed for "<<vname<<std::endl;
       return status;
     }
     */
 
-    std::cout<<"Reading Step= "<<data->engine.CurrentStep()<<std::endl;
+    //std::cout<<"Reading Step= "<<data->engine.CurrentStep()<<std::endl;
     std::vector<vtkm::FloatDefault> arr;
     READVAR(vname, arr, data);
 
     if (dataSetVarName.empty())
       dataSetVarName = vname;
 
-    std::cout<<"Reading: "<<vname<<std::endl;
+    //std::cout<<"Reading: "<<vname<<std::endl;
 
     if (dataSetVarName == "B")
     {

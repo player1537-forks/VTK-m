@@ -48,6 +48,16 @@
 #include "SavePoincare.h"
 #include "XGCHelpers.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <cstring>
+#include <string>
+#include <cstdlib>
+#include <unistd.h>
+#include <fcntl.h>
+#include <utility>
+
+
 adios2::ADIOS *adios = NULL;
 class adiosS;
 std::map<std::string, adiosS*> adiosStuff;
@@ -133,7 +143,7 @@ ParseArgs(int argc, char **argv, std::map<std::string, std::vector<std::string>>
 
   bool retVal = true;
 
-  auto requiredArgs = {"--dir", "--output", "--numPunc", "--stepSize"};
+  auto requiredArgs = {"--dir", "--output"};
 
   for (const auto& a : requiredArgs)
     if (args.find(a) == args.end())
@@ -826,16 +836,18 @@ SaveOutput(std::map<std::string, std::vector<std::string>>& args,
   std::string outFileName, outDir;
   GetOutputDirFile(args, outDir, outFileName);
 
-  std::string tracesNm, puncNm, puncThetaPsiNm, adiosNm;
+  std::string tracesNm, puncNm, puncThetaPsiNm, adiosNm, csvNm;
   tracesNm = outDir + outFileName + ".traces.txt";
   puncNm = outDir + outFileName + ".punc.vtk";
   puncThetaPsiNm = outDir + outFileName + ".punc.theta_psi.vtk";
   adiosNm = outDir + outFileName + ".bp";
+  csvNm = outDir + outFileName + ".csv";
   std::cout<<"ADIOS NAME= "<<adiosNm<<std::endl;
 
   bool tExists = Exists(tracesNm);
   bool pExists = Exists(puncNm);
   bool ptpExists = Exists(puncThetaPsiNm);
+  bool csvExists = Exists(csvNm);
   std::cout<<"EXISTS: "<<tExists<<" "<<pExists<<" "<<ptpExists<<std::endl;
 
   //Write headers.
@@ -931,6 +943,31 @@ SaveOutput(std::map<std::string, std::vector<std::string>>& args,
   outputStuff->engine.Put<vtkm::Id>(vID, IDBuff);
   outputStuff->engine.Put<int>(vTS, &timeStep);
   outputStuff->engine.EndStep();
+
+  {
+    //save to csv
+    std::ofstream outCSV;
+    outCSV.open(csvNm, std::ofstream::app);
+    outCSV << std::setprecision(15);
+
+    if(!csvExists)
+      outCSV << "ID,R,Z,T,P\n";
+
+    auto rpID = outID.ReadPortal();
+    auto rpR = outR.ReadPortal();
+    auto rpZ = outZ.ReadPortal();
+    auto rpT = outTheta.ReadPortal();
+    auto rpP = outPsi.ReadPortal();
+
+    for(int i = 0; i < outR.GetNumberOfValues(); ++i){
+      outCSV << rpID.Get(i) << ",";
+      outCSV <<  rpR.Get(i) << ",";
+      outCSV <<  rpZ.Get(i) << ",";
+      outCSV <<  rpT.Get(i) << ",";
+      outCSV <<  rpP.Get(i) << "\n";
+    }
+    outCSV.close();
+  }
 }
 
 void
@@ -1605,6 +1642,96 @@ InterpolatePsi(const vtkm::Vec2f& ptRZ,
 }
 
 std::vector<vtkm::Particle>
+GenerateNormalizedFromThetaPsiSeedsPairs(std::map<std::string, std::vector<std::string>>& args,
+                      const vtkm::cont::DataSet& ds,
+                      XGCParameters& xgcParams,
+                      std::vector<vtkm::Vec2f>& seedsThetaPsi)
+
+{
+  std::vector<vtkm::Particle> seeds;
+  std::vector<std::string> vals;
+  std::vector<vtkm::FloatDefault> thetaVals, psiVals;
+  const vtkm::FloatDefault degToRad = vtkm::Pi()/180.0;
+
+  vals = args["--psiVals"];
+  for (const auto& v: vals)
+    psiVals.push_back(std::atof(v.c_str()) * xgcParams.eq_x_psi);
+
+  vals = args["--thetaVals"];
+  for (const auto& v: vals)
+    thetaVals.push_back(std::atof(v.c_str()) * degToRad);
+
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> maxR;
+  FindMaxR(ds, xgcParams, thetaVals, maxR);
+
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> arr;
+  ds.GetField("coeff_2D").GetData().AsArrayHandle(arr);
+  auto coeff = arr.ReadPortal();
+
+  auto maxRPortal = maxR.ReadPortal();
+  vtkm::Id ncoeff = xgcParams.eq_mr-1;
+  vtkm::Id2 nrz(xgcParams.eq_mr, xgcParams.eq_mz);
+  vtkm::Vec2f rzmin(xgcParams.eq_min_r, xgcParams.eq_min_z);
+  vtkm::Vec2f drz((xgcParams.eq_max_r-xgcParams.eq_min_r)/static_cast<vtkm::FloatDefault>(xgcParams.eq_mr-1),
+                  (xgcParams.eq_max_z-xgcParams.eq_min_z)/static_cast<vtkm::FloatDefault>(xgcParams.eq_mz-1));
+
+  const vtkm::FloatDefault dR = 0.000001;
+
+  vtkm::Id ID = 0;
+  for (std::size_t i = 0; i < thetaVals.size(); i++)
+  {
+    auto psiTarget = psiVals[i];
+    auto theta = thetaVals[i];
+    auto cost = vtkm::Cos(theta), sint = vtkm::Sin(theta);
+
+    vtkm::FloatDefault r0 = 0;
+    vtkm::FloatDefault r1 = r0;
+    vtkm::FloatDefault psi = 0;
+    vtkm::FloatDefault R, Z;
+
+    r1 = r0+dR;
+    bool found = false;
+    while (!found && r1 < maxRPortal.Get(i)) {
+      R = xgcParams.eq_axis_r + r1*cost;
+      Z = xgcParams.eq_axis_z + r1*sint;
+      psi = InterpolatePsi({R,Z}, coeff, ncoeff, nrz, rzmin, drz, xgcParams);
+      if (psi >= psiTarget) {
+        found = true;
+        break;
+      }
+
+      r0 += dR;
+      r1 += dR;
+    }
+    if (!found) continue;
+    auto diffPsi = psi - psiTarget;
+
+    //Now, do a binary search to find psi between (r0, r1)
+    int cnt = 0;
+    while (diffPsi > 1e-10 && cnt < 100) {
+      auto rMid = (r0+r1)/2.0;
+      R = xgcParams.eq_axis_r + rMid*cost;
+      Z = xgcParams.eq_axis_z + rMid*sint;
+      psi = InterpolatePsi({R,Z}, coeff, ncoeff, nrz, rzmin, drz, xgcParams);
+
+      if (psi < psiTarget) r0 = rMid;// mid is inside, range = (rmid, r1)
+      else r1 = rMid; //mid is outside, range = (r0, rmid)
+          
+      diffPsi = vtkm::Abs(psi - psiTarget);
+      cnt++;
+    }
+
+    vtkm::Vec3f pt_rpz(R, 0, Z);
+    vtkm::Particle p({pt_rpz, ID++});
+    seeds.push_back(p);
+    seedsThetaPsi.push_back({theta, psiTarget});
+  }
+
+  return seeds;
+}
+
+
+std::vector<vtkm::Particle>
 GenerateThetaPsiSeeds(std::map<std::string, std::vector<std::string>>& args,
                       const vtkm::cont::DataSet& ds,
                       XGCParameters& xgcParams,
@@ -2001,6 +2128,77 @@ StreamingPoincare(std::map<std::string, std::vector<std::string>>& args)
   }
 }
 
+void InteractivePoincare(std::map<std::string, std::vector<std::string>>& args)
+{
+  XGCParameters xgcParams;
+  auto ds = ReadDataSet(args, xgcParams);
+  
+  FILE *fdread;
+  FILE *fdwrite;
+  int n;
+  const char *fifoName = "/tmp/poincareFifo";
+  float psiVal, thetaVal;
+  int numPunc;
+  float stepSize;
+  int bytes_read = 0; 
+
+  printf("POINCARE INTERACTIVE READY\n");
+  fflush(stdout);
+
+  mkfifo(fifoName, 0666);
+
+  for(;;){
+    if ((fdread = fopen(fifoName, "r")) == NULL){
+      exit(EXIT_FAILURE);
+    }
+
+
+    //delete what might already be there so insert succeeds
+    args.erase("--psiVals");
+    args.erase("--thetaVals");
+    args.erase("--numPunc");
+    args.erase("--stepSize");
+
+    std::vector<std::string> strPsiVals;
+    std::vector<std::string> strThetaVals;
+    std::vector<std::string> strNumPunc;
+    std::vector<std::string> strStepSize;
+
+    //read in psiVals and thetaVals
+    while(fscanf(fdread, "%f%f", &psiVal, &thetaVal) == 2) {
+      strPsiVals.push_back(std::to_string(psiVal));
+      strThetaVals.push_back(std::to_string(thetaVal));
+    }
+
+    //read in semicolon followed by numPunc and stepSizes
+    if(fscanf(fdread, ";%d%f", &numPunc, &stepSize) == 2){
+      strNumPunc.push_back(std::to_string(numPunc));
+      strStepSize.push_back(std::to_string(stepSize));
+    } else {
+      strNumPunc.push_back("1000");
+      strStepSize.push_back("0.01");
+    }        
+    
+    args.insert(std::pair<std::string, std::vector<std::string>>("--psiVals", strPsiVals));
+    args.insert(std::pair<std::string, std::vector<std::string>>("--thetaVals", strThetaVals));
+    args.insert(std::pair<std::string, std::vector<std::string>>("--numPunc", strNumPunc));
+    args.insert(std::pair<std::string, std::vector<std::string>>("--stepSize", strStepSize));
+    
+    std::vector<vtkm::Particle> seeds;
+    std::vector<vtkm::Vec2f> seedsThetaPsi;
+    seeds = GenerateNormalizedFromThetaPsiSeedsPairs(args, ds, xgcParams, seedsThetaPsi);
+    Poincare(ds, xgcParams, seeds, args, 0);
+
+
+    fclose(fdread);
+    if((fdwrite = fopen(fifoName, "w")) == NULL){ 
+      exit(EXIT_FAILURE);
+    }
+    fputs("done", fdwrite);
+    fclose(fdwrite);
+  }
+}
+
 int
 main(int argc, char** argv)
 {
@@ -2126,6 +2324,10 @@ main(int argc, char** argv)
     //vtkm::io::VTKDataSetWriter writer2("grid.vtk");
     //writer2.WriteDataSet(ds);
     SavePoincare(ds, xgcParams, args);
+  }
+  else if (args.find("--interactive") != args.end())
+  {
+    InteractivePoincare(args);
   }
   else
   {
