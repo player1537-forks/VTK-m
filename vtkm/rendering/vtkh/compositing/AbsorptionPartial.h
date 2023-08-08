@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef rover_absorption_partial_h
-#define rover_absorption_partial_h
+#ifndef vtkm_rendering_compositing_AbsorptionPartial_h
+#define vtkm_rendering_compositing_AbsorptionPartial_h
 
 #include <assert.h>
 
@@ -67,7 +67,7 @@ struct AbsorptionPartial
   }
 };
 
-} // namespace rover
+} // namespace vtkh
 
 
-#endif
+#endif //vtkm_rendering_compositing_AbsorptionPartial_h
