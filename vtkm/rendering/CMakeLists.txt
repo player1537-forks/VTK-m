@@ -55,38 +55,6 @@ set(headers
   View3D.h
   Wireframer.h
   WorldAnnotator.h
-
-  ## Add VTK-h headers
-  vtkh/compositing/AbsorptionPartial.h
-  vtkh/compositing/Compositor.h
-  vtkh/compositing/DirectSendCompositor.h
-  vtkh/compositing/EmissionPartial.h
-  vtkh/compositing/ImageCompositor.h
-  vtkh/compositing/Image.h
-  vtkh/compositing/PartialCompositor.h
-  vtkh/compositing/PayloadCompositor.h
-  vtkh/compositing/PayloadImageCompositor.h
-  vtkh/compositing/PayloadImage.h
-  vtkh/compositing/PNGEncoder.h
-  vtkh/compositing/RadixKCompositor.h
-  vtkh/compositing/VolumePartial.h
-  vtkh/compositing/vtkh_diy_collect.h
-  vtkh/compositing/vtkh_diy_image_block.h
-  vtkh/compositing/vtkh_diy_partial_blocks.h
-  vtkh/compositing/vtkh_diy_partial_collect.h
-  vtkh/compositing/vtkh_diy_partial_redistribute.h
-  vtkh/compositing/vtkh_diy_utils.h
-
-  vtkh/rendering/Annotator.h
-  vtkh/rendering/LineRenderer.h
-  vtkh/rendering/MeshRenderer.h
-  vtkh/rendering/PointRenderer.h
-  vtkh/rendering/RayTracer.h
-  vtkh/rendering/Renderer.h
-  vtkh/rendering/Plot.h
-  vtkh/rendering/ScalarRenderer.h
-  vtkh/rendering/Scene.h
-  vtkh/rendering/VolumeRenderer.h
   )
 
 set(sources
@@ -118,27 +86,6 @@ set(sources
   raytracing/Logger.cxx
   raytracing/MeshConnectivityContainers.cxx
   raytracing/TriangleExtractor.cxx
-
-  ##vtk-h sources
-
-  vtkh/compositing/Compositor.cxx
-  vtkh/compositing/DirectSendCompositor.cxx
-  vtkh/compositing/Image.cxx
-  vtkh/compositing/PartialCompositor.cxx
-  vtkh/compositing/PayloadCompositor.cxx
-  vtkh/compositing/PayloadImage.cxx
-  vtkh/compositing/PNGEncoder.cxx
-  vtkh/compositing/RadixKCompositor.cxx
-
-  vtkh/rendering/Annotator.cxx
-  vtkh/rendering/LineRenderer.cxx
-  vtkh/rendering/MeshRenderer.cxx
-  vtkh/rendering/PointRenderer.cxx
-  vtkh/rendering/RayTracer.cxx
-  vtkh/rendering/Plot.cxx
-  vtkh/rendering/Renderer.cxx
-  vtkh/rendering/ScalarRenderer.cxx
-  vtkh/rendering/Scene.cxx
   )
 
 # This list of sources has code that uses devices and so might need to be
@@ -183,8 +130,6 @@ set(device_sources
   raytracing/SphereIntersector.cxx
   raytracing/TriangleIntersector.cxx
   raytracing/VolumeRendererStructured.cxx
-
-  vtkh/rendering/VolumeRenderer.cxx
   )
 
 # the None backend supports not building the opengl version

@@ -1,0 +1,15 @@
+NAME
+  vtkm_rendering_new
+GROUPS
+  RenderingNew
+DEPENDS
+  vtkm_filter_image_processing
+  vtkm_filter_entity_extraction
+  vtkm_io
+OPTIONAL_DEPENDS
+  MPI::MPI_CXX
+TEST_DEPENDS
+  vtkm_rendering
+  vtkm_source
+TEST_OPTIONAL_DEPENDS
+  MPI::MPI_CXX
