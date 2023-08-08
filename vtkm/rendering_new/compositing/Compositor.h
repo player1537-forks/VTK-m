@@ -12,15 +12,15 @@
 #define vtkm_rendering_new_Compositor_h
 
 #include <sstream>
-#include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/compositing/Image.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 namespace vtkm
 {
 namespace rendering_new
 {
 
-class VTKM_RENDERING_EXPORT Compositor
+class VTKM_RENDERING_NEW_EXPORT Compositor
 {
 public:
   enum CompositeMode

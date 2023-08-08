@@ -8,19 +8,19 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_rendering_MeshRenderer_h
-#define vtkm_rendering_rendering_MeshRenderer_h
+#ifndef vtkm_rendering_newMeshRenderer_h
+#define vtkm_rendering_newMeshRenderer_h
 
-#include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/Plot.h>
 #include <vtkm/rendering_new/Renderer.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 namespace vtkm
 {
 namespace rendering_new
 {
 
-class VTKM_RENDERING_EXPORT MeshRenderer : public Renderer
+class VTKM_RENDERING_NEW_EXPORT MeshRenderer : public Renderer
 {
 public:
   static std::shared_ptr<vtkm::rendering::Canvas> GetNewCanvas(int width = 1024, int height = 1024);
@@ -47,4 +47,4 @@ protected:
 }
 } // namespace vtkm::rendering_new
 
-#endif //vtkm_rendering_rendering_MeshRenderer_h
+#endif //vtkm_rendering_newMeshRenderer_h

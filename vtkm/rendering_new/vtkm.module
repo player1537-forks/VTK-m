@@ -1,7 +1,7 @@
 NAME
   vtkm_rendering_new
 GROUPS
-  RenderingNew
+  Rendering
 DEPENDS
   vtkm_filter_image_processing
   vtkm_filter_entity_extraction

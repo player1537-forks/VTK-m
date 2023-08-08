@@ -529,19 +529,19 @@ PartialCompositor<PartialType>::set_comm_handle(int mpi_comm_id)
 */
 
 //Explicit function instantiations
-template class VTKM_RENDERING_EXPORT
+template class VTKM_RENDERING_NEW_EXPORT
   vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::VolumePartial<vtkm::Float32>>;
-template class VTKM_RENDERING_EXPORT
+template class VTKM_RENDERING_NEW_EXPORT
   vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::VolumePartial<vtkm::Float64>>;
 
-template class VTKM_RENDERING_EXPORT
+template class VTKM_RENDERING_NEW_EXPORT
   vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::AbsorptionPartial<vtkm::Float32>>;
-template class VTKM_RENDERING_EXPORT
+template class VTKM_RENDERING_NEW_EXPORT
   vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::AbsorptionPartial<vtkm::Float64>>;
 
-template class VTKM_RENDERING_EXPORT
+template class VTKM_RENDERING_NEW_EXPORT
   vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::EmissionPartial<vtkm::Float32>>;
-template class VTKM_RENDERING_EXPORT
+template class VTKM_RENDERING_NEW_EXPORT
   vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::EmissionPartial<vtkm::Float64>>;
 
 

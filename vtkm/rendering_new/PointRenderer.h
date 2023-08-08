@@ -8,18 +8,18 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_rendering_PointRenderer_h
-#define vtkm_rendering_rendering_PointRenderer_h
+#ifndef vtkm_rendering_new_PointRenderer_h
+#define vtkm_rendering_new_PointRenderer_h
 
-#include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/Renderer.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 namespace vtkm
 {
 namespace rendering_new
 {
 
-class VTKM_RENDERING_EXPORT PointRenderer : public Renderer
+class VTKM_RENDERING_NEW_EXPORT PointRenderer : public Renderer
 {
 public:
   static std::shared_ptr<vtkm::rendering::Canvas> GetNewCanvas(int width = 1024, int height = 1024);
@@ -55,4 +55,4 @@ private:
 }
 } // namespace vtkm::rendering_new
 
-#endif //vtkm_rendering_rendering_PointRenderer_h
+#endif //vtkm_rendering_new_PointRenderer_h

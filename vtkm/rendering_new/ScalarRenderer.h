@@ -8,14 +8,14 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_rendering_ScalarRenderer_h
-#define vtkm_rendering_rendering_ScalarRenderer_h
+#ifndef vtkm_rendering_newScalarRenderer_h
+#define vtkm_rendering_newScalarRenderer_h
 
 #include <vector>
-#include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/Plot.h>
 #include <vtkm/rendering_new/Renderer.h>
 #include <vtkm/rendering_new/compositing/PayloadImage.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 #include <vtkm/rendering/Camera.h>
 #include <vtkm/rendering/ScalarRenderer.h>
@@ -25,7 +25,7 @@ namespace vtkm
 namespace rendering_new
 {
 
-class VTKM_RENDERING_EXPORT ScalarRenderer : public vtkm::rendering_new::Renderer
+class VTKM_RENDERING_NEW_EXPORT ScalarRenderer : public vtkm::rendering_new::Renderer
 {
 public:
   typedef vtkm::rendering::Camera vtkmCamera;
@@ -67,4 +67,4 @@ protected:
 }
 } // namespace vtkm::rendering_new
 
-#endif //vtkm_rendering_rendering_ScalarRenderer_h
+#endif //vtkm_rendering_newScalarRenderer_h

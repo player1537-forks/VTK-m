@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_rendering_Annotator_h
-#define vtkm_rendering_rendering_Annotator_h
+#ifndef vtkm_rendering_newAnnotator_h
+#define vtkm_rendering_newAnnotator_h
 
 #include <vtkm/rendering/AxisAnnotation3D.h>
 #include <vtkm/rendering/BoundingBoxAnnotation.h>
@@ -18,14 +18,14 @@
 #include <vtkm/rendering/ColorBarAnnotation.h>
 #include <vtkm/rendering/WorldAnnotator.h>
 
-#include <vtkm/rendering/vtkm_rendering_export.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 namespace vtkm
 {
 namespace rendering_new
 {
 
-class VTKM_RENDERING_EXPORT Annotator
+class VTKM_RENDERING_NEW_EXPORT Annotator
 {
 public:
   Annotator(vtkm::rendering::Canvas& canvas, vtkm::rendering::Camera& camera, vtkm::Bounds bounds);
@@ -55,4 +55,4 @@ protected:
 }
 } // namespace vtkm::rendering_new
 
-#endif //vtkm_rendering_rendering_Annotator_h
+#endif //vtkm_rendering_newAnnotator_h

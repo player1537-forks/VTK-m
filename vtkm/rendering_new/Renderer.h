@@ -11,11 +11,10 @@
 #ifndef vtkm_rendering_vtkh_rendering_Renderer_h
 #define vtkm_rendering_vtkh_rendering_Renderer_h
 
-#include <vtkm/rendering/vtkm_rendering_export.h>
-
 #include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/rendering_new/Plot.h>
 #include <vtkm/rendering_new/compositing/Image.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 #include <vtkm/rendering/Actor.h>
 #include <vtkm/rendering/Camera.h>
@@ -41,7 +40,7 @@ namespace rendering_new
 
 class Compositor;
 
-class VTKM_RENDERING_EXPORT Renderer
+class VTKM_RENDERING_NEW_EXPORT Renderer
 {
 public:
   typedef std::shared_ptr<vtkm::rendering::Mapper> vtkmMapperPtr;

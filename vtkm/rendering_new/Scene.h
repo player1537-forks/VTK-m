@@ -8,18 +8,18 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_rendering_Scene_h
-#define vtkm_rendering_rendering_Scene_h
+#ifndef vtkm_rendering_newScene_h
+#define vtkm_rendering_newScene_h
 
-#include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/Plot.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 namespace vtkm
 {
 namespace rendering_new
 {
 
-class VTKM_RENDERING_EXPORT Scene
+class VTKM_RENDERING_NEW_EXPORT Scene
 {
 public:
   Scene() {}
@@ -40,4 +40,4 @@ private:
 }
 } //namespace  vtkm::rendering_new
 
-#endif //vtkm_rendering_rendering_Scene_h
+#endif //vtkm_rendering_newScene_h

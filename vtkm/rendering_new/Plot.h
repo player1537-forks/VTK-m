@@ -11,7 +11,7 @@
 #ifndef vtkm_rendering_vtkh_rendering_Plot_h
 #define vtkm_rendering_vtkh_rendering_Plot_h
 
-#include <vtkm/rendering/vtkm_rendering_export.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 #include <vtkm/cont/PartitionedDataSet.h>
 #include <vtkm/rendering/Camera.h>
@@ -35,7 +35,7 @@ namespace rendering_new
 
 class Renderer;
 
-class VTKM_RENDERING_EXPORT Plot
+class VTKM_RENDERING_NEW_EXPORT Plot
 {
 public:
   typedef vtkm::rendering::CanvasRayTracer vtkmCanvas;
@@ -105,7 +105,7 @@ protected:
 static float vtkh_default_bg_color[4] = { 0.f, 0.f, 0.f, 1.f };
 static float vtkh_default_fg_color[4] = { 1.f, 1.f, 1.f, 1.f };
 
-VTKM_RENDERING_EXPORT
+VTKM_RENDERING_NEW_EXPORT
 vtkm::rendering_new::Plot MakePlot(int width,
                                    int height,
                                    vtkm::Bounds scene_bounds,
@@ -113,7 +113,7 @@ vtkm::rendering_new::Plot MakePlot(int width,
                                    float bg_color[4] = vtkh_default_bg_color,
                                    float fg_color[4] = vtkh_default_fg_color);
 
-VTKM_RENDERING_EXPORT
+VTKM_RENDERING_NEW_EXPORT
 vtkm::rendering_new::Plot MakePlot(int width,
                                    int height,
                                    vtkm::Bounds scene_bounds,
@@ -122,7 +122,7 @@ vtkm::rendering_new::Plot MakePlot(int width,
                                    float bg_color[4] = vtkh_default_bg_color,
                                    float fg_color[4] = vtkh_default_fg_color);
 
-VTKM_RENDERING_EXPORT
+VTKM_RENDERING_NEW_EXPORT
 vtkm::rendering_new::Plot MakePlot(int width,
                                    int height,
                                    vtkm::rendering::Camera camera,

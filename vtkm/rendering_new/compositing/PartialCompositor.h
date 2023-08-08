@@ -14,10 +14,10 @@
 #include <iostream>
 #include <vector>
 #include <vtkm/Types.h>
-#include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/compositing/AbsorptionPartial.h>
 #include <vtkm/rendering_new/compositing/EmissionPartial.h>
 #include <vtkm/rendering_new/compositing/VolumePartial.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 #include <vtkm/thirdparty/diy/diy.h>
 #ifdef VTKM_ENABLE_MPI
@@ -31,7 +31,7 @@ namespace rendering_new
 {
 
 template <typename PartialType>
-class VTKM_RENDERING_EXPORT PartialCompositor
+class VTKM_RENDERING_NEW_EXPORT PartialCompositor
 {
 public:
   PartialCompositor();

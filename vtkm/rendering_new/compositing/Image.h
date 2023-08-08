@@ -12,7 +12,7 @@
 #define vtkm_rendering_new_Image_h
 
 #include <vtkm/Bounds.h>
-#include <vtkm/rendering/vtkm_rendering_export.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 #include <sstream>
 #include <vector>
@@ -22,7 +22,7 @@ namespace vtkm
 namespace rendering_new
 {
 
-struct VTKM_RENDERING_EXPORT Image
+struct VTKM_RENDERING_NEW_EXPORT Image
 {
   // The image bounds are indicated by a grid starting at
   // 1-width and 1-height. Actual width would be calculated

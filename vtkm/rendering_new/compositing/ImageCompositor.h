@@ -14,14 +14,14 @@
 #include <algorithm>
 #include <vtkm/rendering_new/compositing/Image.h>
 
-#include <vtkm/rendering/vtkm_rendering_export.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 namespace vtkm
 {
 namespace rendering_new
 {
 
-class VTKM_RENDERING_EXPORT ImageCompositor
+class VTKM_RENDERING_NEW_EXPORT ImageCompositor
 {
 public:
   void Blend(vtkm::rendering_new::Image& front, vtkm::rendering_new::Image& back)

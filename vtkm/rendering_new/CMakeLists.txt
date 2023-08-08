@@ -91,4 +91,4 @@ endif()
 
 #-----------------------------------------------------------------------------
 # Pretty much obsolete, but might be expected to be exported.
-#include(VTKmRenderingContexts)
+include(VTKmRenderingContexts)

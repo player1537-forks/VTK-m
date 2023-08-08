@@ -14,15 +14,14 @@
 #include <algorithm>
 #include <cmath>
 #include <vtkm/rendering_new/compositing/PayloadImage.h>
-
-#include <vtkm/rendering/vtkm_rendering_export.h>
+#include <vtkm/rendering_new/vtkm_rendering_new_export.h>
 
 namespace vtkm
 {
 namespace rendering_new
 {
 
-class VTKM_RENDERING_EXPORT PayloadImageCompositor
+class VTKM_RENDERING_NEW_EXPORT PayloadImageCompositor
 {
 public:
   void ZBufferComposite(vtkm::rendering_new::PayloadImage& front,
