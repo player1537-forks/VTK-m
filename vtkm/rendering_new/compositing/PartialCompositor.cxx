@@ -23,8 +23,11 @@
 #include "vtkh_diy_partial_redistribute.h"
 #endif
 
-namespace vtkh
+namespace vtkm
 {
+namespace rendering_new
+{
+
 namespace detail
 {
 template <template <typename> class PartialType, typename FloatType>
@@ -526,16 +529,21 @@ PartialCompositor<PartialType>::set_comm_handle(int mpi_comm_id)
 */
 
 //Explicit function instantiations
-template class VTKM_RENDERING_EXPORT vtkh::PartialCompositor<vtkh::VolumePartial<vtkm::Float32>>;
-template class VTKM_RENDERING_EXPORT vtkh::PartialCompositor<vtkh::VolumePartial<vtkm::Float64>>;
+template class VTKM_RENDERING_EXPORT
+  vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::VolumePartial<vtkm::Float32>>;
+template class VTKM_RENDERING_EXPORT
+  vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::VolumePartial<vtkm::Float64>>;
 
 template class VTKM_RENDERING_EXPORT
-  vtkh::PartialCompositor<vtkh::AbsorptionPartial<vtkm::Float32>>;
+  vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::AbsorptionPartial<vtkm::Float32>>;
 template class VTKM_RENDERING_EXPORT
-  vtkh::PartialCompositor<vtkh::AbsorptionPartial<vtkm::Float64>>;
+  vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::AbsorptionPartial<vtkm::Float64>>;
 
-template class VTKM_RENDERING_EXPORT vtkh::PartialCompositor<vtkh::EmissionPartial<vtkm::Float32>>;
-template class VTKM_RENDERING_EXPORT vtkh::PartialCompositor<vtkh::EmissionPartial<vtkm::Float64>>;
+template class VTKM_RENDERING_EXPORT
+  vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::EmissionPartial<vtkm::Float32>>;
+template class VTKM_RENDERING_EXPORT
+  vtkm::rendering_new::PartialCompositor<vtkm::rendering_new::EmissionPartial<vtkm::Float64>>;
 
 
-} // namespace vtkh
+}
+} // vtkm::rendering_new

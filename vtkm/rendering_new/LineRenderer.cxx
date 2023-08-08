@@ -14,7 +14,9 @@
 #include <vtkm/rendering/CanvasRayTracer.h>
 #include <vtkm/rendering/MapperCylinder.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 LineRenderer::LineRenderer()
@@ -41,7 +43,7 @@ void LineRenderer::SetRadius(vtkm::Float32 radius)
   this->RadiusSet = true;
 }
 
-void LineRenderer::PreExecute(vtkh::Plot& plot)
+void LineRenderer::PreExecute(vtkm::rendering_new::Plot& plot)
 {
   Renderer::PreExecute(plot);
 
@@ -55,4 +57,5 @@ void LineRenderer::PreExecute(vtkh::Plot& plot)
   }
 }
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new

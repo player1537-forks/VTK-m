@@ -31,8 +31,11 @@
 
 #define VTKH_OPACITY_CORRECTION 10.f
 
-namespace vtkh
+namespace vtkm
 {
+namespace rendering_new
+{
+
 namespace detail
 {
 
@@ -399,7 +402,7 @@ VolumeRenderer::~VolumeRenderer()
   ClearWrappers();
 }
 
-void VolumeRenderer::Update(vtkh::Plot& plot)
+void VolumeRenderer::Update(vtkm::rendering_new::Plot& plot)
 {
   //DRP: Logger
   //VTKH_DATA_OPEN(this->GetName());
@@ -449,7 +452,7 @@ void VolumeRenderer::CorrectOpacity()
   this->CorrectedColorTable = corrected;
 }
 
-void VolumeRenderer::DoExecute(vtkh::Plot& plot)
+void VolumeRenderer::DoExecute(vtkm::rendering_new::Plot& plot)
 {
   bool localHasOnePartition = this->Actor.GetDataSet().GetNumberOfPartitions();
   bool globalHasOnePartition = localHasOnePartition;
@@ -470,7 +473,7 @@ void VolumeRenderer::DoExecute(vtkh::Plot& plot)
   }
 }
 
-void VolumeRenderer::RenderOneDomainPerRank(vtkh::Plot& plot)
+void VolumeRenderer::RenderOneDomainPerRank(vtkm::rendering_new::Plot& plot)
 {
   if (this->Mapper.get() == 0)
   {
@@ -515,7 +518,7 @@ void VolumeRenderer::RenderOneDomainPerRank(vtkh::Plot& plot)
     this->Composite(plot);
 }
 
-void VolumeRenderer::RenderMultipleDomainsPerRank(vtkh::Plot& plot)
+void VolumeRenderer::RenderMultipleDomainsPerRank(vtkm::rendering_new::Plot& plot)
 {
   // We are treating this as the most general case
   // where we could have a mix of structured and
@@ -563,7 +566,7 @@ void VolumeRenderer::RenderMultipleDomainsPerRank(vtkh::Plot& plot)
   }
 }
 
-void VolumeRenderer::PreExecute(vtkh::Plot& plot)
+void VolumeRenderer::PreExecute(vtkm::rendering_new::Plot& plot)
 {
   Renderer::PreExecute(plot);
 
@@ -577,7 +580,7 @@ void VolumeRenderer::PreExecute(vtkh::Plot& plot)
   this->SampleDist = dist;
 }
 
-void VolumeRenderer::PostExecute(vtkh::Plot& vtkmNotUsed(plot))
+void VolumeRenderer::PostExecute(vtkm::rendering_new::Plot& vtkmNotUsed(plot))
 {
   // do nothing and override compositing since
   // we already did it
@@ -611,7 +614,7 @@ float VolumeRenderer::FindMinDepth(const vtkm::rendering::Camera& camera,
   return dist;
 }
 
-void VolumeRenderer::Composite(vtkh::Plot& plot)
+void VolumeRenderer::Composite(vtkm::rendering_new::Plot& plot)
 {
   this->Compositor->SetCompositeMode(Compositor::VIS_ORDER_BLEND);
   FindVisibilityOrdering(plot);
@@ -770,7 +773,7 @@ void VolumeRenderer::DepthSort(int num_domains,
 #endif
 }
 
-void VolumeRenderer::FindVisibilityOrdering(vtkh::Plot& plot)
+void VolumeRenderer::FindVisibilityOrdering(vtkm::rendering_new::Plot& plot)
 {
   const int num_domains = static_cast<int>(this->Actor.GetDataSet().GetNumberOfPartitions());
   this->VisibilityOrders.resize(num_domains);
@@ -841,7 +844,9 @@ void VolumeRenderer::ClearWrappers()
 
 std::string VolumeRenderer::GetName() const
 {
-  return "vtkh::VolumeRenderer";
+  return "vtkm::rendering_new::VolumeRenderer";
 }
 
-} // namespace vtkh
+
+}
+} // namespace vtkm::rendering_new

@@ -21,7 +21,9 @@
 #include <vtkm/thirdparty/diy/reduce.h>
 #include <vtkm/thirdparty/diy/swap.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 template <typename ImageType>
@@ -30,14 +32,14 @@ void DepthComposite(ImageType& front, ImageType& back);
 template <>
 void DepthComposite<PayloadImage>(PayloadImage& front, PayloadImage& back)
 {
-  vtkh::PayloadImageCompositor compositor;
+  vtkm::rendering_new::PayloadImageCompositor compositor;
   compositor.ZBufferComposite(front, back);
 }
 
 template <>
 void DepthComposite<Image>(Image& front, Image& back)
 {
-  vtkh::ImageCompositor compositor;
+  vtkm::rendering_new::ImageCompositor compositor;
   compositor.ZBufferComposite(front, back);
 }
 
@@ -190,4 +192,5 @@ std::string RadixKCompositor::GetTimingString()
   return res;
 }
 
-} // namespace alpine
+}
+} // vtkm::rendering_new

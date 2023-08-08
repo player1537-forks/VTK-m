@@ -14,7 +14,9 @@
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/Renderer.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class VTKM_RENDERING_EXPORT RayTracer : public Renderer
@@ -28,6 +30,7 @@ public:
   void SetShadingOn(bool on) override;
 };
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new
 
 #endif //vtkm_rendering_rendering_RayTracer_h

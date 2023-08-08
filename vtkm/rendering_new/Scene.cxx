@@ -17,7 +17,9 @@
 #include <vtkm/thirdparty/diy/mpi-cast.h>
 #endif
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 void Scene::SetRenderBatchSize(int batch_size)
@@ -117,7 +119,7 @@ Scene::RenderORIG()
     auto begin = this->Plots.begin() + batch_start;
     auto end = this->Plots.begin() + batch_end;
 
-    std::vector<vtkh::Plot> current_batch(begin, end);
+    std::vector<vtkm::rendering_new::Plot> current_batch(begin, end);
 
     for(auto plot : current_batch)
       plot.GetCanvas().Clear();
@@ -212,7 +214,7 @@ Scene::RenderORIG()
 }
 
 void
-Scene::AddRenderer(vtkh::Renderer *renderer)
+Scene::AddRenderer(vtkm::rendering_new::Renderer *renderer)
 {
   bool is_volume = this->IsVolume(renderer);
   bool is_mesh = this->IsMesh(renderer);
@@ -258,11 +260,11 @@ Scene::AddRenderer(vtkh::Renderer *renderer)
 }
 
 bool
-Scene::IsMesh(vtkh::Renderer *renderer)
+Scene::IsMesh(vtkm::rendering_new::Renderer *renderer)
 {
   bool is_mesh = false;
 
-  if(dynamic_cast<vtkh::MeshRenderer*>(renderer) != nullptr)
+  if(dynamic_cast<vtkm::rendering_new::MeshRenderer*>(renderer) != nullptr)
   {
     is_mesh = true;
   }
@@ -270,11 +272,11 @@ Scene::IsMesh(vtkh::Renderer *renderer)
 }
 
 bool
-Scene::IsVolume(vtkh::Renderer *renderer)
+Scene::IsVolume(vtkm::rendering_new::Renderer *renderer)
 {
   bool is_volume = false;
 
-  if(dynamic_cast<vtkh::VolumeRenderer*>(renderer) != nullptr)
+  if(dynamic_cast<vtkm::rendering_new::VolumeRenderer*>(renderer) != nullptr)
   {
     is_volume = true;
   }
@@ -282,11 +284,12 @@ Scene::IsVolume(vtkh::Renderer *renderer)
 }
 
 
-void Scene::SynchDepths(std::vector<vtkh::Plot> &plots)
+void Scene::SynchDepths(std::vector<vtkm::rendering_new::Plot> &plots)
 {
   for (auto plot : plots)
     plot.SyncDepth();
 }
 #endif
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new

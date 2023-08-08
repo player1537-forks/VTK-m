@@ -20,10 +20,12 @@
 #include <vtkm/rendering/Camera.h>
 #include <vtkm/rendering/ScalarRenderer.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
-class VTKM_RENDERING_EXPORT ScalarRenderer : public vtkh::Renderer
+class VTKM_RENDERING_EXPORT ScalarRenderer : public vtkm::rendering_new::Renderer
 {
 public:
   typedef vtkm::rendering::Camera vtkmCamera;
@@ -31,7 +33,7 @@ public:
 
   ScalarRenderer();
   virtual ~ScalarRenderer();
-  virtual void Update(vtkh::Plot& plot) override;
+  virtual void Update(vtkm::rendering_new::Plot& plot) override;
   virtual std::string GetName() const override;
 
   void SetCamera(vtkmCamera& camera);
@@ -49,9 +51,9 @@ protected:
   // image related data with cinema support
   vtkmCamera Camera;
   // methods
-  virtual void PreExecute(vtkh::Plot& plot) override;
-  virtual void PostExecute(vtkh::Plot& plot) override;
-  virtual void DoExecute(vtkh::Plot& plot) override;
+  virtual void PreExecute(vtkm::rendering_new::Plot& plot) override;
+  virtual void PostExecute(vtkm::rendering_new::Plot& plot) override;
+  virtual void DoExecute(vtkm::rendering_new::Plot& plot) override;
 
   PayloadImage* Convert(Result& result);
   ScalarRenderer::Result Convert(PayloadImage& image, std::vector<std::string>& names);
@@ -61,6 +63,8 @@ protected:
   vtkm::cont::PartitionedDataSet* Output = nullptr;
 };
 
-} // namespace vtkh
+
+}
+} // namespace vtkm::rendering_new
 
 #endif //vtkm_rendering_rendering_ScalarRenderer_h

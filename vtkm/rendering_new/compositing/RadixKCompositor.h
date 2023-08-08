@@ -8,14 +8,16 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_RadixKCompositor_h
-#define vtkm_rendering_compositing_RadixKCompositor_h
+#ifndef vtkm_rendering_new_RadixKCompositor_h
+#define vtkm_rendering_new_RadixKCompositor_h
 
 #include <vtkm/rendering_new/compositing/Image.h>
 #include <vtkm/rendering_new/compositing/PayloadImage.h>
 #include <vtkm/thirdparty/diy/diy.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class RadixKCompositor
@@ -35,6 +37,7 @@ private:
   std::stringstream m_timing_log;
 };
 
-} // namspace vtkh
+}
+} // vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_RadixKCompositor_h
+#endif //vtkm_rendering_new_RadixKCompositor_h

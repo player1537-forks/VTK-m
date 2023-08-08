@@ -8,13 +8,15 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_vtkh_diy_utils_h
-#define vtkm_rendering_compositing_vtkh_diy_utils_h
+#ifndef vtkm_rendering_new_vtkh_diy_utils_h
+#define vtkm_rendering_new_vtkh_diy_utils_h
 
 //#include <vtkmdiy/decomposition.hpp>
 #include <vtkm/Bounds.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 static vtkm::Bounds DIYBoundsToVTKM(const vtkmdiy::DiscreteBounds& bounds)
@@ -54,6 +56,7 @@ static vtkmdiy::DiscreteBounds VTKMBoundsToDIY(const vtkm::Bounds& bounds)
   return diy_bounds;
 }
 
-} //namespace vtkh
+}
+} //namespace vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_vtkh_diy_utils_h
+#endif //vtkm_rendering_new_vtkh_diy_utils_h

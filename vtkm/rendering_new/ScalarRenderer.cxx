@@ -24,7 +24,9 @@
 
 using namespace std;
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 namespace detail
@@ -65,7 +67,7 @@ ScalarRenderer::~ScalarRenderer() {}
 
 std::string ScalarRenderer::GetName() const
 {
-  return "vtkh::ScalarRenderer";
+  return "vtkm::rendering_new::ScalarRenderer";
 }
 
 void ScalarRenderer::SetCamera(vtkmCamera& camera)
@@ -73,21 +75,21 @@ void ScalarRenderer::SetCamera(vtkmCamera& camera)
   this->Camera = camera;
 }
 
-void ScalarRenderer::PreExecute(vtkh::Plot& vtkmNotUsed(plot)) {}
+void ScalarRenderer::PreExecute(vtkm::rendering_new::Plot& vtkmNotUsed(plot)) {}
 
-void ScalarRenderer::Update(vtkh::Plot& plot)
+void ScalarRenderer::Update(vtkm::rendering_new::Plot& plot)
 {
   this->PreExecute(plot);
   this->DoExecute(plot);
   this->PostExecute(plot);
 }
 
-void ScalarRenderer::PostExecute(vtkh::Plot& plot)
+void ScalarRenderer::PostExecute(vtkm::rendering_new::Plot& plot)
 {
   Renderer::PostExecute(plot);
 }
 
-void ScalarRenderer::DoExecute(vtkh::Plot& vtkmNotUsed(plot))
+void ScalarRenderer::DoExecute(vtkm::rendering_new::Plot& vtkmNotUsed(plot))
 {
   vtkm::Id num_domains = this->Actor.GetDataSet().GetNumberOfPartitions();
   this->Output = new vtkm::cont::PartitionedDataSet();
@@ -160,7 +162,7 @@ void ScalarRenderer::DoExecute(vtkh::Plot& vtkmNotUsed(plot))
   }
 
 #ifdef VTKM_ENABLE_MPI
-  //MPI_Comm mpi_comm = MPI_Comm_f2c(vtkh::GetMPICommHandle());
+  //MPI_Comm mpi_comm = MPI_Comm_f2c(vtkm::rendering_new::GetMPICommHandle());
   auto comm = vtkm::cont::EnvironmentTracker::GetCommunicator();
   int comm_size = comm.size();
   std::vector<int> votes;
@@ -192,7 +194,7 @@ void ScalarRenderer::DoExecute(vtkh::Plot& vtkmNotUsed(plot))
   if (winner > 0)
   {
 
-    //if(vtkh::GetMPIRank() == 0 && num_cells == 0)
+    //if(vtkm::rendering_new::GetMPIRank() == 0 && num_cells == 0)
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == 0 && num_cells == 0)
     {
       MPI_Status status;
@@ -211,7 +213,7 @@ void ScalarRenderer::DoExecute(vtkh::Plot& vtkmNotUsed(plot))
         delete[] array;
       }
     }
-    //if(vtkh::GetMPIRank() == winner)
+    //if(vtkm::rendering_new::GetMPIRank() == winner)
     if (vtkm::cont::EnvironmentTracker::GetCommunicator().rank() == winner)
     {
       int num_fields = field_names.size();
@@ -343,4 +345,6 @@ PayloadImage* ScalarRenderer::Convert(Result& result)
   return image;
 }
 
-} // namespace vtkh
+
+}
+} // namespace vtkm::rendering_new

@@ -116,14 +116,14 @@ void ScalarRenderer(int blocksPerRank)
   camera.ResetToBounds(bounds);
   camera.Azimuth(-30.f);
   camera.Elevation(-30.f);
-  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, "TMP");
+  vtkm::rendering_new::Plot plot = vtkm::rendering_new::MakePlot(512, 512, camera, pds, "TMP");
 
   vtkm::rendering::Actor actor(pds, "point_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
 
-  vtkh::ScalarRenderer tracer;
+  vtkm::rendering_new::ScalarRenderer tracer;
   tracer.SetInput(actor);
   plot.AddRenderer(&tracer);
-  vtkh::Scene scene;
+  vtkm::rendering_new::Scene scene;
   scene.AddPlot(plot);
   scene.Render();
 
@@ -143,7 +143,7 @@ void ScalarRenderer(int blocksPerRank)
 
   tracer.SetInput(actor);
   tracer.SetCamera(camera);
-  std::vector<vtkh::Plot> plots;
+  std::vector<vtkm::rendering_new::Plot> plots;
   std::cout<<"FIX ME!!!!!!!!!!"<<std::endl;
   tracer.Update(plots);
 
@@ -177,8 +177,8 @@ void PointRenderer(bool renderVar, int blocksPerRank)
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(bounds);
   camera.SetPosition(vtkm::Vec<vtkm::Float64, 3>(16, 36, -36));
-  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgFile);
-  vtkh::PointRenderer renderer;
+  vtkm::rendering_new::Plot plot = vtkm::rendering_new::MakePlot(512, 512, camera, pds, imgFile);
+  vtkm::rendering_new::PointRenderer renderer;
 
   vtkm::rendering::Actor actor(pds, "point_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
   renderer.SetInput(actor);
@@ -188,7 +188,7 @@ void PointRenderer(bool renderVar, int blocksPerRank)
     renderer.SetRadiusDelta(1.0f);
   }
 
-  vtkh::Scene scene;
+  vtkm::rendering_new::Scene scene;
   plot.AddRenderer(&renderer);
   scene.AddPlot(plot);
   scene.Render();
@@ -220,15 +220,15 @@ void RayTrace(bool doStructured, int blocksPerRank)
 
   std::string imgName = GetImageName("ray_trace_par", doStructured, blocksPerRank);
 
-  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
+  vtkm::rendering_new::Plot plot = vtkm::rendering_new::MakePlot(512, 512, camera, pds, imgName);
 
-  vtkh::RayTracer tracer;
+  vtkm::rendering_new::RayTracer tracer;
 
   vtkm::rendering::Actor actor(pds, "point_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
   tracer.SetInput(actor);
   plot.AddRenderer(&tracer);
 
-  vtkh::Scene scene;
+  vtkm::rendering_new::Scene scene;
   scene.AddPlot(plot);
   scene.Render();
 }
@@ -258,16 +258,16 @@ void RayTrace2(bool doStructured, int blocksPerRank)
   camera.ResetToBounds(bounds);
 
   std::string imgName = GetImageName("RayTrace2", doStructured, blocksPerRank);
-  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
+  vtkm::rendering_new::Plot plot = vtkm::rendering_new::MakePlot(512, 512, camera, pds, imgName);
 
 
-  vtkh::RayTracer rendererRT;
+  vtkm::rendering_new::RayTracer rendererRT;
   vtkm::rendering::Actor actor(pds, "point_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
   rendererRT.SetInput(actor);
 
   plot.AddRenderer(&rendererRT);
 
-  vtkh::Scene scene;
+  vtkm::rendering_new::Scene scene;
   scene.AddPlot(plot);
   //scene.AddRenderer(&rendererRT);
   scene.Render();
@@ -287,20 +287,20 @@ void VolumeRender(bool doStructured, int blocksPerRank)
   camera.ResetToBounds(bounds);
   std::string imgName = GetImageName("volume_par", doStructured, blocksPerRank);
 
-  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
+  vtkm::rendering_new::Plot plot = vtkm::rendering_new::MakePlot(512, 512, camera, pds, imgName);
 
   vtkm::cont::ColorTable color_map("cool to warm");
   color_map.AddPointAlpha(0.0, .05);
   color_map.AddPointAlpha(1.0, .5);
 
   //DRP: renderer needs to take an actor in ctor.
-  vtkh::VolumeRenderer tracer;
+  vtkm::rendering_new::VolumeRenderer tracer;
   vtkm::rendering::Actor actor(pds, "point_data_Float64", color_map);
   tracer.SetInput(actor);
   tracer.SetColorTable(color_map);
 
   plot.AddRenderer(&tracer);
-  vtkh::Scene scene;
+  vtkm::rendering_new::Scene scene;
   scene.AddPlot(plot);
   //scene.AddRenderer(&tracer);
   scene.Render();
@@ -335,20 +335,21 @@ void VolumeRenderBlank(int blocksPerRank)
   look[2] = 100000.f;
   camera.SetLookAt(look);
   std::string imgName = GetImageName("volume_blank", false, blocksPerRank);
-  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, isoOutput, imgName);
+  vtkm::rendering_new::Plot plot =
+    vtkm::rendering_new::MakePlot(512, 512, camera, isoOutput, imgName);
 
   vtkm::cont::ColorTable color_map("Cool to Warm");
   color_map.AddPointAlpha(0.0, 0.01);
   //color_map.AddPointAlpha(1.0, 0.2);
   color_map.AddPointAlpha(1.0, 0.6);
 
-  vtkh::VolumeRenderer tracer;
+  vtkm::rendering_new::VolumeRenderer tracer;
   vtkm::rendering::Actor actor(pds, "point_data_Float64", color_map);
   tracer.SetInput(actor);
   tracer.SetColorTable(color_map);
   plot.AddRenderer(&tracer);
 
-  vtkh::Scene scene;
+  vtkm::rendering_new::Scene scene;
   scene.AddPlot(plot);
   //scene.AddRenderer(&tracer);
   scene.Render();
@@ -375,8 +376,8 @@ void MultiRender(bool doBatch, int blocksPerRank)
   std::string imgName = GetImageName("multiRender", blocksPerRank);
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(bounds);
-  vtkh::Plot plot = vtkh::MakePlot(512, 512, camera, pds, imgName);
-  vtkh::RayTracer tracer;
+  vtkm::rendering_new::Plot plot = vtkm::rendering_new::MakePlot(512, 512, camera, pds, imgName);
+  vtkm::rendering_new::RayTracer tracer;
   vtkm::rendering::Actor actor(
     iso_output, "cell_data_Float64", vtkm::cont::ColorTable("Cool to Warm"));
   tracer.SetInput(actor);
@@ -386,7 +387,7 @@ void MultiRender(bool doBatch, int blocksPerRank)
   color_map.AddPointAlpha(1.0, .3);
 
   vtkm::rendering::Actor actor2(pds, "point_data_Float64", color_map);
-  vtkh::VolumeRenderer v_tracer;
+  vtkm::rendering_new::VolumeRenderer v_tracer;
   v_tracer.SetInput(actor2);
   v_tracer.SetColorTable(color_map);
 
@@ -394,16 +395,16 @@ void MultiRender(bool doBatch, int blocksPerRank)
   plot.AddRenderer(&v_tracer);
   plot.AddRenderer(&tracer);
 
-  vtkh::Scene scene;
+  vtkm::rendering_new::Scene scene;
   if (doBatch)
   {
     scene.SetRenderBatchSize(5);
 
     const int num_images = 11;
-    std::vector<vtkh::Plot> plots;
+    std::vector<vtkm::rendering_new::Plot> plots;
     for (int i = 0; i < num_images; ++i)
     {
-      vtkh::Plot tmp = plot.Copy();
+      vtkm::rendering_new::Plot tmp = plot.Copy();
       camera.Azimuth(float(i));
       tmp.SetCamera(camera);
       std::stringstream name;

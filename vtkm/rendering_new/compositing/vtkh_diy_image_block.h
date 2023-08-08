@@ -8,13 +8,15 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_vtkh_diy_image_block_h
-#define vtkm_rendering_compositing_vtkh_diy_image_block_h
+#ifndef vtkm_rendering_new_vtkh_diy_image_block_h
+#define vtkm_rendering_new_vtkh_diy_image_block_h
 
 #include <vtkm/rendering_new/compositing/Image.h>
 #include <vtkm/rendering_new/compositing/PayloadImage.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 template <typename ImageType>
@@ -89,15 +91,16 @@ struct AddMultiImageBlock
   }
 };
 
-} //namespace  vtkh
+}
+} //namespace vtkm::rendering_new
 
 namespace vtkmdiy
 {
 
 template <>
-struct Serialization<vtkh::PayloadImage>
+struct Serialization<vtkm::rendering_new::PayloadImage>
 {
-  static void save(BinaryBuffer& bb, const vtkh::PayloadImage& image)
+  static void save(BinaryBuffer& bb, const vtkm::rendering_new::PayloadImage& image)
   {
     vtkmdiy::save(bb, image.OrigBounds.X.Min);
     vtkmdiy::save(bb, image.OrigBounds.Y.Min);
@@ -119,7 +122,7 @@ struct Serialization<vtkh::PayloadImage>
     vtkmdiy::save(bb, image.OrigRank);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::PayloadImage& image)
+  static void load(BinaryBuffer& bb, vtkm::rendering_new::PayloadImage& image)
   {
     vtkmdiy::load(bb, image.OrigBounds.X.Min);
     vtkmdiy::load(bb, image.OrigBounds.Y.Min);
@@ -143,9 +146,9 @@ struct Serialization<vtkh::PayloadImage>
 };
 
 template <>
-struct Serialization<vtkh::Image>
+struct Serialization<vtkm::rendering_new::Image>
 {
-  static void save(BinaryBuffer& bb, const vtkh::Image& image)
+  static void save(BinaryBuffer& bb, const vtkm::rendering_new::Image& image)
   {
     vtkmdiy::save(bb, image.OrigBounds.X.Min);
     vtkmdiy::save(bb, image.OrigBounds.Y.Min);
@@ -167,7 +170,7 @@ struct Serialization<vtkh::Image>
     vtkmdiy::save(bb, image.CompositeOrder);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::Image& image)
+  static void load(BinaryBuffer& bb, vtkm::rendering_new::Image& image)
   {
     vtkmdiy::load(bb, image.OrigBounds.X.Min);
     vtkmdiy::load(bb, image.OrigBounds.Y.Min);
@@ -190,6 +193,6 @@ struct Serialization<vtkh::Image>
   }
 };
 
-} // namespace diy
+} //namespace vtkmdiy
 
-#endif //vtkm_rendering_compositing_vtkh_diy_image_block_h
+#endif //vtkm_rendering_new_vtkh_diy_image_block_h

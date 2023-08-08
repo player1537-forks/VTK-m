@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_vtkh_diy_partial_collect_h
-#define vtkm_rendering_compositing_vtkh_diy_partial_collect_h
+#ifndef vtkm_rendering_new_vtkh_diy_partial_collect_h
+#define vtkm_rendering_new_vtkh_diy_partial_collect_h
 
 #include <vtkm/rendering_new/compositing/AbsorptionPartial.h>
 #include <vtkm/rendering_new/compositing/EmissionPartial.h>
@@ -21,8 +21,11 @@
 #include <vtkm/thirdparty/diy/master.h>
 #include <vtkm/thirdparty/diy/reduce-operations.h>
 
-namespace vtkh
+namespace vtkm
 {
+namespace rendering_new
+{
+
 //
 // Collect struct sends all data to a single node.
 //
@@ -153,6 +156,7 @@ void collect<EmissionPartial<float>>(std::vector<EmissionPartial<float>>& partia
   collect_detail<AddBlock<EmissionBlock<float>>>(partials, comm);
 }
 
-} // namespace rover
+}
+} // namespace vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_vtkh_diy_partial_collect_h
+#endif //vtkm_rendering_new_vtkh_diy_partial_collect_h

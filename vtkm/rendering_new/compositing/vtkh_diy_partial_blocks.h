@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_vtkh_diy_partial_blocks_h
-#define vtkm_rendering_compositing_vtkh_diy_partial_blocks_h
+#ifndef vtkm_rendering_new_vtkh_diy_partial_blocks_h
+#define vtkm_rendering_new_vtkh_diy_partial_blocks_h
 
 #include <vtkm/thirdparty/diy/master.h>
 
@@ -17,7 +17,9 @@
 #include <vtkm/rendering_new/compositing/EmissionPartial.h>
 #include <vtkm/rendering_new/compositing/VolumePartial.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 //--------------------------------------Volume Block Structure-----------------------------------
@@ -94,24 +96,25 @@ struct AddBlock
   }
 };
 
-} //namespace vtkh
+}
+} //namespace vtkm::rendering_new
 
 //-------------------------------Serialization Specializations--------------------------------
 namespace vtkmdiy
 {
 
 template <>
-struct Serialization<vtkh::AbsorptionPartial<double>>
+struct Serialization<vtkm::rendering_new::AbsorptionPartial<double>>
 {
 
-  static void save(BinaryBuffer& bb, const vtkh::AbsorptionPartial<double>& partial)
+  static void save(BinaryBuffer& bb, const vtkm::rendering_new::AbsorptionPartial<double>& partial)
   {
     vtkmdiy::save(bb, partial.Bins);
     vtkmdiy::save(bb, partial.PixelId);
     vtkmdiy::save(bb, partial.Depth);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::AbsorptionPartial<double>& partial)
+  static void load(BinaryBuffer& bb, vtkm::rendering_new::AbsorptionPartial<double>& partial)
   {
     vtkmdiy::load(bb, partial.Bins);
     vtkmdiy::load(bb, partial.PixelId);
@@ -120,17 +123,17 @@ struct Serialization<vtkh::AbsorptionPartial<double>>
 };
 
 template <>
-struct Serialization<vtkh::AbsorptionPartial<float>>
+struct Serialization<vtkm::rendering_new::AbsorptionPartial<float>>
 {
 
-  static void save(BinaryBuffer& bb, const vtkh::AbsorptionPartial<float>& partial)
+  static void save(BinaryBuffer& bb, const vtkm::rendering_new::AbsorptionPartial<float>& partial)
   {
     vtkmdiy::save(bb, partial.Bins);
     vtkmdiy::save(bb, partial.PixelId);
     vtkmdiy::save(bb, partial.Depth);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::AbsorptionPartial<float>& partial)
+  static void load(BinaryBuffer& bb, vtkm::rendering_new::AbsorptionPartial<float>& partial)
   {
     vtkmdiy::load(bb, partial.Bins);
     vtkmdiy::load(bb, partial.PixelId);
@@ -139,10 +142,10 @@ struct Serialization<vtkh::AbsorptionPartial<float>>
 };
 
 template <>
-struct Serialization<vtkh::EmissionPartial<double>>
+struct Serialization<vtkm::rendering_new::EmissionPartial<double>>
 {
 
-  static void save(BinaryBuffer& bb, const vtkh::EmissionPartial<double>& partial)
+  static void save(BinaryBuffer& bb, const vtkm::rendering_new::EmissionPartial<double>& partial)
   {
     vtkmdiy::save(bb, partial.Bins);
     vtkmdiy::save(bb, partial.EmissionBins);
@@ -150,7 +153,7 @@ struct Serialization<vtkh::EmissionPartial<double>>
     vtkmdiy::save(bb, partial.Depth);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::EmissionPartial<double>& partial)
+  static void load(BinaryBuffer& bb, vtkm::rendering_new::EmissionPartial<double>& partial)
   {
     vtkmdiy::load(bb, partial.Bins);
     vtkmdiy::load(bb, partial.EmissionBins);
@@ -160,10 +163,10 @@ struct Serialization<vtkh::EmissionPartial<double>>
 };
 
 template <>
-struct Serialization<vtkh::EmissionPartial<float>>
+struct Serialization<vtkm::rendering_new::EmissionPartial<float>>
 {
 
-  static void save(BinaryBuffer& bb, const vtkh::EmissionPartial<float>& partial)
+  static void save(BinaryBuffer& bb, const vtkm::rendering_new::EmissionPartial<float>& partial)
   {
     vtkmdiy::save(bb, partial.Bins);
     vtkmdiy::save(bb, partial.EmissionBins);
@@ -171,7 +174,7 @@ struct Serialization<vtkh::EmissionPartial<float>>
     vtkmdiy::save(bb, partial.Depth);
   }
 
-  static void load(BinaryBuffer& bb, vtkh::EmissionPartial<float>& partial)
+  static void load(BinaryBuffer& bb, vtkm::rendering_new::EmissionPartial<float>& partial)
   {
     vtkmdiy::load(bb, partial.Bins);
     vtkmdiy::load(bb, partial.EmissionBins);
@@ -180,6 +183,6 @@ struct Serialization<vtkh::EmissionPartial<float>>
   }
 };
 
-} // namespace diy
+} //namespace vtkmdiy
 
-#endif //vtkm_rendering_compositing_vtkh_diy_partial_blocks_h
+#endif //vtkm_rendering_new_vtkh_diy_partial_blocks_h

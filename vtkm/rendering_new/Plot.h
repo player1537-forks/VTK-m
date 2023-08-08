@@ -19,8 +19,11 @@
 
 #include <vector>
 
-namespace vtkh
+namespace vtkm
 {
+namespace rendering_new
+{
+
 //
 // A Render contains the information needed to create a single image.
 // There are 'n' canvases that matches the number of domains in the
@@ -51,7 +54,7 @@ public:
   bool GetShadingOn() const { return this->DoShading; }
   void Print() const;
 
-  void AddRenderer(vtkh::Renderer* renderer);
+  void AddRenderer(vtkm::rendering_new::Renderer* renderer);
 
   void SetPlotAnnotations(bool on) { this->DoPlotAnnotations = on; }
   void SetPlotWorldAnnotations(bool on) { this->DoPlotWorldAnnotations = on; }
@@ -76,7 +79,7 @@ public:
   void Save();
   void Render();
 
-  std::vector<vtkh::Renderer*> Renderers;
+  std::vector<vtkm::rendering_new::Renderer*> Renderers;
 
 protected:
   vtkm::rendering::Camera Camera;
@@ -103,31 +106,32 @@ static float vtkh_default_bg_color[4] = { 0.f, 0.f, 0.f, 1.f };
 static float vtkh_default_fg_color[4] = { 1.f, 1.f, 1.f, 1.f };
 
 VTKM_RENDERING_EXPORT
-vtkh::Plot MakePlot(int width,
-                    int height,
-                    vtkm::Bounds scene_bounds,
-                    const std::string& image_name,
-                    float bg_color[4] = vtkh_default_bg_color,
-                    float fg_color[4] = vtkh_default_fg_color);
+vtkm::rendering_new::Plot MakePlot(int width,
+                                   int height,
+                                   vtkm::Bounds scene_bounds,
+                                   const std::string& image_name,
+                                   float bg_color[4] = vtkh_default_bg_color,
+                                   float fg_color[4] = vtkh_default_fg_color);
 
 VTKM_RENDERING_EXPORT
-vtkh::Plot MakePlot(int width,
-                    int height,
-                    vtkm::Bounds scene_bounds,
-                    vtkm::rendering::Camera camera,
-                    const std::string& image_name,
-                    float bg_color[4] = vtkh_default_bg_color,
-                    float fg_color[4] = vtkh_default_fg_color);
+vtkm::rendering_new::Plot MakePlot(int width,
+                                   int height,
+                                   vtkm::Bounds scene_bounds,
+                                   vtkm::rendering::Camera camera,
+                                   const std::string& image_name,
+                                   float bg_color[4] = vtkh_default_bg_color,
+                                   float fg_color[4] = vtkh_default_fg_color);
 
 VTKM_RENDERING_EXPORT
-vtkh::Plot MakePlot(int width,
-                    int height,
-                    vtkm::rendering::Camera camera,
-                    vtkm::cont::PartitionedDataSet& data_set,
-                    const std::string& image_name,
-                    float bg_color[4] = vtkh_default_bg_color,
-                    float fg_color[4] = vtkh_default_fg_color);
+vtkm::rendering_new::Plot MakePlot(int width,
+                                   int height,
+                                   vtkm::rendering::Camera camera,
+                                   vtkm::cont::PartitionedDataSet& data_set,
+                                   const std::string& image_name,
+                                   float bg_color[4] = vtkh_default_bg_color,
+                                   float fg_color[4] = vtkh_default_fg_color);
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new
 
 #endif //vtkm_rendering_vtkh_rendering_Plot_h

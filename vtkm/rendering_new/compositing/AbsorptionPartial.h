@@ -8,12 +8,14 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_AbsorptionPartial_h
-#define vtkm_rendering_compositing_AbsorptionPartial_h
+#ifndef vtkm_rendering_new_AbsorptionPartial_h
+#define vtkm_rendering_new_AbsorptionPartial_h
 
 #include <assert.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 template <typename FloatType>
@@ -67,7 +69,8 @@ struct AbsorptionPartial
   }
 };
 
-} // namespace vtkh
+}
+} // vtkm::rendering_new
 
 
-#endif //vtkm_rendering_compositing_AbsorptionPartial_h
+#endif //vtkm_rendering_new_AbsorptionPartial_h

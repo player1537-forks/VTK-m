@@ -34,7 +34,9 @@ Finalize the global/local bounds in Actor and renderer.
 
 */
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class Compositor;
@@ -56,29 +58,30 @@ public:
   bool GetHasColorTable() const { return this->HasColorTable; }
 
   virtual void SetShadingOn(bool vtkmNotUsed(on)) {} // do nothing by default;
-  virtual void Update(vtkh::Plot& plot);
+  virtual void Update(vtkm::rendering_new::Plot& plot);
 
   void SetDoComposite(bool do_composite) { this->DoComposite = do_composite; }
 
 protected:
   // image related data with cinema support
-  vtkh::Compositor* Compositor = nullptr;
+  vtkm::rendering_new::Compositor* Compositor = nullptr;
   bool DoComposite = true;
   bool HasColorTable = true;
   vtkm::rendering::Actor Actor;
   vtkmMapperPtr Mapper;
 
   // methods
-  virtual void PreExecute(vtkh::Plot& plot);
-  virtual void PostExecute(vtkh::Plot& plot);
-  virtual void DoExecute(vtkh::Plot& plot);
+  virtual void PreExecute(vtkm::rendering_new::Plot& plot);
+  virtual void PostExecute(vtkm::rendering_new::Plot& plot);
+  virtual void DoExecute(vtkm::rendering_new::Plot& plot);
 
   void CheckForRequiredField(const std::string& field_name);
 
-  virtual void Composite(vtkh::Plot& plot);
+  virtual void Composite(vtkm::rendering_new::Plot& plot);
   void ImageToCanvas(Image& image, vtkm::rendering::Canvas& canvas, bool get_depth);
 };
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new
 
 #endif //vtkm_rendering_vtkh_rendering_Renderer_h

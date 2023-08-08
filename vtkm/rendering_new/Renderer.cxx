@@ -15,12 +15,14 @@
 #include <vtkm/rendering_new/Renderer.h>
 #include <vtkm/rendering_new/compositing/Compositor.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 Renderer::Renderer()
 {
-  this->Compositor = new vtkh::Compositor();
+  this->Compositor = new vtkm::rendering_new::Compositor();
 }
 
 Renderer::~Renderer()
@@ -28,7 +30,7 @@ Renderer::~Renderer()
   delete this->Compositor;
 }
 
-void Renderer::Composite(vtkh::Plot& plot)
+void Renderer::Composite(vtkm::rendering_new::Plot& plot)
 {
   this->Compositor->SetCompositeMode(Compositor::Z_BUFFER_SURFACE);
 
@@ -53,7 +55,7 @@ void Renderer::Composite(vtkh::Plot& plot)
   this->Compositor->ClearImages();
 }
 
-void Renderer::PreExecute(vtkh::Plot& vtkmNotUsed(plot))
+void Renderer::PreExecute(vtkm::rendering_new::Plot& vtkmNotUsed(plot))
 {
   bool range_set = this->GetScalarRange().IsNonEmpty();
   CheckForRequiredField(this->GetFieldName());
@@ -97,20 +99,20 @@ void Renderer::PreExecute(vtkh::Plot& vtkmNotUsed(plot))
   //  this->Bounds = this->Actor.GetDataSet().GetGlobalBounds();
 }
 
-void Renderer::Update(vtkh::Plot& plot)
+void Renderer::Update(vtkm::rendering_new::Plot& plot)
 {
   this->PreExecute(plot);
   this->DoExecute(plot);
   this->PostExecute(plot);
 }
 
-void Renderer::PostExecute(vtkh::Plot& plot)
+void Renderer::PostExecute(vtkm::rendering_new::Plot& plot)
 {
   if (this->DoComposite)
     this->Composite(plot);
 }
 
-void Renderer::DoExecute(vtkh::Plot& plot)
+void Renderer::DoExecute(vtkm::rendering_new::Plot& plot)
 {
   if (this->Mapper.get() == nullptr)
   {
@@ -205,4 +207,5 @@ void Renderer::CheckForRequiredField(const std::string& field_name)
   }
 }
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new

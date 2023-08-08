@@ -21,7 +21,9 @@
 #include <vtkm/rendering_new/compositing/RadixKCompositor.h>
 #endif
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 PayloadCompositor::PayloadCompositor() {}
@@ -44,7 +46,7 @@ void PayloadCompositor::AddImage(PayloadImage& image)
     //
     // Do local composite and keep a single image
     //
-    vtkh::PayloadImageCompositor compositor;
+    vtkm::rendering_new::PayloadImageCompositor compositor;
     compositor.ZBufferComposite(m_images[0], image);
   }
 }
@@ -68,4 +70,5 @@ PayloadImage PayloadCompositor::Composite()
 }
 
 
-} // namespace vtkh
+}
+} //vtkm::rendering_new

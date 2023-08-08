@@ -13,7 +13,9 @@
 #include <vtkm/rendering_new/compositing/vtkh_diy_collect.h>
 #include <vtkm/rendering_new/compositing/vtkh_diy_utils.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 struct Redistribute
@@ -174,3 +176,4 @@ std::string DirectSendCompositor::GetTimingString()
 }
 
 }
+} //vtkm::rendering_new

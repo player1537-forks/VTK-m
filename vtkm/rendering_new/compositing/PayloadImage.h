@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_PayloadImage_h
-#define vtkm_rendering_compositing_PayloadImage_h
+#ifndef vtkm_rendering_new_PayloadImage_h
+#define vtkm_rendering_new_PayloadImage_h
 
 #include <sstream>
 #include <vector>
@@ -17,7 +17,9 @@
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 struct VTKM_RENDERING_EXPORT PayloadImage
@@ -200,6 +202,7 @@ struct VTKM_RENDERING_EXPORT PayloadImage
   void Save(const std::string& name, const std::vector<std::string>& comments);
 };
 
-} //namespace  vtkh
+}
+} //namespace  vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_PayloadImage_h
+#endif //vtkm_rendering_new_PayloadImage_h

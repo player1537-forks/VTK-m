@@ -8,14 +8,16 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_VolumePartial_h
-#define vtkm_rendering_compositing_VolumePartial_h
+#ifndef vtkm_rendering_new_VolumePartial_h
+#define vtkm_rendering_new_VolumePartial_h
 
 #include <iostream>
 #include <limits>
 #include <vector>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 template <typename FloatType>
@@ -90,6 +92,7 @@ struct VolumePartial
   }
 };
 
-} // namespace
+}
+} //vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_VolumePartial_h
+#endif //vtkm_rendering_new_VolumePartial_h

@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_PayloadImageCompositor_h
-#define vtkm_rendering_compositing_PayloadImageCompositor_h
+#ifndef vtkm_rendering_new_PayloadImageCompositor_h
+#define vtkm_rendering_new_PayloadImageCompositor_h
 
 #include <algorithm>
 #include <cmath>
@@ -17,13 +17,16 @@
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class VTKM_RENDERING_EXPORT PayloadImageCompositor
 {
 public:
-  void ZBufferComposite(vtkh::PayloadImage& front, const vtkh::PayloadImage& image)
+  void ZBufferComposite(vtkm::rendering_new::PayloadImage& front,
+                        const vtkm::rendering_new::PayloadImage& image)
   {
     if (front.PayloadBytes != image.PayloadBytes)
     {
@@ -60,6 +63,7 @@ public:
   }
 };
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_PayloadImageCompositor_h
+#endif //vtkm_rendering_new_PayloadImageCompositor_h

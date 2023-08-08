@@ -8,14 +8,16 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_DirectSendCompositor_h
-#define vtkm_rendering_compositing_DirectSendCompositor_h
+#ifndef vtkm_rendering_new_DirectSendCompositor_h
+#define vtkm_rendering_new_DirectSendCompositor_h
 
 #include <sstream>
 #include <vtkm/rendering_new/compositing/Image.h>
 #include <vtkm/thirdparty/diy/diy.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class DirectSendCompositor
@@ -30,7 +32,8 @@ private:
   std::stringstream m_timing_log;
 };
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new
 
 
-#endif //vtkm_rendering_compositing_DirectSendCompositor_h
+#endif //vtkm_rendering_new_DirectSendCompositor_h

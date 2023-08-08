@@ -14,7 +14,9 @@
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/Plot.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class VTKM_RENDERING_EXPORT Scene
@@ -22,8 +24,8 @@ class VTKM_RENDERING_EXPORT Scene
 public:
   Scene() {}
 
-  void AddPlot(vtkh::Plot& plot) { this->Plots.push_back(plot); }
-  void SetPlots(const std::vector<vtkh::Plot>& plots) { this->Plots = plots; }
+  void AddPlot(vtkm::rendering_new::Plot& plot) { this->Plots.push_back(plot); }
+  void SetPlots(const std::vector<vtkm::rendering_new::Plot>& plots) { this->Plots = plots; }
   void SetRenderBatchSize(int batch_size);
 
   void Render();
@@ -31,10 +33,11 @@ public:
 private:
   int BatchSize = 10;
   bool RenderInBatches = false;
-  std::vector<vtkh::Plot> Plots;
+  std::vector<vtkm::rendering_new::Plot> Plots;
 
 }; // class scene
 
-} //namespace  vtkh
+}
+} //namespace  vtkm::rendering_new
 
 #endif //vtkm_rendering_rendering_Scene_h

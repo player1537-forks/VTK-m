@@ -10,7 +10,9 @@
 
 #include <vtkm/rendering_new/Annotator.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 Annotator::Annotator(vtkm::rendering::Canvas& canvas,
@@ -142,4 +144,5 @@ void Annotator::RenderWorldAnnotations(vtkm::Vec<float, 3> axis_scale)
   this->Canvas.EndTextRenderingBatch();
 }
 
-} //namespace vtkh
+}
+} //namespace vtkm::rendering_new

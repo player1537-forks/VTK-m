@@ -16,7 +16,9 @@
 #include <vtkm/rendering/MapperPoint.h>
 #include <vtkm/rendering_new/PointRenderer.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 //this needs to be moved someplace more general...
@@ -107,7 +109,7 @@ bool PointRenderer::IsPointMesh() const
   for (const auto& ds : pds.GetPartitions())
   {
     vtkm::UInt8 shape_type;
-    bool single_type = vtkh::detail::IsSingleCellShape(ds.GetCellSet(), shape_type);
+    bool single_type = vtkm::rendering_new::detail::IsSingleCellShape(ds.GetCellSet(), shape_type);
 
     if (ds.GetCellSet().GetNumberOfCells() > 0)
     {
@@ -131,7 +133,7 @@ void PointRenderer::SetBaseRadius(vtkm::Float32 radius)
   this->RadiusSet = true;
 }
 
-void PointRenderer::PreExecute(vtkh::Plot& plot)
+void PointRenderer::PreExecute(vtkm::rendering_new::Plot& plot)
 {
   Renderer::PreExecute(plot);
 
@@ -202,7 +204,7 @@ void PointRenderer::PreExecute(vtkh::Plot& plot)
   meshMapper->SetRadiusDelta(this->DeltaRadius);
 }
 
-void PointRenderer::PostExecute(vtkh::Plot& plot)
+void PointRenderer::PostExecute(vtkm::rendering_new::Plot& plot)
 {
   Renderer::PostExecute(plot);
   /*
@@ -214,4 +216,5 @@ void PointRenderer::PostExecute(vtkh::Plot& plot)
   */
 }
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new

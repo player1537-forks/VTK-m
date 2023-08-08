@@ -15,7 +15,9 @@
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/Renderer.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 namespace detail
@@ -23,7 +25,7 @@ namespace detail
 class VolumeWrapper;
 }
 
-class VTKM_RENDERING_EXPORT VolumeRenderer : public vtkh::Renderer
+class VTKM_RENDERING_EXPORT VolumeRenderer : public vtkm::rendering_new::Renderer
 {
 public:
   static std::shared_ptr<vtkm::rendering::Canvas> GetNewCanvas(int width = 1024, int height = 1024);
@@ -34,20 +36,20 @@ public:
   void SetNumberOfSamples(const int num_samples);
 
 
-  void Update(vtkh::Plot& plot) override;
+  void Update(vtkm::rendering_new::Plot& plot) override;
   virtual void SetInput(const vtkm::rendering::Actor& actor) override;
 
 protected:
-  virtual void Composite(vtkh::Plot& plot) override;
-  virtual void PreExecute(vtkh::Plot& plot) override;
-  virtual void DoExecute(vtkh::Plot& plot) override;
-  virtual void PostExecute(vtkh::Plot& plot) override;
+  virtual void Composite(vtkm::rendering_new::Plot& plot) override;
+  virtual void PreExecute(vtkm::rendering_new::Plot& plot) override;
+  virtual void DoExecute(vtkm::rendering_new::Plot& plot) override;
+  virtual void PostExecute(vtkm::rendering_new::Plot& plot) override;
 
-  void RenderOneDomainPerRank(vtkh::Plot& plot);
-  void RenderMultipleDomainsPerRank(vtkh::Plot& plot);
+  void RenderOneDomainPerRank(vtkm::rendering_new::Plot& plot);
+  void RenderMultipleDomainsPerRank(vtkm::rendering_new::Plot& plot);
 
   void CorrectOpacity();
-  void FindVisibilityOrdering(vtkh::Plot& plot);
+  void FindVisibilityOrdering(vtkm::rendering_new::Plot& plot);
   void DepthSort(int num_domains,
                  std::vector<float>& min_depths,
                  std::vector<int>& local_vis_order);
@@ -64,6 +66,7 @@ protected:
   std::vector<detail::VolumeWrapper*> Wrappers;
 };
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new
 
 #endif //vtkm_rendering_rendering_VolumeRenderer_h

@@ -20,7 +20,9 @@
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class VTKM_RENDERING_EXPORT Annotator
@@ -50,6 +52,7 @@ protected:
   std::vector<vtkm::Bounds> ColorBarPos;
 };
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new
 
 #endif //vtkm_rendering_rendering_Annotator_h

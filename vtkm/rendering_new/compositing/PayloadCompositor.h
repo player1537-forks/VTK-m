@@ -8,14 +8,16 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_PayloadCompositor_h
-#define vtkm_rendering_compositing_PayloadCompositor_h
+#ifndef vtkm_rendering_new_PayloadCompositor_h
+#define vtkm_rendering_new_PayloadCompositor_h
 
 #include <sstream>
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/compositing/PayloadImage.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class VTKM_RENDERING_EXPORT PayloadCompositor
@@ -33,6 +35,7 @@ protected:
   std::vector<PayloadImage> m_images;
 };
 
-};
+}
+} //vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_PayloadCompoistor_h
+#endif //vtkm_rendering_new_PayloadCompoistor_h

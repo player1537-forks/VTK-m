@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_vtkh_diy_partial_redistribute_h
-#define vtkm_rendering_compositing_vtkh_diy_partial_redistribute_h
+#ifndef vtkm_rendering_new_vtkh_diy_partial_redistribute_h
+#define vtkm_rendering_new_vtkh_diy_partial_redistribute_h
 
 #include <vtkm/rendering_new/compositing/vtkh_diy_partial_blocks.h>
 #include <vtkm/thirdparty/diy/assigner.h>
@@ -21,8 +21,11 @@
 
 #include <map>
 
-namespace vtkh
+namespace vtkm
 {
+namespace rendering_new
+{
+
 //
 // Redistributes partial composites to the ranks that owns
 // that sectoon of the image. Currently, the domain is decomposed
@@ -199,6 +202,7 @@ void redistribute<EmissionPartial<float>>(std::vector<EmissionPartial<float>>& p
     partials, comm, domain_min_pixel, domain_max_pixel);
 }
 
-} //namespace rover
+}
+} //namespace vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_vtkh_diy_partial_redistribute_h
+#endif //vtkm_rendering_new_vtkh_diy_partial_redistribute_h

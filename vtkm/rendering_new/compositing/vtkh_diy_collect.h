@@ -8,13 +8,15 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_vtkh_diy_collect_h
-#define vtkm_rendering_compositing_vtkh_diy_collect_h
+#ifndef vtkm_rendering_new_vtkh_diy_collect_h
+#define vtkm_rendering_new_vtkh_diy_collect_h
 
 #include <vtkm/rendering_new/compositing/Image.h>
 #include <vtkm/rendering_new/compositing/vtkh_diy_image_block.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 template <typename ImageType>
@@ -71,6 +73,7 @@ struct CollectImages
   } // operator
 };
 
-} // namespace vtkh
+}
+} // vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_vtkh_diy_collect_h
+#endif //vtkm_rendering_new_vtkh_diy_collect_h

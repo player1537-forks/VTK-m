@@ -8,21 +8,23 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_ImageCompositor_h
-#define vtkm_rendering_compositing_ImageCompositor_h
+#ifndef vtkm_rendering_new_ImageCompositor_h
+#define vtkm_rendering_new_ImageCompositor_h
 
 #include <algorithm>
 #include <vtkm/rendering_new/compositing/Image.h>
 
 #include <vtkm/rendering/vtkm_rendering_export.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class VTKM_RENDERING_EXPORT ImageCompositor
 {
 public:
-  void Blend(vtkh::Image& front, vtkh::Image& back)
+  void Blend(vtkm::rendering_new::Image& front, vtkm::rendering_new::Image& back)
   {
 
     assert(front.Bounds.X.Min == back.Bounds.X.Min);
@@ -56,7 +58,7 @@ public:
     }
   }
 
-  void ZBufferComposite(vtkh::Image& front, const vtkh::Image& image)
+  void ZBufferComposite(vtkm::rendering_new::Image& front, const vtkm::rendering_new::Image& image)
   {
     assert(front.Depths.size() == front.Pixels.size() / 4);
     assert(front.Bounds.X.Min == image.Bounds.X.Min);
@@ -85,7 +87,7 @@ public:
     }
   }
 
-  void OrderedComposite(std::vector<vtkh::Image>& images)
+  void OrderedComposite(std::vector<vtkm::rendering_new::Image>& images)
   {
     const int total_images = images.size();
     std::sort(images.begin(), images.end(), CompositeOrderSort());
@@ -95,7 +97,7 @@ public:
     }
   }
 
-  void ZBufferComposite(std::vector<vtkh::Image>& images)
+  void ZBufferComposite(std::vector<vtkm::rendering_new::Image>& images)
   {
     const int total_images = images.size();
     for (int i = 1; i < total_images; ++i)
@@ -123,7 +125,8 @@ public:
     }
   };
 
-  void CombineImages(const std::vector<vtkh::Image>& images, std::vector<Pixel>& pixels)
+  void CombineImages(const std::vector<vtkm::rendering_new::Image>& images,
+                     std::vector<Pixel>& pixels)
   {
 
     const int num_images = static_cast<int>(images.size());
@@ -151,7 +154,7 @@ public:
     }   // for images
   }
 
-  void ZBufferBlend(std::vector<vtkh::Image>& images)
+  void ZBufferBlend(std::vector<vtkm::rendering_new::Image>& images)
   {
     const int image_pixels = images[0].GetNumberOfPixels();
     const int num_images = static_cast<int>(images.size());
@@ -205,6 +208,7 @@ public:
   }
 };
 
-} // namespace vtkh
+}
+} //vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_ImageCompositor_h
+#endif //vtkm_rendering_new_ImageCompositor_h

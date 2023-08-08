@@ -22,7 +22,9 @@
 #include <vtkm/rendering_new/compositing/RadixKCompositor.h>
 #endif
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 Compositor::Compositor()
@@ -64,7 +66,7 @@ void Compositor::AddImage(const unsigned char* color_buffer,
     // Do local composite and keep a single image
     //
     image.Init(color_buffer, depth_buffer, width, height);
-    vtkh::ImageCompositor compositor;
+    vtkm::rendering_new::ImageCompositor compositor;
     compositor.ZBufferComposite(this->Images[0], image);
   }
   else
@@ -95,7 +97,7 @@ void Compositor::AddImage(const float* color_buffer,
     //
     image.Init(color_buffer, depth_buffer, width, height);
 
-    vtkh::ImageCompositor compositor;
+    vtkm::rendering_new::ImageCompositor compositor;
     compositor.ZBufferComposite(this->Images[0], image);
   }
   else
@@ -194,9 +196,10 @@ void Compositor::CompositeVisOrder()
   DirectSendCompositor compositor;
   compositor.CompositeVolume(diy_comm, this->Images);
 #else
-  vtkh::ImageCompositor compositor;
+  vtkm::rendering_new::ImageCompositor compositor;
   compositor.OrderedComposite(this->Images);
 #endif
 }
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new

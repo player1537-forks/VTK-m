@@ -8,12 +8,14 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_EmissionPartial_h
-#define vtkm_rendering_compositing_EmissionPartial_h
+#ifndef vtkm_rendering_new_EmissionPartial_h
+#define vtkm_rendering_new_EmissionPartial_h
 
 #include <assert.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 template <typename FloatType>
@@ -104,7 +106,8 @@ struct EmissionPartial
   }
 };
 
-} // namespace rover
+}
+} // vtkm::rendering_new
 
 
-#endif //vtkm_rendering_compositing_EmissionPartial_h
+#endif //vtkm_rendering_new_EmissionPartial_h

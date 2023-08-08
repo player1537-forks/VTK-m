@@ -24,7 +24,9 @@
 #include <vtkm/thirdparty/diy/mpi-cast.h>
 #endif
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 Plot::Plot()
@@ -44,12 +46,12 @@ Plot::Plot()
 
 Plot::~Plot() {}
 
-void Plot::AddRenderer(vtkh::Renderer* renderer)
+void Plot::AddRenderer(vtkm::rendering_new::Renderer* renderer)
 {
   //Redo this... Implicit ordering is asking for trouble....
 
-  bool isVolume = (dynamic_cast<vtkh::VolumeRenderer*>(renderer) != nullptr);
-  bool isMesh = (dynamic_cast<vtkh::MeshRenderer*>(renderer) != nullptr);
+  bool isVolume = (dynamic_cast<vtkm::rendering_new::VolumeRenderer*>(renderer) != nullptr);
+  bool isMesh = (dynamic_cast<vtkm::rendering_new::MeshRenderer*>(renderer) != nullptr);
 
   if (isVolume)
   {
@@ -297,19 +299,19 @@ void Plot::Save()
   float* color_buffer = &(this->Canvas.GetColorBuffer().WritePortal().GetArray()[0][0]);
   int height = this->Canvas.GetHeight();
   int width = this->Canvas.GetWidth();
-  vtkm::rendering::compositing::PNGEncoder encoder;
+  vtkm::rendering_new::PNGEncoder encoder;
   encoder.Encode(color_buffer, width, height, this->Comments);
   encoder.Save(this->ImageName + ".png");
 }
 
-vtkh::Plot MakePlot(int width,
-                    int height,
-                    vtkm::Bounds scene_bounds,
-                    const std::string& image_name,
-                    float bg_color[4],
-                    float fg_color[4])
+vtkm::rendering_new::Plot MakePlot(int width,
+                                   int height,
+                                   vtkm::Bounds scene_bounds,
+                                   const std::string& image_name,
+                                   float bg_color[4],
+                                   float fg_color[4])
 {
-  vtkh::Plot render;
+  vtkm::rendering_new::Plot render;
   vtkm::rendering::Camera camera;
   camera.ResetToBounds(scene_bounds);
   render.SetSceneBounds(scene_bounds);
@@ -336,15 +338,15 @@ vtkh::Plot MakePlot(int width,
   return render;
 }
 
-vtkh::Plot MakePlot(int width,
-                    int height,
-                    vtkm::Bounds scene_bounds,
-                    vtkm::rendering::Camera camera,
-                    const std::string& image_name,
-                    float bg_color[4],
-                    float fg_color[4])
+vtkm::rendering_new::Plot MakePlot(int width,
+                                   int height,
+                                   vtkm::Bounds scene_bounds,
+                                   vtkm::rendering::Camera camera,
+                                   const std::string& image_name,
+                                   float bg_color[4],
+                                   float fg_color[4])
 {
-  vtkh::Plot render;
+  vtkm::rendering_new::Plot render;
   render.SetSceneBounds(scene_bounds);
   render.SetWidth(width);
   render.SetHeight(height);
@@ -369,15 +371,15 @@ vtkh::Plot MakePlot(int width,
   return render;
 }
 
-vtkh::Plot MakePlot(int width,
-                    int height,
-                    vtkm::rendering::Camera camera,
-                    vtkm::cont::PartitionedDataSet& data_set,
-                    const std::string& image_name,
-                    float bg_color[4],
-                    float fg_color[4])
+vtkm::rendering_new::Plot MakePlot(int width,
+                                   int height,
+                                   vtkm::rendering::Camera camera,
+                                   vtkm::cont::PartitionedDataSet& data_set,
+                                   const std::string& image_name,
+                                   float bg_color[4],
+                                   float fg_color[4])
 {
-  vtkh::Plot render;
+  vtkm::rendering_new::Plot render;
   render.SetCamera(camera);
   render.SetImageName(image_name);
   vtkm::Bounds bounds = data_set.GetGlobalBounds();
@@ -400,4 +402,6 @@ vtkh::Plot MakePlot(int width,
 
   return render;
 }
-} // namespace vtkh
+
+}
+} // namespace vtkm::rendering_new

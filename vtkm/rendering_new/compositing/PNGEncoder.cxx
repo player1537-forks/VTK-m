@@ -18,9 +18,7 @@
 
 namespace vtkm
 {
-namespace rendering
-{
-namespace compositing
+namespace rendering_new
 {
 
 PNGEncoder::PNGEncoder() {}
@@ -220,5 +218,4 @@ void PNGEncoder::Cleanup()
 }
 
 }
-}
-} //namespace vtkm::rendering::compositing
+} //namespace vtkm::rendering_new

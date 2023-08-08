@@ -16,9 +16,7 @@
 
 namespace vtkm
 {
-namespace rendering
-{
-namespace compositing
+namespace rendering_new
 {
 
 class PNGEncoder
@@ -47,7 +45,6 @@ private:
 };
 
 }
-}
-} //namespace vtkm::rendering::compositing
+} //namespace vtkm::rendering_new
 
 #endif //vtk_m_rendering_compositing_PNGEncoder_h

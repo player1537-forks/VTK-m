@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_PartialCompoistor_h
-#define vtkm_rendering_compositing_PartialCompoistor_h
+#ifndef vtkm_rendering_new_PartialCompoistor_h
+#define vtkm_rendering_new_PartialCompoistor_h
 
 #include <iostream>
 #include <vector>
@@ -25,7 +25,9 @@
 #endif
 
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 template <typename PartialType>
@@ -57,6 +59,7 @@ protected:
 #endif
 };
 
-}; // namespace rover
+}
+} // namespace vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_PartialCompoistor_h
+#endif //vtkm_rendering_new_PartialCompoistor_h

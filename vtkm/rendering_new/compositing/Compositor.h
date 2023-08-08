@@ -8,14 +8,16 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_Compositor_h
-#define vtkm_rendering_compositing_Compositor_h
+#ifndef vtkm_rendering_new_Compositor_h
+#define vtkm_rendering_new_Compositor_h
 
 #include <sstream>
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/compositing/Image.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class VTKM_RENDERING_EXPORT Compositor
@@ -88,6 +90,7 @@ protected:
   std::vector<Image> Images;
 };
 
-};
+}
+} //vtkm::rendering_new
 
-#endif //vtkm_rendering_compositing_Compositor_h
+#endif //vtkm_rendering_new_Compositor_h

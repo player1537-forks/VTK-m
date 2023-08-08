@@ -15,7 +15,9 @@
 #include <vtkm/rendering_new/Plot.h>
 #include <vtkm/rendering_new/Renderer.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 class VTKM_RENDERING_EXPORT MeshRenderer : public Renderer
@@ -25,7 +27,7 @@ public:
 
   MeshRenderer();
   virtual ~MeshRenderer() {}
-  std::string GetName() const override { return "vtkh::MeshRenderer"; }
+  std::string GetName() const override { return "vtkm::rendering_new::MeshRenderer"; }
 
 
   void SetIsOverlay(bool on) { this->IsOverlay = on; }
@@ -35,13 +37,14 @@ public:
   bool GetShowInternal() const { return this->ShowInternal; }
 
 protected:
-  void PreExecute(vtkh::Plot& plot) override;
+  void PreExecute(vtkm::rendering_new::Plot& plot) override;
 
   bool IsOverlay = false;
   bool ShowInternal = false;
   bool UseForegroundColor = false;
 };
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new
 
 #endif //vtkm_rendering_rendering_MeshRenderer_h

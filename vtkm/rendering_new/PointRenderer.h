@@ -14,8 +14,11 @@
 #include <vtkm/rendering/vtkm_rendering_export.h>
 #include <vtkm/rendering_new/Renderer.h>
 
-namespace vtkh
+namespace vtkm
 {
+namespace rendering_new
+{
+
 class VTKM_RENDERING_EXPORT PointRenderer : public Renderer
 {
 public:
@@ -23,9 +26,9 @@ public:
 
   PointRenderer();
   virtual ~PointRenderer(){};
-  std::string GetName() const override { return "vtkh::PointRenderer"; }
-  void PreExecute(vtkh::Plot& plot) override;
-  void PostExecute(vtkh::Plot& plot) override;
+  std::string GetName() const override { return "vtkm::rendering_new::PointRenderer"; }
+  void PreExecute(vtkm::rendering_new::Plot& plot) override;
+  void PostExecute(vtkm::rendering_new::Plot& plot) override;
   void SetUseCells() { this->UseNodes = false; }
   void SetUseNodes() { this->UseNodes = true; }
   void SetUseVariableRadius(bool useVariableRadius) { this->UseVariableRadius = useVariableRadius; }
@@ -48,6 +51,8 @@ private:
   vtkm::Float32 RadiusMult = 2.f;
 };
 
-} // namespace vtkh
+
+}
+} // namespace vtkm::rendering_new
 
 #endif //vtkm_rendering_rendering_PointRenderer_h

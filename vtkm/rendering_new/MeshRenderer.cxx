@@ -14,7 +14,9 @@
 #include <vtkm/rendering_new/MeshRenderer.h>
 #include <vtkm/rendering_new/Plot.h>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 MeshRenderer::MeshRenderer()
@@ -24,7 +26,7 @@ MeshRenderer::MeshRenderer()
   this->Mapper = mapper;
 }
 
-void MeshRenderer::PreExecute(vtkh::Plot& plot)
+void MeshRenderer::PreExecute(vtkm::rendering_new::Plot& plot)
 {
   Renderer::PreExecute(plot);
 
@@ -55,4 +57,5 @@ std::shared_ptr<vtkm::rendering::Canvas> MeshRenderer::GetNewCanvas(int width, i
   return std::make_shared<vtkm::rendering::CanvasRayTracer>(width, height);
 }
 
-} // namespace vtkh
+}
+} // namespace vtkm::rendering_new

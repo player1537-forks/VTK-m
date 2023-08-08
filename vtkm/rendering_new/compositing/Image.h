@@ -8,8 +8,8 @@
 //  PURPOSE.  See the above copyright notice for more information.
 //============================================================================
 
-#ifndef vtkm_rendering_compositing_Image_h
-#define vtkm_rendering_compositing_Image_h
+#ifndef vtkm_rendering_new_Image_h
+#define vtkm_rendering_new_Image_h
 
 #include <vtkm/Bounds.h>
 #include <vtkm/rendering/vtkm_rendering_export.h>
@@ -17,7 +17,9 @@
 #include <sstream>
 #include <vector>
 
-namespace vtkh
+namespace vtkm
+{
+namespace rendering_new
 {
 
 struct VTKM_RENDERING_EXPORT Image
@@ -320,7 +322,9 @@ struct CompositeOrderSort
     return lhs.CompositeOrder < rhs.CompositeOrder;
   }
 };
-} //namespace  vtkh
+
+}
+} //namespace  vtkm::rendering_new
 
 
-#endif //vtkm_rendering_compositing_Image_h
+#endif //vtkm_rendering_new_Image_h
