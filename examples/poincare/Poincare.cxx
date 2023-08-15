@@ -1708,7 +1708,7 @@ GenerateNormalizedFromThetaPsiSeedsPairs(std::map<std::string, std::vector<std::
 
     //Now, do a binary search to find psi between (r0, r1)
     int cnt = 0;
-    while (diffPsi > 1e-10 && cnt < 100) {
+    while (diffPsi > 1e-6 && cnt < 100) {
       auto rMid = (r0+r1)/2.0;
       R = xgcParams.eq_axis_r + rMid*cost;
       Z = xgcParams.eq_axis_z + rMid*sint;
@@ -2130,22 +2130,27 @@ StreamingPoincare(std::map<std::string, std::vector<std::string>>& args)
 
 void InteractivePoincare(std::map<std::string, std::vector<std::string>>& args)
 {
-  XGCParameters xgcParams;
-  auto ds = ReadDataSet(args, xgcParams);
-  
   FILE *fdread;
   FILE *fdwrite;
   int n;
-  const char *fifoName = "/tmp/poincareFifo";
+  const char *fifoName = args["--mkfifoName"][0].c_str();
   float psiVal, thetaVal;
   int numPunc;
   float stepSize;
   int bytes_read = 0; 
-
-  printf("POINCARE INTERACTIVE READY\n");
-  fflush(stdout);
-
+  
   mkfifo(fifoName, 0666);
+  XGCParameters xgcParams;
+  auto ds = ReadDataSet(args, xgcParams);
+
+  //printf("POINCARE INTERACTIVE READY\n");
+  //fflush(stdout);
+
+  
+
+  fdwrite = fopen(fifoName, "w");
+  fputs("ready", fdwrite);
+  fclose(fdwrite);
 
   for(;;){
     if ((fdread = fopen(fifoName, "r")) == NULL){
@@ -2187,6 +2192,7 @@ void InteractivePoincare(std::map<std::string, std::vector<std::string>>& args)
     std::vector<vtkm::Particle> seeds;
     std::vector<vtkm::Vec2f> seedsThetaPsi;
     seeds = GenerateNormalizedFromThetaPsiSeedsPairs(args, ds, xgcParams, seedsThetaPsi);
+    return;
     Poincare(ds, xgcParams, seeds, args, 0);
 
 
