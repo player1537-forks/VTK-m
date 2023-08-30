@@ -3,6 +3,7 @@ NAME
 GROUPS
   Rendering
 DEPENDS
+  vtkm_rendering
   vtkm_filter_image_processing
   vtkm_filter_entity_extraction
   vtkm_io
