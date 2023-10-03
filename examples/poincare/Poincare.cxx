@@ -1668,6 +1668,7 @@ GenerateNormalizedFromThetaPsiSeedsPairs(
   vtkm::Id ID = 0;
   const vtkm::FloatDefault normalizedToRad = 2.0*vtkm::Pi();
 
+  #pragma omp parallel for schedule(dynamic)
   for (std::size_t i = 0; i < thetaVals.size(); i++)
   {
     auto psiTarget = psiVals[i] * xgcParams.eq_x_psi;
@@ -1696,11 +1697,18 @@ GenerateNormalizedFromThetaPsiSeedsPairs(
     }
     if(i == 100 && diffPsi > 1e-6)  continue;
 
-    vtkm::Vec3f pt_rpz(R, 0, Z);
-    vtkm::Particle p({pt_rpz, ID++});
-    seeds.push_back(p);
-    seedsThetaPsi.push_back({theta, psiTarget});
+    #pragma omp critical
+    {
+      vtkm::Vec3f pt_rpz(R, 0, Z);
+      vtkm::Particle p({ pt_rpz, static_cast<vtkm::Id>(i) });
+      seeds.push_back(p);
+      seedsThetaPsi.push_back({theta, psiTarget});
+
+      std::cout << "." << std::flush;
+    }
   }
+
+  std::cout << std::endl << std::flush;
 
   return seeds;
 }
@@ -2155,10 +2163,12 @@ void InteractivePoincare(std::map<std::string, std::vector<std::string>>& args)
     
     args.insert(std::pair<std::string, std::vector<std::string>>("--numPunc", strNumPunc));
     args.insert(std::pair<std::string, std::vector<std::string>>("--stepSize", strStepSize));
+
+    std::cout << "Generating normalized coordinates from theta psi seed pairs" << std::endl << std::flush;
     
     std::vector<vtkm::Vec2f> seedsThetaPsi;
     auto seeds = GenerateNormalizedFromThetaPsiSeedsPairs(psiVals, thetaVals, ds, xgcParams, seedsThetaPsi);
-    std::cout << "Seed generation complete" << std::endl;
+    std::cout << "Done generating normalized coordinates" << std::endl << std::flush;
     Poincare(ds, xgcParams, seeds, args, 0);
 
     fclose(fdread);
