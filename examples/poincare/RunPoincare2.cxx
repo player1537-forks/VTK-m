@@ -311,7 +311,9 @@ RunPoincare2(const vtkm::cont::DataSet& ds,
     vtkm::Id ny = std::atoi(a[1].c_str());
     locatorUB.SetDimensions({nx, ny, 1});
     useUB = true;
-    // std::cout<<"SetUniformBins: "<<nx<<" "<<ny<<std::endl;
+  } else {
+    locatorUB.SetDimensions({8000, 8000, 1});
+    useUB = true;
   }
 
   bool useMultiPointWorklet = false;

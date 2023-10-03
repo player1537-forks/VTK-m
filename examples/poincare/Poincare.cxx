@@ -1642,24 +1642,14 @@ InterpolatePsi(const vtkm::Vec2f& ptRZ,
 }
 
 std::vector<vtkm::Particle>
-GenerateNormalizedFromThetaPsiSeedsPairs(std::map<std::string, std::vector<std::string>>& args,
-                      const vtkm::cont::DataSet& ds,
-                      XGCParameters& xgcParams,
-                      std::vector<vtkm::Vec2f>& seedsThetaPsi)
-
+GenerateNormalizedFromThetaPsiSeedsPairs(
+  std::vector<vtkm::FloatDefault> &psiVals,
+  std::vector<vtkm::FloatDefault> &thetaVals,
+  const vtkm::cont::DataSet& ds,
+  XGCParameters& xgcParams,
+  std::vector<vtkm::Vec2f>& seedsThetaPsi)
 {
   std::vector<vtkm::Particle> seeds;
-  std::vector<std::string> vals;
-  std::vector<vtkm::FloatDefault> thetaVals, psiVals;
-  const vtkm::FloatDefault degToRad = vtkm::Pi()/180.0;
-
-  vals = args["--psiVals"];
-  for (const auto& v: vals)
-    psiVals.push_back(std::atof(v.c_str()) * xgcParams.eq_x_psi);
-
-  vals = args["--thetaVals"];
-  for (const auto& v: vals)
-    thetaVals.push_back(std::atof(v.c_str())); // * degToRad);
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> maxR;
   FindMaxR(ds, xgcParams, thetaVals, maxR);
@@ -1675,46 +1665,26 @@ GenerateNormalizedFromThetaPsiSeedsPairs(std::map<std::string, std::vector<std::
   vtkm::Vec2f drz((xgcParams.eq_max_r-xgcParams.eq_min_r)/static_cast<vtkm::FloatDefault>(xgcParams.eq_mr-1),
                   (xgcParams.eq_max_z-xgcParams.eq_min_z)/static_cast<vtkm::FloatDefault>(xgcParams.eq_mz-1));
 
-  const vtkm::FloatDefault dR = 0.000001;
-
   vtkm::Id ID = 0;
+  const vtkm::FloatDefault normalizedToRad = 2.0*vtkm::Pi();
+
   #pragma omp parallel for schedule(dynamic)
   for (std::size_t i = 0; i < thetaVals.size(); i++)
   {
-    auto psiTarget = psiVals[i];
-    auto theta = thetaVals[i];
+    auto psiTarget = psiVals[i] * xgcParams.eq_x_psi;
+    auto theta = thetaVals[i] * normalizedToRad;
+
     auto cost = vtkm::Cos(theta), sint = vtkm::Sin(theta);
 
     vtkm::FloatDefault r0 = 0;
-    vtkm::FloatDefault r1 = r0;
+    vtkm::FloatDefault r1 = maxRPortal.Get(i);
     vtkm::FloatDefault psi = 0;
     vtkm::FloatDefault R, Z;
 
-    r1 = r0+dR;
-    bool found = false;
-    while (!found && r1 < maxRPortal.Get(i)) {
-      R = xgcParams.eq_axis_r + r1*cost;
-      Z = xgcParams.eq_axis_z + r1*sint;
-      psi = InterpolatePsi({R,Z}, coeff, ncoeff, nrz, rzmin, drz, xgcParams);
-      if (psi >= psiTarget) {
-        found = true;
-        break;
-      }
-
-      r0 += dR;
-      r1 += dR;
-    }
-    if (!found) {
-        #pragma omp critical
-        std::cout << "x" << std::flush;
-
-        continue;
-    }
-    auto diffPsi = psi - psiTarget;
+    vtkm::FloatDefault diffPsi = 1;
 
     //Now, do a binary search to find psi between (r0, r1)
-    int cnt = 0;
-    while (diffPsi > 1e-6 && cnt < 100) {
+    for (int cnt = 0; diffPsi > 1e-6 && cnt < 100; ++cnt) {
       auto rMid = (r0+r1)/2.0;
       R = xgcParams.eq_axis_r + rMid*cost;
       Z = xgcParams.eq_axis_z + rMid*sint;
@@ -1724,8 +1694,8 @@ GenerateNormalizedFromThetaPsiSeedsPairs(std::map<std::string, std::vector<std::
       else r1 = rMid; //mid is outside, range = (r0, rmid)
           
       diffPsi = vtkm::Abs(psi - psiTarget);
-      cnt++;
     }
+    if(i == 100 && diffPsi > 1e-6)  continue;
 
     #pragma omp critical
     {
@@ -1870,7 +1840,7 @@ GenerateThetaPsiSeeds(std::map<std::string, std::vector<std::string>>& args,
 
       //Now, do a binary search to find psi between (r0, r1)
       int cnt = 0;
-      while (diffPsi > 1e-10 && cnt < 100)
+      while (diffPsi > 1e-6 && cnt < 100)
       {
         auto rMid = (r0+r1)/2.0;
         R = xgcParams.eq_axis_r + rMid*cost;
@@ -2151,15 +2121,8 @@ void InteractivePoincare(std::map<std::string, std::vector<std::string>>& args)
   int numPunc;
   float stepSize;
   int bytes_read = 0; 
-  
-  mkfifo(fifoName, 0666);
   XGCParameters xgcParams;
   auto ds = ReadDataSet(args, xgcParams);
-
-  //printf("POINCARE INTERACTIVE READY\n");
-  //fflush(stdout);
-
-  
 
   fdwrite = fopen(fifoName, "w");
   fputs("ready", fdwrite);
@@ -2177,15 +2140,16 @@ void InteractivePoincare(std::map<std::string, std::vector<std::string>>& args)
     args.erase("--numPunc");
     args.erase("--stepSize");
 
-    std::vector<std::string> strPsiVals;
-    std::vector<std::string> strThetaVals;
     std::vector<std::string> strNumPunc;
     std::vector<std::string> strStepSize;
 
+    std::vector<vtkm::FloatDefault> thetaVals;
+    std::vector<vtkm::FloatDefault> psiVals;
+
     //read in psiVals and thetaVals
     while(fscanf(fdread, "%f%f", &psiVal, &thetaVal) == 2) {
-      strPsiVals.push_back(std::to_string(psiVal));
-      strThetaVals.push_back(std::to_string(thetaVal));
+      psiVals.push_back(psiVal);
+      thetaVals.push_back(thetaVal);
     }
 
     //read in semicolon followed by numPunc and stepSizes
@@ -2197,23 +2161,15 @@ void InteractivePoincare(std::map<std::string, std::vector<std::string>>& args)
       strStepSize.push_back("0.01");
     }        
     
-    args.insert(std::pair<std::string, std::vector<std::string>>("--psiVals", strPsiVals));
-    args.insert(std::pair<std::string, std::vector<std::string>>("--thetaVals", strThetaVals));
     args.insert(std::pair<std::string, std::vector<std::string>>("--numPunc", strNumPunc));
     args.insert(std::pair<std::string, std::vector<std::string>>("--stepSize", strStepSize));
 
     std::cout << "Generating normalized coordinates from theta psi seed pairs" << std::endl << std::flush;
     
-    std::vector<vtkm::Particle> seeds;
     std::vector<vtkm::Vec2f> seedsThetaPsi;
-    seeds = GenerateNormalizedFromThetaPsiSeedsPairs(args, ds, xgcParams, seedsThetaPsi);
-
+    auto seeds = GenerateNormalizedFromThetaPsiSeedsPairs(psiVals, thetaVals, ds, xgcParams, seedsThetaPsi);
     std::cout << "Done generating normalized coordinates" << std::endl << std::flush;
-
-    // return;
-    std::cout << "Tracing poincare points" << std::endl << std::flush;
     Poincare(ds, xgcParams, seeds, args, 0);
-    std::cout << "Done tracing poincare points" << std::endl << std::flush;
 
     fclose(fdread);
     if((fdwrite = fopen(fifoName, "w")) == NULL){ 
