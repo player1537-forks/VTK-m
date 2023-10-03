@@ -1659,7 +1659,7 @@ GenerateNormalizedFromThetaPsiSeedsPairs(std::map<std::string, std::vector<std::
 
   vals = args["--thetaVals"];
   for (const auto& v: vals)
-    thetaVals.push_back(std::atof(v.c_str()) * degToRad);
+    thetaVals.push_back(std::atof(v.c_str())); // * degToRad);
 
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> maxR;
   FindMaxR(ds, xgcParams, thetaVals, maxR);
@@ -1678,6 +1678,7 @@ GenerateNormalizedFromThetaPsiSeedsPairs(std::map<std::string, std::vector<std::
   const vtkm::FloatDefault dR = 0.000001;
 
   vtkm::Id ID = 0;
+  #pragma omp parallel for schedule(dynamic)
   for (std::size_t i = 0; i < thetaVals.size(); i++)
   {
     auto psiTarget = psiVals[i];
@@ -1703,7 +1704,12 @@ GenerateNormalizedFromThetaPsiSeedsPairs(std::map<std::string, std::vector<std::
       r0 += dR;
       r1 += dR;
     }
-    if (!found) continue;
+    if (!found) {
+        #pragma omp critical
+        std::cout << "x" << std::flush;
+
+        continue;
+    }
     auto diffPsi = psi - psiTarget;
 
     //Now, do a binary search to find psi between (r0, r1)
@@ -1721,11 +1727,18 @@ GenerateNormalizedFromThetaPsiSeedsPairs(std::map<std::string, std::vector<std::
       cnt++;
     }
 
-    vtkm::Vec3f pt_rpz(R, 0, Z);
-    vtkm::Particle p({pt_rpz, ID++});
-    seeds.push_back(p);
-    seedsThetaPsi.push_back({theta, psiTarget});
+    #pragma omp critical
+    {
+      vtkm::Vec3f pt_rpz(R, 0, Z);
+      vtkm::Particle p({ pt_rpz, static_cast<vtkm::Id>(i) });
+      seeds.push_back(p);
+      seedsThetaPsi.push_back({theta, psiTarget});
+
+      std::cout << "." << std::flush;
+    }
   }
+
+  std::cout << std::endl << std::flush;
 
   return seeds;
 }
@@ -2188,13 +2201,19 @@ void InteractivePoincare(std::map<std::string, std::vector<std::string>>& args)
     args.insert(std::pair<std::string, std::vector<std::string>>("--thetaVals", strThetaVals));
     args.insert(std::pair<std::string, std::vector<std::string>>("--numPunc", strNumPunc));
     args.insert(std::pair<std::string, std::vector<std::string>>("--stepSize", strStepSize));
+
+    std::cout << "Generating normalized coordinates from theta psi seed pairs" << std::endl << std::flush;
     
     std::vector<vtkm::Particle> seeds;
     std::vector<vtkm::Vec2f> seedsThetaPsi;
     seeds = GenerateNormalizedFromThetaPsiSeedsPairs(args, ds, xgcParams, seedsThetaPsi);
-    return;
-    Poincare(ds, xgcParams, seeds, args, 0);
 
+    std::cout << "Done generating normalized coordinates" << std::endl << std::flush;
+
+    // return;
+    std::cout << "Tracing poincare points" << std::endl << std::flush;
+    Poincare(ds, xgcParams, seeds, args, 0);
+    std::cout << "Done tracing poincare points" << std::endl << std::flush;
 
     fclose(fdread);
     if((fdwrite = fopen(fifoName, "w")) == NULL){ 
